@@ -1,5 +1,12 @@
 <template>
+  <section v-if="conversations.length === 0" class="tr-section-empty">
+    <b-icon icon="message-outline" size="is-large" />
+    <strong>Диалогов пока нет</strong>
+    <span>Новые диалоги появятся после обращения пользователей.</span>
+  </section>
+
   <section
+    v-else
     class="tr-conversations"
     :class="[
       `is-${viewMode}-view`,
@@ -55,7 +62,7 @@
 
     <article
       v-if="!selectedConversation"
-      class="tr-conversations__panel tr-conversations__placeholder"
+      class="tr-conversations__placeholder"
     >
       <b-icon icon="message-text-outline" size="is-large" />
       <strong>Выберите диалог</strong>
@@ -195,7 +202,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { storeToRefs } from "pinia";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+
+import { useWorkspaceStore } from "../stores/workspace";
 
 type ViewMode = "list" | "chat" | "properties";
 
@@ -228,8 +238,10 @@ const viewMode = ref<ViewMode>("list");
 const propertiesOpen = ref(true);
 const isWideLayout = ref(false);
 let wideLayoutQuery: MediaQueryList | null = null;
+const workspaceStore = useWorkspaceStore();
+const { activeWorkspaceId } = storeToRefs(workspaceStore);
 
-const conversations = ref<Conversation[]>([
+const demoConversations: Conversation[] = [
   {
     id: 1,
     contact: "Анна Смирнова",
@@ -314,7 +326,44 @@ const conversations = ref<Conversation[]>([
       },
     ],
   },
-]);
+];
+
+const conversationsByWorkspace = ref<Record<string, Conversation[]>>({
+  demo: demoConversations,
+  trickster: [
+    {
+      id: 1,
+      contact: "Мария Волкова",
+      initials: "МВ",
+      email: "maria@trickster.team",
+      channel: "Виджет",
+      agent: "Trickster Concierge",
+      status: "Активен",
+      updated: "12 мин",
+      created: "Сегодня, 11:08",
+      preview: "Подскажите, как подключить новый канал?",
+      messages: [
+        {
+          id: 1,
+          text: "Подскажите, как подключить новый канал?",
+          time: "11:08",
+          outgoing: false,
+        },
+        {
+          id: 2,
+          text: "Откройте раздел «Каналы» и выберите нужную интеграцию.",
+          time: "11:09",
+          outgoing: true,
+        },
+      ],
+    },
+  ],
+  empty: [],
+});
+
+const conversations = computed(
+  () => conversationsByWorkspace.value[activeWorkspaceId.value] ?? [],
+);
 
 const selectedConversation = computed(
   () => conversations.value.find((item) => item.id === selectedId.value),
@@ -350,6 +399,14 @@ function selectConversation(id: number): void {
   selectedId.value = id;
   viewMode.value = "chat";
 }
+
+watch(activeWorkspaceId, () => {
+  selectedId.value = null;
+  query.value = "";
+  draft.value = "";
+  viewMode.value = "list";
+  propertiesOpen.value = true;
+});
 
 function openProperties(): void {
   if (isWideLayout.value) {

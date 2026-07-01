@@ -1212,7 +1212,11 @@ button.dropdown-item:hover {
 }
 
 .tr-conversations__placeholder {
+  min-width: 0;
+  min-height: 0;
   grid-column: span 2;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: tr.$space-2;
@@ -1233,6 +1237,38 @@ button.dropdown-item:hover {
 
 .tr-conversations__placeholder span {
   max-width: 320px;
+}
+
+.tr-section-empty {
+  min-height: calc(100vh - #{tr.$topbar-height} - #{tr.$space-12});
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: tr.$space-2;
+  padding: tr.$space-6;
+  color: var(--tr-text-muted);
+  text-align: center;
+}
+
+.tr-section-empty .icon {
+  margin-bottom: tr.$space-2;
+  color: var(--tr-text-subtle);
+}
+
+.tr-section-empty strong {
+  color: var(--tr-text-strong);
+  font-weight: tr.$font-weight-semibold;
+}
+
+.tr-section-empty span {
+  max-width: 360px;
+}
+
+.tr-conversations__placeholder > *,
+.tr-section-empty > * {
+  transform: translateY(-12vh);
+  transform: translateY(-12dvh);
 }
 
 .tr-conversations__header {
@@ -1697,6 +1733,12 @@ button.dropdown-item:hover {
 .tr-settings__panel-footer {
   display: flex;
   justify-content: flex-end;
+}
+
+.tr-dashboard-empty {
+  margin: tr.$space-8 0;
+  color: var(--tr-text-muted);
+  text-align: center;
 }
 
 .tr-theme-toggle {

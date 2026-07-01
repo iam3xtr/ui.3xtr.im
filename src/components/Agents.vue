@@ -1,5 +1,12 @@
 <template>
+  <section v-if="agents.length === 0" class="tr-section-empty">
+    <b-icon icon="robot-outline" size="is-large" />
+    <strong>Агентов пока нет</strong>
+    <span>Создайте первого агента, чтобы начать тестирование.</span>
+  </section>
+
   <section
+    v-else
     class="tr-conversations tr-agents"
     :class="[
       `is-${viewMode}-view`,
@@ -55,7 +62,7 @@
 
     <article
       v-if="!selectedAgent"
-      class="tr-conversations__panel tr-conversations__placeholder"
+      class="tr-conversations__placeholder"
     >
       <b-icon icon="robot-outline" size="is-large" />
       <strong>Выберите агента</strong>
@@ -194,7 +201,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { storeToRefs } from "pinia";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+
+import { useWorkspaceStore } from "../stores/workspace";
 
 type ViewMode = "list" | "chat" | "properties";
 
@@ -224,8 +234,10 @@ const viewMode = ref<ViewMode>("list");
 const propertiesOpen = ref(true);
 const isWideLayout = ref(false);
 let wideLayoutQuery: MediaQueryList | null = null;
+const workspaceStore = useWorkspaceStore();
+const { activeWorkspaceId } = storeToRefs(workspaceStore);
 
-const agents = ref<Agent[]>([
+const demoAgents: Agent[] = [
   {
     id: 1,
     name: "Консультант",
@@ -266,7 +278,36 @@ const agents = ref<Agent[]>([
     instructions: "Используй базу знаний и запрашивай детали ошибки.",
     messages: [],
   },
-]);
+];
+
+const agentsByWorkspace = ref<Record<string, Agent[]>>({
+  demo: demoAgents,
+  trickster: [
+    {
+      id: 1,
+      name: "Trickster Concierge",
+      description: "Помогает команде настраивать рабочее пространство.",
+      model: "GPT-4.1",
+      status: "Активен",
+      updated: "12 мин",
+      temperature: 0.3,
+      instructions: "Помогай пользователям работать с продуктами Trickster.",
+      messages: [
+        {
+          id: 1,
+          text: "Готов к тестированию. Задайте вопрос о настройке пространства.",
+          time: "11:02",
+          outgoing: false,
+        },
+      ],
+    },
+  ],
+  empty: [],
+});
+
+const agents = computed(
+  () => agentsByWorkspace.value[activeWorkspaceId.value] ?? [],
+);
 
 const selectedAgent = computed(
   () => agents.value.find((agent) => agent.id === selectedId.value),
@@ -302,6 +343,14 @@ function selectAgent(id: number): void {
   selectedId.value = id;
   viewMode.value = "chat";
 }
+
+watch(activeWorkspaceId, () => {
+  selectedId.value = null;
+  query.value = "";
+  draft.value = "";
+  viewMode.value = "list";
+  propertiesOpen.value = true;
+});
 
 function openProperties(): void {
   if (isWideLayout.value) {

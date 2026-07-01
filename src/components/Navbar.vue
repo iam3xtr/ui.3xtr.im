@@ -99,18 +99,20 @@
     </div>
 
     <nav
-      v-if="showResourceMenu"
       class="tr-topbar__links"
       aria-label="Дополнительная навигация"
+      :aria-hidden="!showResourceMenu"
     >
-      <a
-        v-for="item in resourceLinks"
-        :key="item.label"
-        href="#"
-        @click.prevent
-      >
-        {{ item.label }}
-      </a>
+      <template v-if="showResourceMenu">
+        <a
+          v-for="item in resourceLinks"
+          :key="item.label"
+          href="#"
+          @click.prevent
+        >
+          {{ item.label }}
+        </a>
+      </template>
     </nav>
 
     <div class="tr-topbar__actions">

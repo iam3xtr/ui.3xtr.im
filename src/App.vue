@@ -8,7 +8,7 @@
       v-model:is-dark="isDark"
       :workspaces="workspaces"
       :user="user"
-      @create-workspace="createWorkspace"
+      @create-workspace="workspaceStore.createWorkspace"
     />
 
     <div class="tr-app-shell">
@@ -29,34 +29,15 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from "pinia";
 import { computed, onMounted, ref, watch } from "vue";
 import { RouterView, useRoute } from "vue-router";
 
 import Navbar from "./components/Navbar.vue";
 import Sidebar from "./components/Sidebar.vue";
+import { useWorkspaceStore } from "./stores/workspace";
 
 type Theme = "light" | "dark";
-
-const workspaces = ref([
-  {
-    id: "demo",
-    name: "Демо-пространство",
-    role: "Владелец",
-    plan: "Free",
-  },
-  {
-    id: "trickster",
-    name: "Trickster Team",
-    role: "Администратор",
-    plan: "Pro",
-  },
-  {
-    id: "personal",
-    name: "Личное пространство",
-    role: "Участник",
-    plan: "Free",
-  },
-]);
 
 const user = {
   firstName: "Иван",
@@ -64,26 +45,17 @@ const user = {
   role: "Владелец",
 };
 
-const workspace = ref(workspaces.value[0].id);
+const workspaceStore = useWorkspaceStore();
+const {
+  workspaces,
+  activeWorkspaceId: workspace,
+} = storeToRefs(workspaceStore);
 const isDark = ref(false);
 const route = useRoute();
 
 const isFluidContent = computed(
   () => route.meta.contentMode === "fluid",
 );
-
-function createWorkspace(): void {
-  const number = workspaces.value.length + 1;
-  const id = `workspace-${number}`;
-
-  workspaces.value.push({
-    id,
-    name: `Пространство ${number}`,
-    role: "Владелец",
-    plan: "Free",
-  });
-  workspace.value = id;
-}
 
 function applyTheme(theme: Theme): void {
   document.documentElement.dataset.theme = theme;
