@@ -1,5 +1,90 @@
 <template>
   <header class="tr-topbar">
+    <b-dropdown
+      ref="mobileNavDropdown"
+      class="tr-navbar-dropdown tr-mobile-nav"
+      position="is-bottom-right"
+      mobile-modal
+      aria-role="menu"
+    >
+      <template #trigger>
+        <button
+          class="tr-navbar-trigger tr-mobile-nav__trigger"
+          type="button"
+          aria-label="Открыть главное меню"
+        >
+          <b-icon icon="menu" />
+        </button>
+      </template>
+
+      <b-dropdown-item
+        class="tr-mobile-menu-header"
+        custom
+        :focusable="false"
+      >
+        <div class="tr-mobile-menu-header__row">
+          <Logo @click="closeMobileNav" />
+          <button
+            class="tr-mobile-menu-header__close"
+            type="button"
+            aria-label="Закрыть главное меню"
+            @click.stop="closeMobileNav"
+          >
+            <b-icon icon="close" />
+          </button>
+        </div>
+      </b-dropdown-item>
+
+      <b-dropdown-item custom :focusable="false">
+        <div class="tr-mobile-workspace">
+          <span class="tr-mobile-workspace__label">
+            <b-icon icon="briefcase-outline" size="is-small" />
+            Пространство
+          </span>
+          <b-select
+            v-model="workspace"
+            expanded
+            aria-label="Выбрать рабочее пространство"
+          >
+            <option
+              v-for="item in workspaces"
+              :key="item.id"
+              :value="item.id"
+            >
+              {{ item.name }}
+            </option>
+          </b-select>
+        </div>
+      </b-dropdown-item>
+
+      <b-dropdown-item separator />
+
+      <b-dropdown-item
+        v-for="item in mainNavigationItems"
+        :key="item.routeName"
+        :class="{ 'is-active': route.name === item.routeName }"
+        aria-role="menuitem"
+        @click="router.push({ name: item.routeName })"
+      >
+        <span class="tr-dropdown-action">
+          <b-icon :icon="item.icon" size="is-small" />
+          {{ item.label }}
+        </span>
+      </b-dropdown-item>
+
+      <b-dropdown-item separator />
+
+      <b-dropdown-item aria-role="menuitem">
+        <span class="tr-dropdown-item-row">
+          <span class="tr-dropdown-action">
+            <b-icon icon="bell-outline" size="is-small" />
+            События
+          </span>
+          <b-tag size="is-small">3</b-tag>
+        </span>
+      </b-dropdown-item>
+    </b-dropdown>
+
     <Logo />
 
     <div class="tr-topbar__search">
@@ -13,10 +98,21 @@
       <kbd class="tr-topbar__search-shortcut">{{ searchShortcut }}</kbd>
     </div>
 
+    <nav class="tr-topbar__links" aria-label="Дополнительная навигация">
+      <a
+        v-for="item in resourceLinks"
+        :key="item.label"
+        href="#"
+        @click.prevent
+      >
+        {{ item.label }}
+      </a>
+    </nav>
+
     <div class="tr-topbar__actions">
       <b-dropdown
         v-model="workspace"
-        class="tr-navbar-dropdown"
+        class="tr-navbar-dropdown tr-workspace-dropdown"
         position="is-bottom-left"
         aria-role="list"
       >
@@ -89,8 +185,63 @@
       </b-dropdown>
 
       <b-dropdown
+        class="tr-navbar-dropdown tr-notifications-dropdown"
+        position="is-bottom-left"
+        aria-role="menu"
+      >
+        <template #trigger>
+          <button
+            class="tr-navbar-trigger tr-notifications-trigger"
+            type="button"
+            aria-label="События: 3 непрочитанных"
+          >
+            <b-icon icon="bell-outline" size="is-small" />
+            <span class="tr-notifications-trigger__badge" aria-hidden="true">
+              3
+            </span>
+          </button>
+        </template>
+
+        <b-dropdown-item custom :focusable="false">
+          <div class="tr-notifications-heading">
+            <strong>События</strong>
+            <span>3 новых</span>
+          </div>
+        </b-dropdown-item>
+
+        <b-dropdown-item separator />
+
+        <b-dropdown-item
+          v-for="event in notificationEvents"
+          :key="event.title"
+          aria-role="menuitem"
+        >
+          <span class="tr-notification">
+            <span
+              class="tr-notification__marker"
+              :class="{ 'is-read': event.isRead }"
+              aria-hidden="true"
+            />
+            <span class="tr-notification__copy">
+              <strong>{{ event.title }}</strong>
+              <small>{{ event.description }}</small>
+              <time>{{ event.time }}</time>
+            </span>
+          </span>
+        </b-dropdown-item>
+
+        <b-dropdown-item separator />
+
+        <b-dropdown-item>
+          <span class="tr-notifications-all">Все события</span>
+        </b-dropdown-item>
+      </b-dropdown>
+
+      <b-dropdown
+        ref="userDropdown"
         class="tr-navbar-dropdown tr-user-dropdown"
         position="is-bottom-left"
+        mobile-modal
         aria-role="menu"
       >
         <template #trigger>
@@ -106,6 +257,30 @@
             </span>
           </button>
         </template>
+
+        <b-dropdown-item
+          class="tr-mobile-menu-header"
+          custom
+          :focusable="false"
+        >
+          <div class="tr-mobile-menu-header__row">
+            <div class="tr-mobile-menu-profile">
+              <span class="tr-user-avatar">{{ userInitials }}</span>
+              <span class="tr-user-summary">
+                <strong>{{ user.firstName }} {{ user.lastName }}</strong>
+                <small>{{ user.role }}</small>
+              </span>
+            </div>
+            <button
+              class="tr-mobile-menu-header__close"
+              type="button"
+              aria-label="Закрыть меню профиля"
+              @click.stop="closeUserMenu"
+            >
+              <b-icon icon="close" />
+            </button>
+          </div>
+        </b-dropdown-item>
 
         <b-dropdown-item custom :focusable="false">
           <div class="tr-dropdown-setting">
@@ -173,6 +348,19 @@
             Выйти
           </span>
         </b-dropdown-item>
+
+        <b-dropdown-item
+          class="tr-user-resource-separator"
+          separator
+        />
+
+        <b-dropdown-item
+          v-for="item in resourceLinks"
+          :key="item.label"
+          class="tr-user-resource"
+        >
+          {{ item.label }}
+        </b-dropdown-item>
       </b-dropdown>
     </div>
   </header>
@@ -180,8 +368,9 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
+import { mainNavigationItems } from "../navigation";
 import Logo from "./Logo.vue";
 
 interface Workspace {
@@ -195,6 +384,21 @@ interface User {
   firstName: string;
   lastName: string;
   role: string;
+}
+
+interface NotificationEvent {
+  title: string;
+  description: string;
+  time: string;
+  isRead?: boolean;
+}
+
+interface ResourceLink {
+  label: string;
+}
+
+interface DropdownInstance {
+  toggle: () => void;
 }
 
 const props = defineProps<{
@@ -212,8 +416,36 @@ const isDark = defineModel<boolean>("isDark", { required: true });
 const locale = ref("ru");
 const searchQuery = ref("");
 const searchInput = ref<{ focus: () => void } | null>(null);
+const mobileNavDropdown = ref<DropdownInstance | null>(null);
+const userDropdown = ref<DropdownInstance | null>(null);
 const searchShortcut = ref("Ctrl K");
+const route = useRoute();
 const router = useRouter();
+
+const resourceLinks: ResourceLink[] = [
+  { label: "Новости" },
+  { label: "API" },
+  { label: "Документация" },
+];
+
+const notificationEvents: NotificationEvent[] = [
+  {
+    title: "Новый диалог",
+    description: "Анна начала диалог с агентом «Консультант».",
+    time: "5 минут назад",
+  },
+  {
+    title: "Агент обновлён",
+    description: "Настройки агента «Sales Assistant» сохранены.",
+    time: "1 час назад",
+  },
+  {
+    title: "Участник приглашён",
+    description: "В пространство отправлено новое приглашение.",
+    time: "Вчера",
+    isRead: true,
+  },
+];
 
 const activeWorkspace = computed(
   () => props.workspaces.find((item) => item.id === workspace.value)
@@ -238,6 +470,14 @@ function goToProfile(): void {
 
 function goToSecurity(): void {
   router.push({ name: "security" });
+}
+
+function closeMobileNav(): void {
+  mobileNavDropdown.value?.toggle();
+}
+
+function closeUserMenu(): void {
+  userDropdown.value?.toggle();
 }
 
 function handleSearchShortcut(event: KeyboardEvent): void {
