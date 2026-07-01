@@ -1,20 +1,21 @@
 <template>
   <section
     class="tr-conversations"
-    :class="`is-${viewMode}-view`"
+    :class="[
+      `is-${viewMode}-view`,
+      { 'is-properties-open': isPropertiesVisible },
+    ]"
   >
     <aside class="tr-conversations__panel tr-conversations__list">
       <header class="tr-conversations__header">
-        <h1 class="tr-conversations__title">Диалоги</h1>
+        <div class="tr-conversations__search">
+          <b-input
+            v-model="query"
+            icon="magnify"
+            placeholder="Поиск по диалогам"
+          />
+        </div>
       </header>
-
-      <div class="tr-conversations__search">
-        <b-input
-          v-model="query"
-          icon="magnify"
-          placeholder="Поиск по диалогам"
-        />
-      </div>
 
       <nav class="tr-conversations__items" aria-label="Список диалогов">
         <button
@@ -53,18 +54,26 @@
     </aside>
 
     <article
+      v-if="!selectedConversation"
+      class="tr-conversations__panel tr-conversations__placeholder"
+    >
+      <b-icon icon="message-text-outline" size="is-large" />
+      <strong>Выберите диалог</strong>
+      <span>Сообщения и свойства диалога появятся здесь.</span>
+    </article>
+
+    <article
       v-if="selectedConversation"
       class="tr-conversations__panel tr-conversations__chat"
     >
       <header class="tr-conversations__header">
         <b-button
-          class="tr-conversations__list-action"
+          class="tr-conversations__list-action tr-conversations__icon-action"
           icon-left="arrow-left"
-          size="is-small"
+          aria-label="К диалогам"
+          title="К диалогам"
           @click="viewMode = 'list'"
-        >
-          К списку
-        </b-button>
+        />
 
         <div class="tr-conversations__identity">
           <span class="tr-conversation-avatar">
@@ -77,14 +86,13 @@
         </div>
 
         <b-button
-          v-if="viewMode !== 'properties'"
-          class="tr-conversations__settings-action"
+          v-if="!isPropertiesVisible"
+          class="tr-conversations__settings-action tr-conversations__icon-action"
           icon-left="cog-outline"
-          size="is-small"
-          @click="viewMode = 'properties'"
-        >
-          Настройки
-        </b-button>
+          aria-label="Открыть свойства диалога"
+          title="Открыть свойства диалога"
+          @click="openProperties"
+        />
       </header>
 
       <div class="tr-conversations__messages" aria-live="polite">
@@ -121,21 +129,30 @@
     >
       <header class="tr-conversations__header">
         <b-button
-          class="tr-conversations__properties-action"
+          class="tr-conversations__properties-action tr-conversations__icon-action"
           icon-left="arrow-left"
-          size="is-small"
+          aria-label="К диалогу"
+          title="К диалогу"
           @click="viewMode = 'chat'"
-        >
-          К диалогу
-        </b-button>
+        />
         <h2 class="tr-conversations__title">Свойства</h2>
+        <b-button
+          class="tr-conversations__properties-close tr-conversations__icon-action"
+          icon-left="close"
+          aria-label="Закрыть свойства диалога"
+          title="Закрыть свойства диалога"
+          @click="closeProperties"
+        />
       </header>
 
       <div class="tr-conversations__properties-body">
         <div class="tr-conversations__profile">
-          <span class="tr-conversation-avatar is-large">
-            {{ selectedConversation.initials }}
-          </span>
+          <img
+            v-if="selectedConversation.avatarUrl"
+            class="tr-conversations__profile-image"
+            :src="selectedConversation.avatarUrl"
+            :alt="selectedConversation.contact"
+          />
           <strong>{{ selectedConversation.contact }}</strong>
           <span class="tr-muted">{{ selectedConversation.email }}</span>
         </div>
@@ -178,7 +195,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
 type ViewMode = "list" | "chat" | "properties";
 
@@ -193,6 +210,7 @@ interface Conversation {
   id: number;
   contact: string;
   initials: string;
+  avatarUrl?: string;
   email: string;
   channel: string;
   agent: string;
@@ -205,8 +223,11 @@ interface Conversation {
 
 const query = ref("");
 const draft = ref("");
-const selectedId = ref(1);
+const selectedId = ref<number | null>(null);
 const viewMode = ref<ViewMode>("list");
+const propertiesOpen = ref(true);
+const isWideLayout = ref(false);
+let wideLayoutQuery: MediaQueryList | null = null;
 
 const conversations = ref<Conversation[]>([
   {
@@ -299,6 +320,12 @@ const selectedConversation = computed(
   () => conversations.value.find((item) => item.id === selectedId.value),
 );
 
+const isPropertiesVisible = computed(
+  () => isWideLayout.value
+    ? propertiesOpen.value
+    : viewMode.value === "properties",
+);
+
 const filteredConversations = computed(() => {
   const search = query.value.trim().toLocaleLowerCase();
 
@@ -319,6 +346,28 @@ const filteredConversations = computed(() => {
 function selectConversation(id: number): void {
   selectedId.value = id;
   viewMode.value = "chat";
+}
+
+function openProperties(): void {
+  if (isWideLayout.value) {
+    propertiesOpen.value = true;
+    return;
+  }
+
+  viewMode.value = "properties";
+}
+
+function closeProperties(): void {
+  if (isWideLayout.value) {
+    propertiesOpen.value = false;
+    return;
+  }
+
+  viewMode.value = "chat";
+}
+
+function syncWideLayout(event: MediaQueryListEvent | MediaQueryList): void {
+  isWideLayout.value = event.matches;
 }
 
 function sendMessage(): void {
@@ -342,4 +391,14 @@ function sendMessage(): void {
   conversation.updated = "Сейчас";
   draft.value = "";
 }
+
+onMounted(() => {
+  wideLayoutQuery = window.matchMedia("(min-width: 1280px)");
+  syncWideLayout(wideLayoutQuery);
+  wideLayoutQuery.addEventListener("change", syncWideLayout);
+});
+
+onBeforeUnmount(() => {
+  wideLayoutQuery?.removeEventListener("change", syncWideLayout);
+});
 </script>
