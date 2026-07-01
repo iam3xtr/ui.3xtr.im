@@ -1,5 +1,7 @@
 {
+  "name": "trickster-ui-kit",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
