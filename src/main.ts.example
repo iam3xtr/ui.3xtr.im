@@ -1,0 +1,17 @@
+import { createApp } from "vue";
+import Buefy from "buefy";
+
+import App from "./App.vue";
+
+// Импортируем собственную сборку Bulma + Buefy.
+// Не подключайте одновременно buefy/dist/css/buefy.css.
+import "./styles/trickster-buefy.scss";
+
+const app = createApp(App);
+
+app.use(Buefy, {
+  defaultIconPack: "mdi",
+  defaultContainerElement: "#app",
+});
+
+app.mount("#app");

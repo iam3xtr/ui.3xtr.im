@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trickster UI Kit</title>
+
+  <!--
+    Скомпилируйте src/styles/trickster-buefy.scss в CSS и укажите путь ниже.
+    Например:
+      sass --load-path=node_modules src/styles/trickster-buefy.scss dist/trickster-buefy.css
+  -->
+  <link rel="stylesheet" href="./dist/trickster-buefy.css">
+
+  <style>
+    /* Только раскладка страницы-примера. Компонентные стили лежат в SCSS. */
+    .ui-kit {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .ui-kit__section {
+      margin-bottom: 24px;
+    }
+
+    .ui-kit__swatches {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+    }
+
+    .ui-kit__swatch {
+      overflow: hidden;
+      border: 1px solid var(--tr-border);
+      border-radius: 8px;
+      background: var(--tr-surface-1);
+    }
+
+    .ui-kit__swatch-color {
+      height: 72px;
+    }
+
+    .ui-kit__swatch-meta {
+      padding: 12px;
+    }
+
+    .ui-kit__modal-preview {
+      max-width: 520px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="tr-app">
+    <header class="tr-topbar">
+      <strong class="tr-strong">TRICKSTER</strong>
+
+      <div style="margin-left:auto" class="tr-row">
+        <!-- Переключатель воркспейса должен быть постоянно доступен -->
+        <div class="select tr-workspace-switcher">
+          <select aria-label="Рабочее пространство">
+            <option>Demo Workspace</option>
+            <option>Trickster Team</option>
+            <option>Personal Workspace</option>
+          </select>
+        </div>
+
+        <button class="button tr-theme-toggle" id="theme-toggle" type="button">
+          <span aria-hidden="true">◐</span>
+          <span>Тема</span>
+        </button>
+
+        <button class="button is-primary" type="button">Создать агента</button>
+      </div>
+    </header>
+
+    <main class="ui-kit">
+      <section class="ui-kit__section">
+        <h1 class="tr-page-title">Trickster UI Kit</h1>
+        <p class="tr-page-subtitle">
+          Базовые элементы светлой и нейтрально-серой тёмной темы.
+        </p>
+      </section>
+
+      <!-- Цвета -->
+      <section class="ui-kit__section tr-card">
+        <h2 class="tr-card__title">Цвета</h2>
+        <div class="ui-kit__swatches">
+          <div class="ui-kit__swatch">
+            <div class="ui-kit__swatch-color" style="background:hsl(264,52%,60%)"></div>
+            <div class="ui-kit__swatch-meta">
+              <strong>Primary</strong><br>
+              <code>hsl(264, 52%, 60%)</code>
+            </div>
+          </div>
+
+          <div class="ui-kit__swatch">
+            <div class="ui-kit__swatch-color" style="background:var(--tr-app-bg)"></div>
+            <div class="ui-kit__swatch-meta">
+              <strong>App background</strong><br>
+              <code>--tr-app-bg</code>
+            </div>
+          </div>
+
+          <div class="ui-kit__swatch">
+            <div class="ui-kit__swatch-color" style="background:var(--tr-surface-1)"></div>
+            <div class="ui-kit__swatch-meta">
+              <strong>Surface</strong><br>
+              <code>--tr-surface-1</code>
+            </div>
+          </div>
+
+          <div class="ui-kit__swatch">
+            <div class="ui-kit__swatch-color" style="background:var(--tr-text-strong)"></div>
+            <div class="ui-kit__swatch-meta">
+              <strong>Text strong</strong><br>
+              <code>--tr-text-strong</code>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Кнопки -->
+      <section class="ui-kit__section tr-card">
+        <h2 class="tr-card__title">Кнопки</h2>
+        <div class="buttons">
+          <button class="button is-primary">Основная</button>
+          <button class="button is-primary is-light">Лёгкая primary</button>
+          <button class="button">Вторичная</button>
+          <button class="button is-success">Успех</button>
+          <button class="button is-warning">Предупреждение</button>
+          <button class="button is-danger">Удалить</button>
+          <button class="button" disabled>Недоступна</button>
+        </div>
+
+        <div class="buttons">
+          <button class="button is-small">Маленькая</button>
+          <button class="button">Обычная</button>
+          <button class="button is-medium">Средняя</button>
+          <button class="button is-large">Большая</button>
+        </div>
+      </section>
+
+      <!-- Поля формы -->
+      <section class="ui-kit__section tr-card">
+        <h2 class="tr-card__title">Поля формы</h2>
+
+        <div class="tr-grid tr-grid--2">
+          <div>
+            <div class="field">
+              <label class="label">Название агента</label>
+              <div class="control">
+                <input class="input" type="text" placeholder="Например, Консультант">
+              </div>
+              <p class="help">До 64 символов.</p>
+            </div>
+
+            <div class="field">
+              <label class="label">Описание</label>
+              <div class="control">
+                <textarea class="textarea" placeholder="Кратко опишите назначение"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="field">
+              <label class="label">Модель</label>
+              <div class="control">
+                <div class="select is-fullwidth">
+                  <select>
+                    <option>GPT-4o</option>
+                    <option>Claude</option>
+                    <option>Gemini</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="checkbox">
+                <input type="checkbox" checked>
+                Активировать агента после сохранения
+              </label>
+            </div>
+
+            <div class="field">
+              <label class="radio">
+                <input type="radio" name="visibility" checked>
+                Приватный
+              </label>
+              <label class="radio">
+                <input type="radio" name="visibility">
+                Доступен воркспейсу
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tags / notifications -->
+      <section class="ui-kit__section tr-grid tr-grid--2">
+        <article class="tr-card">
+          <h2 class="tr-card__title">Теги</h2>
+          <div class="tags">
+            <span class="tag is-primary">Активен</span>
+            <span class="tag">Черновик</span>
+            <span class="tag is-success">Проиндексировано</span>
+            <span class="tag is-warning">Ожидает</span>
+            <span class="tag is-danger">Ошибка</span>
+          </div>
+        </article>
+
+        <article class="tr-card">
+          <h2 class="tr-card__title">Уведомления</h2>
+          <div class="notification is-primary is-light">
+            Конфигурация агента сохранена.
+          </div>
+          <div class="notification is-warning is-light">
+            Лимит хранилища использован на 82%.
+          </div>
+        </article>
+      </section>
+
+      <!-- KPI cards -->
+      <section class="ui-kit__section">
+        <h2 class="tr-card__title">KPI-карточки</h2>
+        <div class="tr-grid tr-grid--3">
+          <article class="tr-card tr-kpi">
+            <div class="tr-kpi__label">
+              <span class="tr-icon-tile">$</span>
+              Расход за период
+            </div>
+            <div class="tr-kpi__value">$12,453.68</div>
+            <div class="tr-kpi__delta"><strong>↑ 18.4%</strong> к прошлому периоду</div>
+          </article>
+
+          <article class="tr-card tr-kpi">
+            <div class="tr-kpi__label">
+              <span class="tr-icon-tile">◫</span>
+              Диалоги за сегодня
+            </div>
+            <div class="tr-kpi__value">2,143</div>
+            <div class="tr-kpi__delta"><strong>↑ 12.7%</strong> ко вчера</div>
+          </article>
+
+          <article class="tr-card tr-kpi">
+            <div class="tr-kpi__label">
+              <span class="tr-icon-tile">◆</span>
+              Хранилище знаний
+            </div>
+            <div class="tr-kpi__value">256.3 GB</div>
+            <div class="tr-kpi__delta">Из 500 GB</div>
+          </article>
+        </div>
+      </section>
+
+      <!-- Progress -->
+      <section class="ui-kit__section tr-card">
+        <h2 class="tr-card__title">Лимиты</h2>
+
+        <div class="tr-stack">
+          <div>
+            <div class="tr-row tr-row--between">
+              <span>Месячный бюджет</span>
+              <span class="tr-muted">$7,546 / $20,000</span>
+            </div>
+            <progress class="progress is-primary" value="38" max="100">38%</progress>
+          </div>
+
+          <div>
+            <div class="tr-row tr-row--between">
+              <span>Хранилище знаний</span>
+              <span class="tr-muted">256 / 500 GB</span>
+            </div>
+            <progress class="progress is-primary" value="51" max="100">51%</progress>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tabs -->
+      <section class="ui-kit__section tr-card">
+        <h2 class="tr-card__title">Вкладки</h2>
+        <div class="tabs">
+          <ul>
+            <li class="is-active"><a>Обзор</a></li>
+            <li><a>Настройки</a></li>
+            <li><a>Каналы</a></li>
+            <li><a>Тест-сессии</a></li>
+          </ul>
+        </div>
+        <p class="tr-muted">Содержимое активной вкладки.</p>
+      </section>
+
+      <!-- Table -->
+      <section class="ui-kit__section tr-card">
+        <div class="tr-row tr-row--between">
+          <h2 class="tr-card__title">Таблица</h2>
+          <button class="button is-primary">Добавить</button>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="table is-fullwidth is-hoverable">
+            <thead>
+              <tr>
+                <th>Название</th>
+                <th>Статус</th>
+                <th>Владелец</th>
+                <th>Обновлено</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Консультант</td>
+                <td><span class="tag is-primary">Активен</span></td>
+                <td>Иван Петров</td>
+                <td>2 часа назад</td>
+              </tr>
+              <tr>
+                <td>Sales Assistant</td>
+                <td><span class="tag">Черновик</span></td>
+                <td>Анна Смирнова</td>
+                <td>Вчера</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <nav class="pagination mt-4" role="navigation" aria-label="pagination">
+          <a class="pagination-previous">Назад</a>
+          <a class="pagination-next">Вперёд</a>
+          <ul class="pagination-list">
+            <li><a class="pagination-link is-current" aria-current="page">1</a></li>
+            <li><a class="pagination-link">2</a></li>
+            <li><a class="pagination-link">3</a></li>
+          </ul>
+        </nav>
+      </section>
+
+      <!-- Empty state -->
+      <section class="ui-kit__section tr-card has-text-centered">
+        <div class="tr-icon-tile" style="margin:0 auto 12px">◇</div>
+        <h2 class="tr-card__title">Здесь пока пусто</h2>
+        <p class="tr-muted">Создайте первый объект, чтобы он появился в списке.</p>
+        <button class="button is-primary mt-4">Создать</button>
+      </section>
+
+      <!-- Modal preview -->
+      <section class="ui-kit__section tr-card">
+        <h2 class="tr-card__title">Модальное окно — статический пример</h2>
+        <div class="modal-card ui-kit__modal-preview">
+          <header class="modal-card-head">
+            <p class="modal-card-title">Удалить агента?</p>
+            <button class="delete" aria-label="Закрыть"></button>
+          </header>
+          <section class="modal-card-body">
+            Действие нельзя отменить. Связанные каналы будут отключены.
+          </section>
+          <footer class="modal-card-foot">
+            <button class="button">Отмена</button>
+            <button class="button is-danger">Удалить</button>
+          </footer>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const root = document.documentElement;
+    const button = document.getElementById("theme-toggle");
+
+    button.addEventListener("click", () => {
+      root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+      localStorage.setItem("trickster-theme", root.dataset.theme);
+    });
+
+    root.dataset.theme =
+      localStorage.getItem("trickster-theme") ||
+      (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  </script>
+</body>
+</html>
