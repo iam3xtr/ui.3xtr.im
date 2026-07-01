@@ -72,9 +72,9 @@
         </span>
       </b-dropdown-item>
 
-      <b-dropdown-item separator />
+      <b-dropdown-item v-if="showNotifications" separator />
 
-      <b-dropdown-item aria-role="menuitem">
+      <b-dropdown-item v-if="showNotifications" aria-role="menuitem">
         <span class="tr-dropdown-item-row">
           <span class="tr-dropdown-action">
             <b-icon icon="bell-outline" size="is-small" />
@@ -87,7 +87,7 @@
 
     <Logo />
 
-    <div class="tr-topbar__search">
+    <div v-if="showSearch" class="tr-topbar__search">
       <b-input
         ref="searchInput"
         v-model="searchQuery"
@@ -98,7 +98,11 @@
       <kbd class="tr-topbar__search-shortcut">{{ searchShortcut }}</kbd>
     </div>
 
-    <nav class="tr-topbar__links" aria-label="Дополнительная навигация">
+    <nav
+      v-if="showResourceMenu"
+      class="tr-topbar__links"
+      aria-label="Дополнительная навигация"
+    >
       <a
         v-for="item in resourceLinks"
         :key="item.label"
@@ -185,6 +189,7 @@
       </b-dropdown>
 
       <b-dropdown
+        v-if="showNotifications"
         class="tr-navbar-dropdown tr-notifications-dropdown"
         position="is-bottom-left"
         aria-role="menu"
@@ -349,28 +354,32 @@
           </span>
         </b-dropdown-item>
 
-        <b-dropdown-item
-          class="tr-user-resource-separator"
-          separator
-        />
+        <template v-if="showResourceMenu">
+          <b-dropdown-item
+            class="tr-user-resource-separator"
+            separator
+          />
 
-        <b-dropdown-item
-          v-for="item in resourceLinks"
-          :key="item.label"
-          class="tr-user-resource"
-        >
-          {{ item.label }}
-        </b-dropdown-item>
+          <b-dropdown-item
+            v-for="item in resourceLinks"
+            :key="item.label"
+            class="tr-user-resource"
+          >
+            {{ item.label }}
+          </b-dropdown-item>
+        </template>
       </b-dropdown>
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from "pinia";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import { mainNavigationItems } from "../navigation";
+import { useSiteSettingsStore } from "../stores/siteSettings";
 import Logo from "./Logo.vue";
 
 interface Workspace {
@@ -421,6 +430,12 @@ const userDropdown = ref<DropdownInstance | null>(null);
 const searchShortcut = ref("Ctrl K");
 const route = useRoute();
 const router = useRouter();
+const siteSettings = useSiteSettingsStore();
+const {
+  showSearch,
+  showResourceMenu,
+  showNotifications,
+} = storeToRefs(siteSettings);
 
 const resourceLinks: ResourceLink[] = [
   { label: "Новости" },

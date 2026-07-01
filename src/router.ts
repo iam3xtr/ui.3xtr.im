@@ -4,9 +4,11 @@ import {
   createWebHistory,
 } from "vue-router";
 
+import Agents from "./components/Agents.vue";
 import Conversations from "./components/Conversations.vue";
 import Dashboard from "./components/Dashboard.vue";
 import SectionPlaceholder from "./components/SectionPlaceholder.vue";
+import Settings from "./components/Settings.vue";
 import UiKit from "./components/UiKit.vue";
 
 declare module "vue-router" {
@@ -35,8 +37,8 @@ const router = createRouter({
     {
       path: "/agents",
       name: "agents",
-      component: SectionPlaceholder,
-      props: { title: "Агенты" },
+      component: Agents,
+      meta: { contentMode: "fluid" },
     },
     {
       path: "/channels",
@@ -53,8 +55,7 @@ const router = createRouter({
     {
       path: "/settings",
       name: "settings",
-      component: SectionPlaceholder,
-      props: { title: "Настройки" },
+      component: Settings,
     },
     {
       path: "/workspace/members",

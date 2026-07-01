@@ -321,9 +321,12 @@ const selectedConversation = computed(
 );
 
 const isPropertiesVisible = computed(
-  () => isWideLayout.value
-    ? propertiesOpen.value
-    : viewMode.value === "properties",
+  () => Boolean(selectedConversation.value)
+    && (
+      isWideLayout.value
+        ? propertiesOpen.value
+        : viewMode.value === "properties"
+    ),
 );
 
 const filteredConversations = computed(() => {
