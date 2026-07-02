@@ -7,8 +7,15 @@ export interface MainNavigationItem {
 export const mainNavigationItems: MainNavigationItem[] = [
   { routeName: "conversations", icon: "forum-outline", label: "Диалоги" },
   { routeName: "agents", icon: "robot-outline", label: "Агенты" },
+  {
+    routeName: "knowledge",
+    icon: "book-open-page-variant-outline",
+    label: "Знания",
+  },
   { routeName: "channels", icon: "message-outline", label: "Каналы" },
-  { routeName: "sessions", icon: "flask-outline", label: "Тест-сессии" },
   { routeName: "settings", icon: "cog-outline", label: "Настройки" },
+];
+
+export const administrationNavigationItems: MainNavigationItem[] = [
   { routeName: "ui-kit", icon: "palette-outline", label: "UI Kit" },
 ];

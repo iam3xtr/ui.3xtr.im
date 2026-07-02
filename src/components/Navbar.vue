@@ -72,6 +72,29 @@
         </span>
       </b-dropdown-item>
 
+      <b-dropdown-item separator />
+
+      <b-dropdown-item
+        class="tr-mobile-nav-section-title"
+        custom
+        :focusable="false"
+      >
+        Администрирование
+      </b-dropdown-item>
+
+      <b-dropdown-item
+        v-for="item in administrationNavigationItems"
+        :key="item.routeName"
+        :class="{ 'is-active': route.name === item.routeName }"
+        aria-role="menuitem"
+        @click="router.push({ name: item.routeName })"
+      >
+        <span class="tr-dropdown-action">
+          <b-icon :icon="item.icon" size="is-small" />
+          {{ item.label }}
+        </span>
+      </b-dropdown-item>
+
       <b-dropdown-item v-if="showNotifications" separator />
 
       <b-dropdown-item v-if="showNotifications" aria-role="menuitem">
@@ -380,7 +403,10 @@ import { storeToRefs } from "pinia";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
-import { mainNavigationItems } from "../navigation";
+import {
+  administrationNavigationItems,
+  mainNavigationItems,
+} from "../navigation";
 import { useSiteSettingsStore } from "../stores/siteSettings";
 import Logo from "./Logo.vue";
 

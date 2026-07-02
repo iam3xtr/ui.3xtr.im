@@ -1,18 +1,26 @@
 <template>
-  <section v-if="conversations.length === 0" class="tr-section-empty">
-    <b-icon icon="message-outline" size="is-large" />
-    <strong>Диалогов пока нет</strong>
-    <span>Новые диалоги появятся после обращения пользователей.</span>
-  </section>
+  <section class="tr-workbench-page">
+    <header
+      v-if="conversations.length > 0"
+      class="tr-workbench-page__header"
+    >
+      <h1>Диалоги</h1>
+    </header>
 
-  <section
-    v-else
-    class="tr-conversations"
-    :class="[
-      `is-${viewMode}-view`,
-      { 'is-properties-open': isPropertiesVisible },
-    ]"
-  >
+    <section v-if="conversations.length === 0" class="tr-section-empty">
+      <b-icon icon="message-outline" size="is-large" />
+      <strong>Диалогов пока нет</strong>
+      <span>Новые диалоги появятся после обращения пользователей.</span>
+    </section>
+
+    <section
+      v-else
+      class="tr-conversations"
+      :class="[
+        `is-${viewMode}-view`,
+        { 'is-properties-open': isPropertiesVisible },
+      ]"
+    >
     <aside class="tr-conversations__panel tr-conversations__list">
       <header class="tr-conversations__header">
         <div class="tr-conversations__search">
@@ -198,6 +206,7 @@
         </dl>
       </div>
     </aside>
+    </section>
   </section>
 </template>
 

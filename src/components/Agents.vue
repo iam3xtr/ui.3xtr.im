@@ -1,18 +1,29 @@
 <template>
-  <section v-if="agents.length === 0" class="tr-section-empty">
-    <b-icon icon="robot-outline" size="is-large" />
-    <strong>Агентов пока нет</strong>
-    <span>Создайте первого агента, чтобы начать тестирование.</span>
-  </section>
+  <section class="tr-workbench-page">
+    <header
+      v-if="agents.length > 0"
+      class="tr-workbench-page__header"
+    >
+      <h1>Агенты</h1>
+    </header>
 
-  <section
-    v-else
-    class="tr-conversations tr-agents"
-    :class="[
-      `is-${viewMode}-view`,
-      { 'is-properties-open': isPropertiesVisible },
-    ]"
-  >
+    <section v-if="agents.length === 0" class="tr-section-empty">
+      <b-icon icon="robot-outline" size="is-large" />
+      <strong>Агентов пока нет</strong>
+      <span>Создайте первого агента, чтобы начать тестирование.</span>
+      <b-button type="is-primary" @click="openCreateModal">
+        Создать агента
+      </b-button>
+    </section>
+
+    <section
+      v-else
+      class="tr-conversations tr-agents"
+      :class="[
+        `is-${viewMode}-view`,
+        { 'is-properties-open': isPropertiesVisible },
+      ]"
+    >
     <aside class="tr-conversations__panel tr-conversations__list">
       <header class="tr-conversations__header">
         <div class="tr-conversations__search">
@@ -197,7 +208,39 @@
         </b-field>
       </div>
     </aside>
+    </section>
   </section>
+
+  <b-modal v-model="isCreateOpen" has-modal-card>
+    <form class="modal-card" @submit.prevent="createAgent">
+      <header class="modal-card-head">
+        <p class="modal-card-title">Новый агент</p>
+        <button
+          class="delete"
+          type="button"
+          aria-label="Закрыть"
+          @click="isCreateOpen = false"
+        />
+      </header>
+
+      <section class="modal-card-body">
+        <b-field label="Название">
+          <b-input
+            v-model="newAgentName"
+            placeholder="Например, Консультант"
+            required
+          />
+        </b-field>
+      </section>
+
+      <footer class="modal-card-foot">
+        <b-button @click="isCreateOpen = false">Отмена</b-button>
+        <b-button native-type="submit" type="is-primary">
+          Создать
+        </b-button>
+      </footer>
+    </form>
+  </b-modal>
 </template>
 
 <script setup lang="ts">
@@ -233,6 +276,8 @@ const selectedId = ref<number | null>(null);
 const viewMode = ref<ViewMode>("list");
 const propertiesOpen = ref(true);
 const isWideLayout = ref(false);
+const isCreateOpen = ref(false);
+const newAgentName = ref("");
 let wideLayoutQuery: MediaQueryList | null = null;
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId } = storeToRefs(workspaceStore);
@@ -344,12 +389,46 @@ function selectAgent(id: number): void {
   viewMode.value = "chat";
 }
 
+function openCreateModal(): void {
+  newAgentName.value = "";
+  isCreateOpen.value = true;
+}
+
+function createAgent(): void {
+  const name = newAgentName.value.trim();
+
+  if (!name) {
+    return;
+  }
+
+  const workspaceId = activeWorkspaceId.value;
+  const workspaceAgents = agentsByWorkspace.value[workspaceId]
+    ?? (agentsByWorkspace.value[workspaceId] = []);
+  const id = Date.now();
+
+  workspaceAgents.push({
+    id,
+    name,
+    description: "Новый агент без описания.",
+    model: "GPT-4.1 mini",
+    status: "Черновик",
+    updated: "Сейчас",
+    temperature: 0.4,
+    instructions: "",
+    messages: [],
+  });
+  selectedId.value = id;
+  viewMode.value = "chat";
+  isCreateOpen.value = false;
+}
+
 watch(activeWorkspaceId, () => {
   selectedId.value = null;
   query.value = "";
   draft.value = "";
   viewMode.value = "list";
   propertiesOpen.value = true;
+  isCreateOpen.value = false;
 });
 
 function openProperties(): void {

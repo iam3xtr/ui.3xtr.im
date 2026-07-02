@@ -6,8 +6,8 @@
   >
     <svg
       class="tr-brand__logo"
-      width="34"
-      height="14"
+      width="36"
+      height="15"
       viewBox="0 0 72 30"
       aria-hidden="true"
       focusable="false"
@@ -24,7 +24,7 @@
       </g>
     </svg>
 
-    <strong class="tr-brand__name" aria-hidden="true">TRICKSTER</strong>
+    <strong class="tr-brand__name" aria-hidden="true">Trickster</strong>
   </RouterLink>
 </template>
 

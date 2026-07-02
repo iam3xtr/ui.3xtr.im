@@ -7,6 +7,7 @@ import {
 import Agents from "./components/Agents.vue";
 import Conversations from "./components/Conversations.vue";
 import Dashboard from "./components/Dashboard.vue";
+import Knowledge from "./components/Knowledge.vue";
 import SectionPlaceholder from "./components/SectionPlaceholder.vue";
 import Settings from "./components/Settings.vue";
 import UiKit from "./components/UiKit.vue";
@@ -41,16 +42,15 @@ const router = createRouter({
       meta: { contentMode: "fluid" },
     },
     {
+      path: "/knowledge",
+      name: "knowledge",
+      component: Knowledge,
+    },
+    {
       path: "/channels",
       name: "channels",
       component: SectionPlaceholder,
       props: { title: "Каналы" },
-    },
-    {
-      path: "/test-sessions",
-      name: "sessions",
-      component: SectionPlaceholder,
-      props: { title: "Тест-сессии" },
     },
     {
       path: "/settings",
