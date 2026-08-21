@@ -2215,10 +2215,10 @@ button.dropdown-item:hover {
     min-width: 0;
     height: 100%;
     max-height: 100dvh;
-    padding:
-      env(safe-area-inset-top)
-      tr.$space-4
-      env(safe-area-inset-bottom);
+    padding-top: env(safe-area-inset-top);
+    padding-right: tr.$space-4;
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: tr.$space-4;
     background: var(--tr-surface-1);
     border: 0;
     border-radius: 0;
