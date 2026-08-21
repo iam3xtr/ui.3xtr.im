@@ -232,6 +232,7 @@ a:hover {
   gap: tr.$space-2;
   flex: 0 0 auto;
   min-width: 0;
+  margin-inline-start: auto;
 }
 
 .tr-topbar__search {
