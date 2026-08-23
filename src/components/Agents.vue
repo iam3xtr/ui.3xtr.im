@@ -246,6 +246,7 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 
 import { useWorkspaceStore } from "../stores/workspace";
 
@@ -281,6 +282,7 @@ const newAgentName = ref("");
 let wideLayoutQuery: MediaQueryList | null = null;
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId } = storeToRefs(workspaceStore);
+const route = useRoute();
 
 const demoAgents: Agent[] = [
   {
@@ -430,6 +432,16 @@ watch(activeWorkspaceId, () => {
   propertiesOpen.value = true;
   isCreateOpen.value = false;
 });
+
+watch(
+  () => route.query.create,
+  (create) => {
+    if (create === "1") {
+      openCreateModal();
+    }
+  },
+  { immediate: true },
+);
 
 function openProperties(): void {
   if (isWideLayout.value) {

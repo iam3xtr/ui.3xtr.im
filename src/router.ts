@@ -64,6 +64,18 @@ const router = createRouter({
       props: { title: "Участники пространства" },
     },
     {
+      path: "/workspace/settings",
+      name: "workspace-settings",
+      component: SectionPlaceholder,
+      props: { title: "Настройки пространства" },
+    },
+    {
+      path: "/workspace/plan",
+      name: "workspace-plan",
+      component: SectionPlaceholder,
+      props: { title: "Тариф" },
+    },
+    {
       path: "/profile",
       name: "profile",
       component: SectionPlaceholder,
