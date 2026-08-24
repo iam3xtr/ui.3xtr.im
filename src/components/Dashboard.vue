@@ -22,8 +22,7 @@
         >
           <div class="tr-dashboard-link__header">
             <div>
-              <h2 class="tr-card__title mb-1">{{ item.label }}</h2>
-              <p class="tr-card__meta">{{ item.description }}</p>
+              <h2 class="tr-card__title mb-0">{{ item.label }}</h2>
             </div>
 
             <span class="tr-icon-tile tr-dashboard-icon">
@@ -33,7 +32,7 @@
 
           <div class="tr-dashboard-link__metric">
             <strong>{{ item.value }}</strong>
-            <span>{{ item.caption }}</span>
+            <span v-if="item.caption">{{ item.caption }}</span>
           </div>
 
           <b-progress
@@ -109,42 +108,36 @@ const dashboardSections = [
     routeName: "conversations",
     dataKey: "conversations",
     label: "Диалоги",
-    description: "Просматривайте и обрабатывайте диалоги",
     icon: "forum-outline",
   },
   {
     routeName: "agents",
     dataKey: "agents",
     label: "Агенты",
-    description: "Создавайте и настраивайте агентов",
     icon: "robot-outline",
-  },
-  {
-    routeName: "knowledge",
-    dataKey: "knowledge",
-    label: "Знания",
-    description: "Управляйте базами знаний",
-    icon: "book-open-page-variant-outline",
   },
   {
     routeName: "channels",
     dataKey: "channels",
     label: "Каналы",
-    description: "Подключайте каналы общения",
     icon: "message-outline",
   },
   {
+    routeName: "knowledge",
+    dataKey: "knowledge",
+    label: "Знания",
+    icon: "book-open-page-variant-outline",
+  },
+  {
     routeName: "workspace-settings",
-    dataKey: "workspaceSettings",
-    label: "Настройки пространства",
-    description: "Управляйте параметрами рабочего пространства",
+    dataKey: "settings",
+    label: "Пространство",
     icon: "office-building-cog-outline",
   },
   {
     routeName: "workspace-plan",
     dataKey: "plan",
     label: "Тариф",
-    description: "Управляйте планом и доступными возможностями",
     icon: "credit-card-outline",
   },
 ] as const;
@@ -183,12 +176,12 @@ const emptyDashboard = {
       secondaryValue: "Нет каналов",
       progress: null,
     },
-    workspaceSettings: {
-      value: "Участник",
-      caption: "ваша роль",
+    settings: {
+      value: "Новое пространство",
+      caption: "",
       delta: "",
-      secondaryLabel: "Пространство",
-      secondaryValue: "Новое пространство",
+      secondaryLabel: "Ваша роль",
+      secondaryValue: "Участник",
       progress: null,
     },
     plan: {
@@ -242,12 +235,12 @@ const dashboards = {
         secondaryValue: "Все работают",
         progress: null,
       },
-      workspaceSettings: {
-        value: "Владелец",
-        caption: "ваша роль",
+      settings: {
+        value: "Демо-пространство",
+        caption: "",
         delta: "",
-        secondaryLabel: "Пространство",
-        secondaryValue: "Демо-пространство",
+        secondaryLabel: "Ваша роль",
+        secondaryValue: "Владелец",
         progress: null,
       },
       plan: {
@@ -303,12 +296,12 @@ const dashboards = {
         secondaryValue: "Работает",
         progress: null,
       },
-      workspaceSettings: {
-        value: "Администратор",
-        caption: "ваша роль",
+      settings: {
+        value: "Trickster Team",
+        caption: "",
         delta: "",
-        secondaryLabel: "Пространство",
-        secondaryValue: "Trickster Team",
+        secondaryLabel: "Ваша роль",
+        secondaryValue: "Администратор",
         progress: null,
       },
       plan: {

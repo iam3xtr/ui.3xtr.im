@@ -2,9 +2,38 @@
   <section class="tr-workbench-page">
     <header
       v-if="conversations.length > 0"
-      class="tr-workbench-page__header"
+      class="tr-workbench-page__header tr-page-toolbar"
     >
-      <h1>Диалоги</h1>
+      <SearchField
+        v-model="query"
+        class="tr-page-toolbar__search"
+        placeholder="Поиск по диалогам"
+        @shortcut="viewMode = 'list'"
+      />
+
+      <b-select
+        v-model="statusFilter"
+        class="tr-page-toolbar__filter"
+        aria-label="Фильтр диалогов по статусу"
+        expanded
+      >
+        <option value="">Все статусы</option>
+        <option v-for="status in conversationStatuses" :key="status">
+          {{ status }}
+        </option>
+      </b-select>
+
+      <b-select
+        v-model="channelFilter"
+        class="tr-page-toolbar__filter"
+        aria-label="Фильтр диалогов по каналу"
+        expanded
+      >
+        <option value="">Все каналы</option>
+        <option v-for="channel in conversationChannels" :key="channel">
+          {{ channel }}
+        </option>
+      </b-select>
     </header>
 
     <section v-if="conversations.length === 0" class="tr-section-empty">
@@ -22,16 +51,6 @@
       ]"
     >
     <aside class="tr-conversations__panel tr-conversations__list">
-      <header class="tr-conversations__header">
-        <div class="tr-conversations__search">
-          <b-input
-            v-model="query"
-            icon="magnify"
-            placeholder="Поиск по диалогам"
-          />
-        </div>
-      </header>
-
       <nav class="tr-conversations__items" aria-label="Список диалогов">
         <button
           v-for="conversation in filteredConversations"
@@ -215,6 +234,7 @@ import { storeToRefs } from "pinia";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import { useWorkspaceStore } from "../stores/workspace";
+import SearchField from "./SearchField.vue";
 
 type ViewMode = "list" | "chat" | "properties";
 
@@ -241,6 +261,8 @@ interface Conversation {
 }
 
 const query = ref("");
+const statusFilter = ref("");
+const channelFilter = ref("");
 const draft = ref("");
 const selectedId = ref<number | null>(null);
 const viewMode = ref<ViewMode>("list");
@@ -249,6 +271,9 @@ const isWideLayout = ref(false);
 let wideLayoutQuery: MediaQueryList | null = null;
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId } = storeToRefs(workspaceStore);
+
+const conversationStatuses = ["Активен", "Завершён"];
+const conversationChannels = ["Telegram", "Виджет", "Email"];
 
 const demoConversations: Conversation[] = [
   {
@@ -390,18 +415,20 @@ const isPropertiesVisible = computed(
 const filteredConversations = computed(() => {
   const search = query.value.trim().toLocaleLowerCase();
 
-  if (!search) {
-    return conversations.value;
-  }
-
-  return conversations.value.filter((conversation) =>
-    [
+  return conversations.value.filter((conversation) => {
+    const matchesSearch = !search || [
       conversation.contact,
       conversation.channel,
       conversation.agent,
       conversation.preview,
-    ].some((value) => value.toLocaleLowerCase().includes(search)),
-  );
+    ].some((value) => value.toLocaleLowerCase().includes(search));
+    const matchesStatus = !statusFilter.value
+      || conversation.status === statusFilter.value;
+    const matchesChannel = !channelFilter.value
+      || conversation.channel === channelFilter.value;
+
+    return matchesSearch && matchesStatus && matchesChannel;
+  });
 });
 
 function selectConversation(id: number): void {
@@ -412,6 +439,8 @@ function selectConversation(id: number): void {
 watch(activeWorkspaceId, () => {
   selectedId.value = null;
   query.value = "";
+  statusFilter.value = "";
+  channelFilter.value = "";
   draft.value = "";
   viewMode.value = "list";
   propertiesOpen.value = true;

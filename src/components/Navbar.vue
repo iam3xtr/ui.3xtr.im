@@ -110,16 +110,14 @@
 
     <Logo />
 
-    <div v-if="showSearch" class="tr-topbar__search">
-      <b-input
-        ref="searchInput"
-        v-model="searchQuery"
-        icon="magnify"
-        placeholder="Поиск"
-        aria-label="Поиск"
-      />
-      <kbd class="tr-topbar__search-shortcut">{{ searchShortcut }}</kbd>
-    </div>
+    <SearchField
+      v-if="showSearch"
+      class="tr-topbar__search"
+      priority="navbar"
+      placeholder="Поиск"
+      aria-label="Поиск"
+      v-model="searchQuery"
+    />
 
     <nav
       class="tr-topbar__links"
@@ -400,7 +398,7 @@
 
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import {
@@ -409,6 +407,7 @@ import {
 } from "../navigation";
 import { useSiteSettingsStore } from "../stores/siteSettings";
 import Logo from "./Logo.vue";
+import SearchField from "./SearchField.vue";
 
 interface Workspace {
   id: string;
@@ -452,10 +451,8 @@ const workspace = defineModel<string>("workspace", { required: true });
 const isDark = defineModel<boolean>("isDark", { required: true });
 const locale = ref("ru");
 const searchQuery = ref("");
-const searchInput = ref<{ focus: () => void } | null>(null);
 const mobileNavDropdown = ref<DropdownInstance | null>(null);
 const userDropdown = ref<DropdownInstance | null>(null);
-const searchShortcut = ref("Ctrl K");
 const route = useRoute();
 const router = useRouter();
 const siteSettings = useSiteSettingsStore();
@@ -523,25 +520,4 @@ function closeUserMenu(): void {
   userDropdown.value?.toggle();
 }
 
-function handleSearchShortcut(event: KeyboardEvent): void {
-  if (
-    (event.ctrlKey || event.metaKey)
-    && event.key.toLocaleLowerCase() === "k"
-  ) {
-    event.preventDefault();
-    searchInput.value?.focus();
-  }
-}
-
-onMounted(() => {
-  if (/Mac|iPhone|iPad|iPod/.test(navigator.platform)) {
-    searchShortcut.value = "⌘ K";
-  }
-
-  window.addEventListener("keydown", handleSearchShortcut);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener("keydown", handleSearchShortcut);
-});
 </script>

@@ -1,132 +1,153 @@
 <template>
-  <section v-if="collections.length === 0" class="tr-section-empty">
-    <b-icon icon="book-open-page-variant-outline" size="is-large" />
-    <strong>Коллекций пока нет</strong>
-    <span>
-      Создайте коллекцию и добавьте файлы, ссылки или Markdown-документы.
-    </span>
-    <b-button type="is-primary" @click="openCreateModal">
-      Создать коллекцию
-    </b-button>
-  </section>
+  <section class="tr-knowledge">
+    <header
+      v-if="!selectedCollection"
+      class="tr-knowledge__page-header tr-page-toolbar"
+    >
+      <SearchField
+        v-model="query"
+        class="tr-page-toolbar__search"
+        placeholder="Поиск коллекций"
+      />
 
-  <section v-else class="tr-knowledge">
-    <header class="tr-knowledge__page-header">
-      <div>
-        <h1>Знания</h1>
-        <p>Источники, которые используют агенты пространства.</p>
-      </div>
-      <b-button type="is-primary" icon-left="plus" @click="openCreateModal">
-        Новая коллекция
-      </b-button>
+      <b-select
+        v-model="typeFilter"
+        class="tr-page-toolbar__filter"
+        aria-label="Фильтр коллекций по типу"
+        expanded
+      >
+        <option value="">Все типы</option>
+        <option
+          v-for="type in collectionTypes"
+          :key="type.value"
+          :value="type.value"
+        >
+          {{ type.label }}
+        </option>
+      </b-select>
     </header>
 
-    <div class="tr-knowledge__layout">
-      <aside class="tr-knowledge__collections">
-        <div class="tr-knowledge__search">
-          <b-input
-            v-model="query"
-            icon="magnify"
-            placeholder="Поиск коллекций"
-          />
-        </div>
-
-        <nav class="tr-knowledge__collection-list" aria-label="Коллекции">
-          <button
-            v-for="collection in filteredCollections"
-            :key="collection.id"
-            class="tr-knowledge__collection"
-            :class="{ 'is-active': collection.id === selectedId }"
-            type="button"
-            @click="selectedId = collection.id"
-          >
-            <span class="tr-icon-tile">
+    <section
+      v-if="!selectedCollection"
+      class="tr-knowledge__catalog"
+      aria-label="Коллекции знаний"
+    >
+      <div class="tr-knowledge__grid">
+        <button
+          v-for="collection in filteredCollections"
+          :key="collection.id"
+          class="tr-card tr-knowledge-card"
+          type="button"
+          @click="selectedId = collection.id"
+        >
+          <span class="tr-knowledge-card__header">
+            <span class="tr-knowledge-card__icon">
               <b-icon
                 :icon="getCollectionType(collection.type).icon"
-                size="is-small"
+                size="is-medium"
               />
             </span>
-            <span class="tr-knowledge__collection-copy">
-              <strong>{{ collection.name }}</strong>
-              <small>
-                {{ getCollectionType(collection.type).label }}
-                · {{ collection.items.length }} элементов
-              </small>
-            </span>
-          </button>
+            <b-tag size="is-small">
+              {{ getCollectionType(collection.type).label }}
+            </b-tag>
+          </span>
 
-          <p
-            v-if="filteredCollections.length === 0"
-            class="tr-knowledge__not-found"
-          >
-            Коллекции не найдены.
-          </p>
-        </nav>
-      </aside>
+          <strong class="tr-knowledge-card__title">
+            {{ collection.name }}
+          </strong>
+          <span class="tr-knowledge-card__description">
+            {{ collection.description }}
+          </span>
 
-      <div v-if="!selectedCollection" class="tr-knowledge__placeholder">
-        <b-icon icon="folder-open-outline" size="is-large" />
-        <strong>Выберите коллекцию</strong>
-        <span>Элементы выбранной коллекции появятся здесь.</span>
+          <span class="tr-knowledge-card__footer">
+            <span>{{ collection.items.length }} элементов</span>
+            <b-icon icon="arrow-right" size="is-small" />
+          </span>
+        </button>
+
+        <p
+          v-if="filteredCollections.length === 0 && hasActiveFilters"
+          class="tr-knowledge__not-found"
+        >
+          По вашему запросу коллекции не найдены.
+        </p>
+
+        <button
+          class="tr-card tr-knowledge-card tr-knowledge-card--create"
+          type="button"
+          @click="openCreateModal"
+        >
+          <span class="tr-knowledge-card__create-icon">
+            <b-icon icon="plus" size="is-medium" />
+          </span>
+          <strong>Создать новую коллекцию</strong>
+          <span>Добавьте файлы, ссылки или Markdown-документы.</span>
+        </button>
+      </div>
+    </section>
+
+    <article v-if="selectedCollection" class="tr-knowledge__details">
+      <header class="tr-knowledge__details-header">
+        <b-button
+          icon-left="arrow-left"
+          aria-label="К коллекциям"
+          title="К коллекциям"
+          @click="showCollectionCatalog"
+        />
+        <span class="tr-icon-tile">
+          <b-icon
+            :icon="getCollectionType(selectedCollection.type).icon"
+            size="is-small"
+          />
+        </span>
+        <div>
+          <h2>{{ selectedCollection.name }}</h2>
+          <p>{{ selectedCollection.description }}</p>
+        </div>
+        <b-tag>{{ getCollectionType(selectedCollection.type).label }}</b-tag>
+      </header>
+
+      <div class="tr-knowledge__toolbar">
+        <span>
+          {{ selectedCollection.items.length }} элементов
+        </span>
+        <b-button icon-left="plus" size="is-small">
+          Добавить элемент
+        </b-button>
       </div>
 
-      <article v-if="selectedCollection" class="tr-knowledge__details">
-        <header class="tr-knowledge__details-header">
-          <span class="tr-icon-tile">
-            <b-icon
-              :icon="getCollectionType(selectedCollection.type).icon"
-              size="is-small"
-            />
-          </span>
-          <div>
-            <h2>{{ selectedCollection.name }}</h2>
-            <p>{{ selectedCollection.description }}</p>
-          </div>
-          <b-tag>{{ getCollectionType(selectedCollection.type).label }}</b-tag>
-        </header>
-
-        <div class="tr-knowledge__toolbar">
-          <span>
-            {{ selectedCollection.items.length }} элементов
-          </span>
-          <b-button icon-left="plus" size="is-small">
-            Добавить элемент
-          </b-button>
-        </div>
-
+      <div
+        v-if="selectedCollection.items.length"
+        class="tr-knowledge__items"
+      >
         <div
-          v-if="selectedCollection.items.length"
-          class="tr-knowledge__items"
+          v-for="item in selectedCollection.items"
+          :key="item.id"
+          class="tr-knowledge__item"
         >
-          <div
-            v-for="item in selectedCollection.items"
-            :key="item.id"
-            class="tr-knowledge__item"
-          >
-            <span class="tr-knowledge__item-icon">
-              <b-icon :icon="getItemType(item.type).icon" />
-            </span>
-            <span class="tr-knowledge__item-copy">
-              <strong>{{ item.name }}</strong>
-              <small>{{ item.source }}</small>
-            </span>
-            <b-tag size="is-small">{{ getItemType(item.type).label }}</b-tag>
-            <time>{{ item.updated }}</time>
-            <b-button
-              type="is-text"
-              icon-left="dots-horizontal"
-              aria-label="Действия с элементом"
-            />
-          </div>
+          <span class="tr-knowledge__item-icon">
+            <b-icon :icon="getItemType(item.type).icon" />
+          </span>
+          <span class="tr-knowledge__item-copy">
+            <strong>{{ item.name }}</strong>
+            <small>{{ item.source }}</small>
+          </span>
+          <b-tag size="is-small">{{ getItemType(item.type).label }}</b-tag>
+          <time>{{ item.updated }}</time>
+          <b-button
+            type="is-text"
+            icon-left="dots-horizontal"
+            aria-label="Действия с элементом"
+          />
         </div>
+      </div>
 
-        <div v-else class="tr-knowledge__items-empty">
-          <b-icon icon="file-plus-outline" size="is-large" />
-          <strong>В коллекции пока нет элементов</strong>
-          <span>Добавьте файл, ссылку или Markdown-документ.</span>
-        </div>
-      </article>
-    </div>
+      <div v-else class="tr-knowledge__items-empty">
+        <b-icon icon="file-plus-outline" size="is-large" />
+        <strong>В коллекции пока нет элементов</strong>
+        <span>Добавьте файл, ссылку или Markdown-документ.</span>
+      </div>
+    </article>
   </section>
 
   <b-modal v-model="isCreateOpen" has-modal-card>
@@ -186,6 +207,7 @@ import { storeToRefs } from "pinia";
 import { computed, ref, watch } from "vue";
 
 import { useWorkspaceStore } from "../stores/workspace";
+import SearchField from "./SearchField.vue";
 
 type CollectionType =
   | "mixed"
@@ -356,6 +378,7 @@ const collectionsByWorkspace = ref<Record<string, KnowledgeCollection[]>>({
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId } = storeToRefs(workspaceStore);
 const query = ref("");
+const typeFilter = ref<CollectionType | "">("");
 const selectedId = ref<number | null>(null);
 const isCreateOpen = ref(false);
 const newCollectionName = ref("");
@@ -370,17 +393,21 @@ const selectedCollection = computed(
 const selectedTypeInfo = computed(
   () => getCollectionType(newCollectionType.value),
 );
+const hasActiveFilters = computed(
+  () => Boolean(query.value.trim() || typeFilter.value),
+);
 const filteredCollections = computed(() => {
   const search = query.value.trim().toLocaleLowerCase();
 
-  if (!search) {
-    return collections.value;
-  }
+  return collections.value.filter((collection) => {
+    const matchesSearch = !search
+      || [collection.name, collection.description]
+        .some((value) => value.toLocaleLowerCase().includes(search));
+    const matchesType = !typeFilter.value
+      || collection.type === typeFilter.value;
 
-  return collections.value.filter((collection) =>
-    [collection.name, collection.description]
-      .some((value) => value.toLocaleLowerCase().includes(search)),
-  );
+    return matchesSearch && matchesType;
+  });
 });
 
 function getCollectionType(type: CollectionType) {
@@ -390,6 +417,10 @@ function getCollectionType(type: CollectionType) {
 
 function getItemType(type: KnowledgeItemType) {
   return itemTypes[type];
+}
+
+function showCollectionCatalog(): void {
+  selectedId.value = null;
 }
 
 function openCreateModal(): void {
@@ -425,8 +456,156 @@ watch(
   activeWorkspaceId,
   () => {
     query.value = "";
+    typeFilter.value = "";
     selectedId.value = null;
   },
   { flush: "sync" },
 );
 </script>
+
+<style scoped lang="scss">
+.tr-knowledge__catalog {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.tr-knowledge__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  padding-bottom: 1rem;
+}
+
+.tr-knowledge-card {
+  min-width: 0;
+  min-height: 220px;
+  display: flex;
+  align-items: stretch;
+  flex-direction: column;
+  gap: 0.75rem;
+  color: var(--tr-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.tr-knowledge-card:hover {
+  border-color: var(--tr-primary);
+  transform: translateY(-2px);
+}
+
+.tr-knowledge-card:focus-visible {
+  outline: 3px solid rgb(142 100 206 / 0.24);
+  outline-offset: 2px;
+}
+
+.tr-knowledge-card__header,
+.tr-knowledge-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.tr-knowledge-card__icon,
+.tr-knowledge-card__create-icon {
+  display: inline-grid;
+  place-items: center;
+  color: var(--tr-primary);
+  background: transparent;
+  border: 0;
+}
+
+.tr-knowledge-card__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 0.75rem;
+}
+
+.tr-knowledge-card__title {
+  overflow: hidden;
+  color: var(--tr-text-strong);
+  font-size: 1.125rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tr-knowledge-card__description {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--tr-text-muted);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.tr-knowledge-card__footer {
+  margin-top: auto;
+  padding-top: 0.75rem;
+  color: var(--tr-text-muted);
+  border-top: 1px solid var(--tr-divider);
+  font-size: 0.75rem;
+}
+
+.tr-knowledge-card--create {
+  align-items: center;
+  justify-content: center;
+  color: var(--tr-text-muted);
+  text-align: center;
+  background: transparent;
+  border-style: dashed;
+  box-shadow: none;
+}
+
+.tr-knowledge-card--create strong {
+  color: var(--tr-text-strong);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.tr-knowledge-card--create > span:last-child {
+  max-width: 280px;
+}
+
+.tr-knowledge-card__create-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+}
+
+.tr-knowledge__not-found {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 1.25rem;
+}
+
+.tr-knowledge > .tr-knowledge__details {
+  flex: 1;
+}
+
+@media (max-width: 1024px) {
+  .tr-knowledge__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .tr-knowledge__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tr-knowledge-card {
+    min-height: 200px;
+  }
+
+  .tr-knowledge > .tr-knowledge__details {
+    min-height: 560px;
+  }
+}
+</style>
