@@ -34,6 +34,26 @@
           {{ channel }}
         </option>
       </b-select>
+
+      <MobileFilters :active="Boolean(statusFilter || channelFilter)">
+        <b-field label="Статус">
+          <b-select v-model="statusFilter" expanded>
+            <option value="">Все статусы</option>
+            <option v-for="status in conversationStatuses" :key="status">
+              {{ status }}
+            </option>
+          </b-select>
+        </b-field>
+
+        <b-field label="Канал">
+          <b-select v-model="channelFilter" expanded>
+            <option value="">Все каналы</option>
+            <option v-for="channel in conversationChannels" :key="channel">
+              {{ channel }}
+            </option>
+          </b-select>
+        </b-field>
+      </MobileFilters>
     </header>
 
     <section v-if="conversations.length === 0" class="tr-section-empty">
@@ -234,6 +254,7 @@ import { storeToRefs } from "pinia";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import { useWorkspaceStore } from "../stores/workspace";
+import MobileFilters from "./MobileFilters.vue";
 import SearchField from "./SearchField.vue";
 
 type ViewMode = "list" | "chat" | "properties";
@@ -385,7 +406,7 @@ const conversationsByWorkspace = ref<Record<string, Conversation[]>>({
         },
         {
           id: 2,
-          text: "Откройте раздел «Каналы» и выберите нужную интеграцию.",
+          text: "Откройте раздел «Интеграции» и выберите нужный сервис.",
           time: "11:09",
           outgoing: true,
         },

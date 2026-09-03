@@ -1,8 +1,8 @@
 <template>
-  <section class="tr-knowledge">
+  <section class="tr-workbench-page tr-knowledge">
     <header
       v-if="!selectedCollection"
-      class="tr-knowledge__page-header tr-page-toolbar"
+      class="tr-workbench-page__header tr-page-toolbar"
     >
       <SearchField
         v-model="query"
@@ -25,23 +25,38 @@
           {{ type.label }}
         </option>
       </b-select>
+
+      <MobileFilters :active="Boolean(typeFilter)">
+        <b-field label="Тип коллекции">
+          <b-select v-model="typeFilter" expanded>
+            <option value="">Все типы</option>
+            <option
+              v-for="type in collectionTypes"
+              :key="type.value"
+              :value="type.value"
+            >
+              {{ type.label }}
+            </option>
+          </b-select>
+        </b-field>
+      </MobileFilters>
     </header>
 
     <section
       v-if="!selectedCollection"
-      class="tr-knowledge__catalog"
+      class="tr-catalog"
       aria-label="Коллекции знаний"
     >
-      <div class="tr-knowledge__grid">
+      <div class="tr-catalog__grid">
         <button
           v-for="collection in filteredCollections"
           :key="collection.id"
-          class="tr-card tr-knowledge-card"
+          class="tr-card tr-card--interactive tr-entity-card tr-entity-card--interactive"
           type="button"
           @click="selectedId = collection.id"
         >
-          <span class="tr-knowledge-card__header">
-            <span class="tr-knowledge-card__icon">
+          <span class="tr-entity-card__header">
+            <span class="tr-icon-tile tr-icon-tile--plain tr-entity-card__icon">
               <b-icon
                 :icon="getCollectionType(collection.type).icon"
                 size="is-medium"
@@ -52,14 +67,14 @@
             </b-tag>
           </span>
 
-          <strong class="tr-knowledge-card__title">
+          <strong class="tr-entity-card__title">
             {{ collection.name }}
           </strong>
-          <span class="tr-knowledge-card__description">
+          <span class="tr-entity-card__description">
             {{ collection.description }}
           </span>
 
-          <span class="tr-knowledge-card__footer">
+          <span class="tr-entity-card__footer">
             <span>{{ collection.items.length }} элементов</span>
             <b-icon icon="arrow-right" size="is-small" />
           </span>
@@ -67,17 +82,17 @@
 
         <p
           v-if="filteredCollections.length === 0 && hasActiveFilters"
-          class="tr-knowledge__not-found"
+          class="tr-catalog__empty"
         >
           По вашему запросу коллекции не найдены.
         </p>
 
         <button
-          class="tr-card tr-knowledge-card tr-knowledge-card--create"
+          class="tr-card tr-card--interactive tr-entity-card tr-entity-card--interactive tr-entity-card--create"
           type="button"
           @click="openCreateModal"
         >
-          <span class="tr-knowledge-card__create-icon">
+          <span class="tr-icon-tile tr-icon-tile--plain tr-entity-card__create-icon">
             <b-icon icon="plus" size="is-medium" />
           </span>
           <strong>Создать новую коллекцию</strong>
@@ -207,6 +222,7 @@ import { storeToRefs } from "pinia";
 import { computed, ref, watch } from "vue";
 
 import { useWorkspaceStore } from "../stores/workspace";
+import MobileFilters from "./MobileFilters.vue";
 import SearchField from "./SearchField.vue";
 
 type CollectionType =
@@ -464,146 +480,11 @@ watch(
 </script>
 
 <style scoped lang="scss">
-.tr-knowledge__catalog {
-  min-height: 0;
-  overflow-y: auto;
-  padding: 2px;
-}
-
-.tr-knowledge__grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-  padding-bottom: 1rem;
-}
-
-.tr-knowledge-card {
-  min-width: 0;
-  min-height: 220px;
-  display: flex;
-  align-items: stretch;
-  flex-direction: column;
-  gap: 0.75rem;
-  color: var(--tr-text);
-  font: inherit;
-  text-align: start;
-  cursor: pointer;
-  transition:
-    border-color 0.2s ease,
-    transform 0.2s ease;
-}
-
-.tr-knowledge-card:hover {
-  border-color: var(--tr-primary);
-  transform: translateY(-2px);
-}
-
-.tr-knowledge-card:focus-visible {
-  outline: 3px solid rgb(142 100 206 / 0.24);
-  outline-offset: 2px;
-}
-
-.tr-knowledge-card__header,
-.tr-knowledge-card__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.tr-knowledge-card__icon,
-.tr-knowledge-card__create-icon {
-  display: inline-grid;
-  place-items: center;
-  color: var(--tr-primary);
-  background: transparent;
-  border: 0;
-}
-
-.tr-knowledge-card__icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 0.75rem;
-}
-
-.tr-knowledge-card__title {
-  overflow: hidden;
-  color: var(--tr-text-strong);
-  font-size: 1.125rem;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tr-knowledge-card__description {
-  display: -webkit-box;
-  overflow: hidden;
-  color: var(--tr-text-muted);
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-}
-
-.tr-knowledge-card__footer {
-  margin-top: auto;
-  padding-top: 0.75rem;
-  color: var(--tr-text-muted);
-  border-top: 1px solid var(--tr-divider);
-  font-size: 0.75rem;
-}
-
-.tr-knowledge-card--create {
-  align-items: center;
-  justify-content: center;
-  color: var(--tr-text-muted);
-  text-align: center;
-  background: transparent;
-  border-style: dashed;
-  box-shadow: none;
-}
-
-.tr-knowledge-card--create strong {
-  color: var(--tr-text-strong);
-  font-size: 1.125rem;
-  font-weight: 600;
-}
-
-.tr-knowledge-card--create > span:last-child {
-  max-width: 280px;
-}
-
-.tr-knowledge-card__create-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-}
-
-.tr-knowledge__not-found {
-  min-height: 220px;
-  display: grid;
-  place-items: center;
-  margin: 0;
-  padding: 1.25rem;
-}
-
 .tr-knowledge > .tr-knowledge__details {
   flex: 1;
 }
 
-@media (max-width: 1024px) {
-  .tr-knowledge__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 768px) {
-  .tr-knowledge__grid {
-    grid-template-columns: 1fr;
-  }
-
-  .tr-knowledge-card {
-    min-height: 200px;
-  }
-
   .tr-knowledge > .tr-knowledge__details {
     min-height: 560px;
   }

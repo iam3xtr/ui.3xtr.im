@@ -7,6 +7,7 @@ import {
 import Agents from "./components/Agents.vue";
 import Conversations from "./components/Conversations.vue";
 import Dashboard from "./components/Dashboard.vue";
+import Integrations from "./components/Integrations.vue";
 import Knowledge from "./components/Knowledge.vue";
 import SectionPlaceholder from "./components/SectionPlaceholder.vue";
 import Settings from "./components/Settings.vue";
@@ -47,10 +48,13 @@ const router = createRouter({
       component: Knowledge,
     },
     {
+      path: "/integrations",
+      name: "integrations",
+      component: Integrations,
+    },
+    {
       path: "/channels",
-      name: "channels",
-      component: SectionPlaceholder,
-      props: { title: "Каналы" },
+      redirect: { name: "integrations" },
     },
     {
       path: "/settings",

@@ -12,7 +12,7 @@ export const mainNavigationItems: MainNavigationItem[] = [
     icon: "book-open-page-variant-outline",
     label: "Знания",
   },
-  { routeName: "channels", icon: "message-outline", label: "Каналы" },
+  { routeName: "integrations", icon: "puzzle-outline", label: "Интеграции" },
   { routeName: "settings", icon: "cog-outline", label: "Настройки" },
 ];
 

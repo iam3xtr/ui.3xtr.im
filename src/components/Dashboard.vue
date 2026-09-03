@@ -3,9 +3,9 @@
     <RouterLink
       v-if="agents.length === 0"
       :to="{ name: 'agents', query: { create: '1' } }"
-      class="tr-card tr-dashboard-create"
+      class="tr-card tr-card--interactive tr-dashboard-create"
     >
-      <span class="tr-icon-tile tr-dashboard-create__icon">
+      <span class="tr-icon-tile tr-icon-tile--plain tr-dashboard-create__icon">
         <b-icon icon="robot-excited-outline" size="is-large" />
       </span>
       <strong>Создать первого агента</strong>
@@ -18,14 +18,14 @@
           v-for="item in dashboardNavigationItems"
           :key="item.routeName"
           :to="{ name: item.routeName }"
-          class="tr-card tr-dashboard-link"
+          class="tr-card tr-card--interactive tr-dashboard-link"
         >
           <div class="tr-dashboard-link__header">
             <div>
               <h2 class="tr-card__title mb-0">{{ item.label }}</h2>
             </div>
 
-            <span class="tr-icon-tile tr-dashboard-icon">
+            <span class="tr-icon-tile tr-icon-tile--plain tr-dashboard-icon">
               <b-icon :icon="item.icon" size="is-medium" />
             </span>
           </div>
@@ -117,10 +117,10 @@ const dashboardSections = [
     icon: "robot-outline",
   },
   {
-    routeName: "channels",
-    dataKey: "channels",
-    label: "Каналы",
-    icon: "message-outline",
+    routeName: "integrations",
+    dataKey: "integrations",
+    label: "Интеграции",
+    icon: "puzzle-outline",
   },
   {
     routeName: "knowledge",
@@ -168,12 +168,12 @@ const emptyDashboard = {
       secondaryValue: "0%",
       progress: 0,
     },
-    channels: {
+    integrations: {
       value: "0",
       caption: "подключено",
       delta: "",
       secondaryLabel: "Статус",
-      secondaryValue: "Нет каналов",
+      secondaryValue: "Нет интеграций",
       progress: null,
     },
     settings: {
@@ -227,7 +227,7 @@ const dashboards = {
         secondaryValue: "51%",
         progress: 51,
       },
-      channels: {
+      integrations: {
         value: "3",
         caption: "подключено",
         delta: "",
@@ -288,7 +288,7 @@ const dashboards = {
         secondaryValue: "8%",
         progress: 8,
       },
-      channels: {
+      integrations: {
         value: "1",
         caption: "подключён",
         delta: "",
@@ -354,19 +354,6 @@ const limits = computed(() => dashboard.value.limits);
   color: var(--tr-text-muted);
   text-align: center;
   text-decoration: none;
-  transition:
-    border-color 0.2s ease,
-    transform 0.2s ease;
-}
-
-.tr-dashboard-create:hover {
-  border-color: var(--tr-primary);
-  transform: translateY(-2px);
-}
-
-.tr-dashboard-create:focus-visible {
-  outline: 3px solid rgb(142 100 206 / 0.24);
-  outline-offset: 2px;
 }
 
 .tr-dashboard-create strong {
@@ -382,8 +369,6 @@ const limits = computed(() => dashboard.value.limits);
   width: 64px;
   height: 64px;
   margin-bottom: 0.5rem;
-  background: transparent;
-  border: 0;
 }
 
 .tr-dashboard-link {
@@ -393,19 +378,6 @@ const limits = computed(() => dashboard.value.limits);
   min-height: 184px;
   gap: 0.75rem;
   text-decoration: none;
-  transition:
-    border-color 0.2s ease,
-    transform 0.2s ease;
-}
-
-.tr-dashboard-link:hover {
-  border-color: var(--tr-primary);
-  transform: translateY(-2px);
-}
-
-.tr-dashboard-link:focus-visible {
-  outline: 3px solid rgb(142 100 206 / 0.24);
-  outline-offset: 2px;
 }
 
 .tr-dashboard-link__header {
@@ -452,9 +424,6 @@ const limits = computed(() => dashboard.value.limits);
 .tr-dashboard-icon {
   width: 40px;
   height: 40px;
-  flex: 0 0 auto;
-  background: transparent;
-  border: 0;
 }
 
 @media (max-width: 1024px) {

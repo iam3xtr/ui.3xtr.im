@@ -33,23 +33,43 @@
           {{ model }}
         </option>
       </b-select>
+
+      <MobileFilters :active="Boolean(statusFilter || modelFilter)">
+        <b-field label="Статус">
+          <b-select v-model="statusFilter" expanded>
+            <option value="">Все статусы</option>
+            <option v-for="status in agentStatuses" :key="status">
+              {{ status }}
+            </option>
+          </b-select>
+        </b-field>
+
+        <b-field label="Модель">
+          <b-select v-model="modelFilter" expanded>
+            <option value="">Все модели</option>
+            <option v-for="model in agentModels" :key="model">
+              {{ model }}
+            </option>
+          </b-select>
+        </b-field>
+      </MobileFilters>
     </header>
 
     <section
       v-if="viewMode === 'list'"
-      class="tr-agents__catalog"
+      class="tr-catalog"
       aria-label="Список агентов"
     >
-      <div class="tr-agents__grid">
+      <div class="tr-catalog__grid">
         <button
           v-for="agent in filteredAgents"
           :key="agent.id"
-          class="tr-card tr-agent-card"
+          class="tr-card tr-card--interactive tr-entity-card tr-entity-card--interactive"
           type="button"
           @click="selectAgent(agent.id)"
         >
-          <span class="tr-agent-card__header">
-            <span class="tr-agent-card__icon">
+          <span class="tr-entity-card__header">
+            <span class="tr-icon-tile tr-icon-tile--plain tr-entity-card__icon">
               <b-icon icon="robot-outline" size="is-medium" />
             </span>
             <b-tag
@@ -60,12 +80,12 @@
             </b-tag>
           </span>
 
-          <strong class="tr-agent-card__title">{{ agent.name }}</strong>
-          <span class="tr-agent-card__description">
+          <strong class="tr-entity-card__title">{{ agent.name }}</strong>
+          <span class="tr-entity-card__description">
             {{ agent.description }}
           </span>
 
-          <span class="tr-agent-card__footer">
+          <span class="tr-entity-card__footer">
             <span>{{ agent.model }}</span>
             <span>Обновлён {{ agent.updated }}</span>
           </span>
@@ -73,17 +93,17 @@
 
         <p
           v-if="filteredAgents.length === 0 && hasActiveAgentFilters"
-          class="tr-agents__empty"
+          class="tr-catalog__empty"
         >
           По вашему запросу агенты не найдены.
         </p>
 
         <button
-          class="tr-card tr-agent-card tr-agent-card--create"
+          class="tr-card tr-card--interactive tr-entity-card tr-entity-card--interactive tr-entity-card--create"
           type="button"
           @click="openCreateModal"
         >
-          <span class="tr-agent-card__create-icon">
+          <span class="tr-icon-tile tr-icon-tile--plain tr-entity-card__create-icon">
             <b-icon icon="plus" size="is-medium" />
           </span>
           <strong>Создать нового агента</strong>
@@ -269,6 +289,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
 import { useWorkspaceStore } from "../stores/workspace";
+import MobileFilters from "./MobileFilters.vue";
 import SearchField from "./SearchField.vue";
 
 type ViewMode = "list" | "chat" | "properties";
@@ -545,135 +566,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-.tr-agents__catalog {
-  min-height: 0;
-  overflow-y: auto;
-  padding: 2px;
-}
-
-.tr-agents__grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-  padding-bottom: 1rem;
-}
-
-.tr-agent-card {
-  min-width: 0;
-  min-height: 220px;
-  display: flex;
-  align-items: stretch;
-  flex-direction: column;
-  gap: 0.75rem;
-  color: var(--tr-text);
-  font: inherit;
-  text-align: start;
-  cursor: pointer;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
-}
-
-.tr-agent-card:hover {
-  border-color: var(--tr-primary);
-  transform: translateY(-2px);
-}
-
-.tr-agent-card:focus-visible {
-  outline: 3px solid rgb(142 100 206 / 0.24);
-  outline-offset: 2px;
-}
-
-.tr-agent-card__header,
-.tr-agent-card__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.tr-agent-card__icon,
-.tr-agent-card__create-icon {
-  display: inline-grid;
-  place-items: center;
-  color: var(--tr-primary);
-  background: transparent;
-  border: 0;
-}
-
-.tr-agent-card__icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-}
-
-.tr-agent-card__title {
-  overflow: hidden;
-  color: var(--tr-text-strong);
-  font-size: 1.125rem;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tr-agent-card__description {
-  display: -webkit-box;
-  overflow: hidden;
-  color: var(--tr-text-muted);
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-}
-
-.tr-agent-card__footer {
-  align-items: flex-end;
-  margin-top: auto;
-  padding-top: 0.75rem;
-  color: var(--tr-text-muted);
-  border-top: 1px solid var(--tr-divider);
-  font-size: 0.75rem;
-}
-
-.tr-agent-card__footer span:last-child {
-  text-align: end;
-}
-
-.tr-agent-card--create {
-  align-items: center;
-  justify-content: center;
-  color: var(--tr-text-muted);
-  text-align: center;
-  background: transparent;
-  border-style: dashed;
-  box-shadow: none;
-}
-
-.tr-agent-card--create strong {
-  color: var(--tr-text-strong);
-  font-size: 1.125rem;
-  font-weight: 600;
-}
-
-.tr-agent-card--create > span:last-child {
-  max-width: 280px;
-}
-
-.tr-agent-card__create-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-}
-
-.tr-agents__empty {
-  min-height: 220px;
-  display: grid;
-  place-items: center;
-  margin: 0;
-  padding: 1.25rem;
-  color: var(--tr-text-muted);
-  text-align: center;
-}
-
 .tr-agents__workbench {
   grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
 }
@@ -684,21 +576,5 @@ onBeforeUnmount(() => {
 
 .tr-agents__workbench .tr-conversations__list-action {
   display: inline-flex;
-}
-
-@media (max-width: 1024px) {
-  .tr-agents__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 768px) {
-  .tr-agents__grid {
-    grid-template-columns: 1fr;
-  }
-
-  .tr-agent-card {
-    min-height: 200px;
-  }
 }
 </style>
