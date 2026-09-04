@@ -2,7 +2,7 @@
   <header class="tr-topbar">
     <b-dropdown
       ref="mobileNavDropdown"
-      class="tr-navbar-dropdown tr-mobile-nav"
+      class="tr-dropdown tr-mobile-nav"
       position="is-bottom-right"
       mobile-modal
       aria-role="menu"
@@ -139,7 +139,7 @@
     <div class="tr-topbar__actions">
       <b-dropdown
         v-model="workspace"
-        class="tr-navbar-dropdown tr-workspace-dropdown"
+        class="tr-dropdown tr-workspace-dropdown"
         position="is-bottom-left"
         aria-role="list"
       >
@@ -213,7 +213,7 @@
 
       <b-dropdown
         v-if="showNotifications"
-        class="tr-navbar-dropdown tr-notifications-dropdown"
+        class="tr-dropdown tr-notifications-dropdown"
         position="is-bottom-left"
         aria-role="menu"
       >
@@ -267,7 +267,7 @@
 
       <b-dropdown
         ref="userDropdown"
-        class="tr-navbar-dropdown tr-user-dropdown"
+        class="tr-dropdown tr-user-dropdown"
         position="is-bottom-left"
         mobile-modal
         aria-role="menu"

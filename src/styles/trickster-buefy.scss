@@ -207,6 +207,10 @@ a:hover {
   border-right: 1px solid var(--tr-border-soft);
 }
 
+.tr-toolbar { 
+  display: flex;
+}
+
 .tr-main {
   min-width: 0;
 }
@@ -474,6 +478,9 @@ a:hover {
   opacity: 1;
 }
 
+.dropdown + .dropdown {
+  margin: 0;
+}
 .dropdown.is-active .tr-workspace-trigger {
   background: var(--tr-input-bg);
   border-color: var(--tr-primary);
@@ -528,14 +535,14 @@ a:hover {
   line-height: 1;
 }
 
-.tr-navbar-dropdown .dropdown-content {
+.dropdown-content {
   min-width: 300px;
   padding: tr.$space-2;
   border: 1px solid var(--tr-border);
   border-radius: tr.$radius-large;
 }
 
-.tr-navbar-dropdown .dropdown-item {
+.dropdown-item {
   margin-block: 1px;
   padding: 6px tr.$space-3;
   font-size: tr.$font-size-base;
@@ -543,21 +550,62 @@ a:hover {
   border-radius: tr.$radius;
 }
 
-.tr-navbar-dropdown .dropdown-item.is-active {
+.dropdown-item.is-active {
   color: var(--tr-primary);
   background: var(--tr-primary-soft);
 }
 
-.tr-navbar-dropdown .dropdown-item.is-active strong,
-.tr-navbar-dropdown .dropdown-item.is-active small {
+.dropdown-item.is-active strong,
+.dropdown-item.is-active small {
   color: inherit;
 }
 
-.tr-navbar-dropdown .dropdown-divider {
+.dropdown-divider {
   height: 1px;
   margin: tr.$space-2 0;
   background: var(--tr-divider);
   border: 0;
+}
+
+// Дропдаун-пилюля фильтра в tr-page-toolbar (см. ToolbarDropdown.vue) —
+// использует общий вид меню .tr-dropdown, но более узкий и со своей
+// кнопкой-триггером вместо нативного .select.
+.tr-toolbar-dropdown { display: inline;}
+.tr-toolbar-dropdown .dropdown-content {
+  min-width: 200px;
+}
+
+.tr-toolbar-dropdown__trigger.button {
+  width: 100%;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: tr.$space-2;
+  padding-inline: tr.$space-3;
+  font-size: tr.$font-size-base;
+  font-weight: tr.$font-weight-normal;
+}
+
+.tr-toolbar-dropdown__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tr-toolbar-dropdown__trigger .icon {
+  flex: 0 0 auto;
+  color: var(--tr-text-subtle);
+  transition: transform tr.$transition-fast;
+}
+
+.tr-toolbar-dropdown.is-active .tr-toolbar-dropdown__trigger .icon {
+  transform: rotate(180deg);
+}
+
+.tr-toolbar-dropdown.is-active .tr-toolbar-dropdown__trigger {
+  border-color: var(--tr-primary);
+  box-shadow: 0 0 0 3px rgb(142 100 206 / 0.16);
 }
 
 .tr-dropdown-intro {
@@ -1224,22 +1272,8 @@ button.dropdown-item:hover {
 }
 
 .tr-page-toolbar__filter {
-  --bulma-input-height: 36px;
-
   width: 180px;
   flex: 0 0 180px;
-}
-
-.tr-page-toolbar__filter .select,
-.tr-page-toolbar__filter .select select {
-  height: 36px;
-}
-
-.tr-page-toolbar__filter .select select {
-  padding-block: calc((36px - 1.5em - 2px) / 2);
-  font-size: tr.$font-size-base;
-  font-weight: tr.$font-weight-normal;
-  line-height: 1.5;
 }
 
 .tr-workbench-page > .tr-conversations,

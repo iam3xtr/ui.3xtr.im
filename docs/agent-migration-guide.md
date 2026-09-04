@@ -182,15 +182,20 @@
 
 ## 5. Toolbar (поиск + фильтры над списком)
 
-Эталон: шапка `Agents.vue` / `Knowledge.vue` / `Integrations.vue`.
+Эталон: шапка `Agents.vue` / `Knowledge.vue` / `Integrations.vue` /
+`Conversations.vue`.
 
 ```html
 <header class="tr-workbench-page__header tr-page-toolbar">
   <SearchField v-model="query" class="tr-page-toolbar__search" placeholder="..." />
 
-  <b-select v-model="filter" class="tr-page-toolbar__filter" expanded aria-label="...">
-    <option value="">Все ...</option>
-  </b-select>
+  <ToolbarDropdown
+    v-model="filter"
+    class="tr-page-toolbar__filter"
+    all-label="Все ..."
+    aria-label="..."
+    :options="filterOptions"
+  />
 
   <MobileFilters :active="Boolean(filter)">
     <b-field label="...">
@@ -201,8 +206,20 @@
 ```
 
 Классы `tr-page-toolbar`, `__search`, `__filter`, `__action` — общие,
-использовать без изменений. Мобильная версия фильтров — всегда через
-существующий компонент `MobileFilters`, не через собственный modal/drawer.
+использовать без изменений.
+
+Фильтр-пилюля в toolbar — всегда компонент `ToolbarDropdown` (обёртка над
+`b-dropdown` с `v-model`), а не `b-select`: он даёт кастомный вид кнопки с
+шевроном вместо нативного `<select>`, как в остальном ките. `options`
+принимает либо массив строк, либо массив `{ value, label }`; выбор "все" —
+пустая строка, добавляется автоматически, текст задаётся через `all-label`.
+Если исходное состояние типизировано уже, а не просто `string` (`ref<Status
+| "">("")`), под `v-model` нужен `computed`-прокси с приведением типа при
+записи — см. `typeFilterProxy` в `Knowledge.vue`.
+
+Внутри `MobileFilters` (мобильный drawer с фильтрами) `b-select` остаётся —
+это форма с явными подписями `b-field`, а не toolbar-пилюля, паттерн
+`ToolbarDropdown` на неё не распространяется.
 
 ## 6. Master-detail / workbench-страницы (список + контент)
 
@@ -299,6 +316,13 @@
 - `.tr-row`, `.tr-row--between`, `.tr-stack`, `.tr-muted`, `.tr-strong`,
   `.tr-divider` — типографские/layout-утилиты, использовать вместо
   инлайновых стилей.
+- `.tr-dropdown` — общий вид меню `b-dropdown` (`dropdown-content`,
+  `dropdown-item`, `dropdown-item.is-active`, `dropdown-divider`). Ставить
+  на **любой** `b-dropdown`, будь то меню в navbar (`Navbar.vue`) или
+  `ToolbarDropdown`, вместе со своим модификатором для специфичной ширины/
+  триггера (`tr-workspace-dropdown`, `tr-toolbar-dropdown` и т.п.) — так все
+  дропдауны в приложении выглядят одинаково, а точечные отличия (ширина
+  меню, вид кнопки-триггера) описываются в паре `.tr-dropdown.<модификатор>`.
 
 ## 11. Чего не делать (антипаттерны — уже встречались и исправлены в ките)
 
@@ -317,6 +341,11 @@
 - ❌ Разное поведение "нет данных из-за фильтра" на разных страницах
   (где-то просто текст, где-то с иконкой на всю высоту карточки). ✅ Один
   `.tr-catalog__empty` (раздел 9).
+- ❌ `b-select` для пилюли-фильтра в `tr-page-toolbar`. ✅ `ToolbarDropdown`
+  (раздел 5); `b-select` остаётся только внутри `MobileFilters`.
+- ❌ Свой набор `dropdown-content`/`dropdown-item`/`dropdown-divider`-стилей
+  под каждый новый `b-dropdown`. ✅ Общий `.tr-dropdown` (раздел 10) + один
+  модификатор-класс на конкретный экземпляр для его ширины/триггера.
 
 ## 12. Порядок работы над одной страницей ЛК
 

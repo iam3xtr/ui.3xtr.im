@@ -1,8 +1,8 @@
 <template>
   <section class="tr-workbench-page">
-    <header
+    <div
       v-if="conversations.length > 0"
-      class="tr-workbench-page__header tr-page-toolbar"
+      class="-tr-workbench-page__header tr-page-toolbar"
     >
       <SearchField
         v-model="query"
@@ -11,29 +11,21 @@
         @shortcut="viewMode = 'list'"
       />
 
-      <b-select
+      <ToolbarDropdown
         v-model="statusFilter"
         class="tr-page-toolbar__filter"
         aria-label="Фильтр диалогов по статусу"
-        expanded
-      >
-        <option value="">Все статусы</option>
-        <option v-for="status in conversationStatuses" :key="status">
-          {{ status }}
-        </option>
-      </b-select>
+        all-label="Все статусы"
+        :options="conversationStatuses"
+      />
 
-      <b-select
+      <ToolbarDropdown
         v-model="channelFilter"
         class="tr-page-toolbar__filter"
         aria-label="Фильтр диалогов по каналу"
-        expanded
-      >
-        <option value="">Все каналы</option>
-        <option v-for="channel in conversationChannels" :key="channel">
-          {{ channel }}
-        </option>
-      </b-select>
+        all-label="Все каналы"
+        :options="conversationChannels"
+      />
 
       <MobileFilters :active="Boolean(statusFilter || channelFilter)">
         <b-field label="Статус">
@@ -54,7 +46,7 @@
           </b-select>
         </b-field>
       </MobileFilters>
-    </header>
+    </div>
 
     <section v-if="conversations.length === 0" class="tr-section-empty">
       <b-icon icon="message-outline" size="is-large" />
@@ -256,6 +248,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useWorkspaceStore } from "../stores/workspace";
 import MobileFilters from "./MobileFilters.vue";
 import SearchField from "./SearchField.vue";
+import ToolbarDropdown from "./ToolbarDropdown.vue";
 
 type ViewMode = "list" | "chat" | "properties";
 

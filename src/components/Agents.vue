@@ -10,29 +10,21 @@
         placeholder="Поиск по агентам"
       />
 
-      <b-select
+      <ToolbarDropdown
         v-model="statusFilter"
         class="tr-page-toolbar__filter"
         aria-label="Фильтр агентов по статусу"
-        expanded
-      >
-        <option value="">Все статусы</option>
-        <option v-for="status in agentStatuses" :key="status">
-          {{ status }}
-        </option>
-      </b-select>
+        all-label="Все статусы"
+        :options="agentStatuses"
+      />
 
-      <b-select
+      <ToolbarDropdown
         v-model="modelFilter"
         class="tr-page-toolbar__filter"
         aria-label="Фильтр агентов по модели"
-        expanded
-      >
-        <option value="">Все модели</option>
-        <option v-for="model in agentModels" :key="model">
-          {{ model }}
-        </option>
-      </b-select>
+        all-label="Все модели"
+        :options="agentModels"
+      />
 
       <MobileFilters :active="Boolean(statusFilter || modelFilter)">
         <b-field label="Статус">
@@ -291,6 +283,7 @@ import { useRoute } from "vue-router";
 import { useWorkspaceStore } from "../stores/workspace";
 import MobileFilters from "./MobileFilters.vue";
 import SearchField from "./SearchField.vue";
+import ToolbarDropdown from "./ToolbarDropdown.vue";
 
 type ViewMode = "list" | "chat" | "properties";
 

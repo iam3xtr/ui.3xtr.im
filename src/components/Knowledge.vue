@@ -10,21 +10,13 @@
         placeholder="Поиск коллекций"
       />
 
-      <b-select
-        v-model="typeFilter"
+      <ToolbarDropdown
+        v-model="typeFilterProxy"
         class="tr-page-toolbar__filter"
         aria-label="Фильтр коллекций по типу"
-        expanded
-      >
-        <option value="">Все типы</option>
-        <option
-          v-for="type in collectionTypes"
-          :key="type.value"
-          :value="type.value"
-        >
-          {{ type.label }}
-        </option>
-      </b-select>
+        all-label="Все типы"
+        :options="collectionTypeOptions"
+      />
 
       <MobileFilters :active="Boolean(typeFilter)">
         <b-field label="Тип коллекции">
@@ -227,6 +219,7 @@ import { computed, ref, watch } from "vue";
 import { useWorkspaceStore } from "../stores/workspace";
 import MobileFilters from "./MobileFilters.vue";
 import SearchField from "./SearchField.vue";
+import ToolbarDropdown from "./ToolbarDropdown.vue";
 
 type CollectionType =
   | "mixed"
@@ -398,6 +391,15 @@ const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId } = storeToRefs(workspaceStore);
 const query = ref("");
 const typeFilter = ref<CollectionType | "">("");
+const typeFilterProxy = computed<string>({
+  get: () => typeFilter.value,
+  set: (value) => {
+    typeFilter.value = value as CollectionType | "";
+  },
+});
+const collectionTypeOptions = computed(
+  () => collectionTypes.map((type) => ({ value: type.value, label: type.label })),
+);
 const selectedId = ref<number | null>(null);
 const isCreateOpen = ref(false);
 const newCollectionName = ref("");

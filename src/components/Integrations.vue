@@ -7,29 +7,21 @@
         placeholder="Поиск интеграций"
       />
 
-      <b-select
-        v-model="categoryFilter"
+      <ToolbarDropdown
+        v-model="categoryFilterProxy"
         class="tr-page-toolbar__filter"
         aria-label="Фильтр интеграций по категории"
-        expanded
-      >
-        <option value="">Все категории</option>
-        <option v-for="category in integrationCategories" :key="category">
-          {{ category }}
-        </option>
-      </b-select>
+        all-label="Все категории"
+        :options="integrationCategories"
+      />
 
-      <b-select
-        v-model="statusFilter"
+      <ToolbarDropdown
+        v-model="statusFilterProxy"
         class="tr-page-toolbar__filter"
         aria-label="Фильтр интеграций по статусу"
-        expanded
-      >
-        <option value="">Все статусы</option>
-        <option v-for="status in integrationStatuses" :key="status">
-          {{ status }}
-        </option>
-      </b-select>
+        all-label="Все статусы"
+        :options="integrationStatuses"
+      />
 
       <MobileFilters :active="Boolean(categoryFilter || statusFilter)">
         <b-field label="Категория">
@@ -122,6 +114,7 @@ import { computed, ref, watch } from "vue";
 import { useWorkspaceStore } from "../stores/workspace";
 import MobileFilters from "./MobileFilters.vue";
 import SearchField from "./SearchField.vue";
+import ToolbarDropdown from "./ToolbarDropdown.vue";
 
 type IntegrationCategory = "Мессенджеры" | "CRM" | "Коммуникации" | "Разработка";
 type IntegrationStatus = "Подключено" | "Доступно" | "Скоро";
@@ -223,6 +216,18 @@ const { activeWorkspaceId } = storeToRefs(workspaceStore);
 const query = ref("");
 const categoryFilter = ref<IntegrationCategory | "">("");
 const statusFilter = ref<IntegrationStatus | "">("");
+const categoryFilterProxy = computed<string>({
+  get: () => categoryFilter.value,
+  set: (value) => {
+    categoryFilter.value = value as IntegrationCategory | "";
+  },
+});
+const statusFilterProxy = computed<string>({
+  get: () => statusFilter.value,
+  set: (value) => {
+    statusFilter.value = value as IntegrationStatus | "";
+  },
+});
 const connectedByWorkspace = ref<Record<string, string[]>>({
   demo: ["telegram", "email", "webhook"],
   trickster: ["telegram"],
