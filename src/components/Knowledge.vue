@@ -135,26 +135,29 @@
         v-if="selectedCollection.items.length"
         class="tr-knowledge__items"
       >
-        <div
-          v-for="item in selectedCollection.items"
-          :key="item.id"
-          class="tr-knowledge__item"
-        >
-          <span class="tr-knowledge__item-icon">
-            <b-icon :icon="getItemType(item.type).icon" />
-          </span>
-          <span class="tr-knowledge__item-copy">
-            <strong>{{ item.name }}</strong>
-            <small>{{ item.source }}</small>
-          </span>
-          <b-tag size="is-small">{{ getItemType(item.type).label }}</b-tag>
-          <time>{{ item.updated }}</time>
-          <b-button
-            type="is-text"
-            icon-left="dots-horizontal"
-            aria-label="Действия с элементом"
-          />
-        </div>
+        <b-table :data="selectedCollection.items" striped hoverable>
+          <b-table-column field="name" label="Название" v-slot="{ row }">
+            <strong>{{ row.name }}</strong>
+            <br />
+            <small class="tr-muted">{{ row.source }}</small>
+          </b-table-column>
+
+          <b-table-column field="type" label="Тип" v-slot="{ row }">
+            <b-tag size="is-small">{{ getItemType(row.type).label }}</b-tag>
+          </b-table-column>
+
+          <b-table-column field="updated" label="Обновлено" v-slot="{ row }">
+            {{ row.updated }}
+          </b-table-column>
+
+          <b-table-column v-slot="{ row }" width="56">
+            <b-button
+              type="is-text"
+              icon-left="dots-horizontal"
+              :aria-label="`Действия с элементом «${row.name}»`"
+            />
+          </b-table-column>
+        </b-table>
       </div>
 
       <div v-else class="tr-knowledge__items-empty">

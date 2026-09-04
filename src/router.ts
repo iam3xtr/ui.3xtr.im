@@ -40,7 +40,7 @@ const router = createRouter({
       path: "/agents",
       name: "agents",
       component: Agents,
-      meta: { contentMode: "fluid" },
+      // meta: { contentMode: "fluid" },
     },
     {
       path: "/knowledge",
