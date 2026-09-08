@@ -1,0 +1,9 @@
+<template>
+  <section class="tr-workspace">
+    <RouterView />
+  </section>
+</template>
+
+<script setup lang="ts">
+import { RouterView } from "vue-router";
+</script>

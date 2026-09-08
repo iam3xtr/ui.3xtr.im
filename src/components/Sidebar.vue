@@ -9,7 +9,7 @@
           :to="{ name: item.routeName }"
           :icon="item.icon"
           :label="item.label"
-          :model-value="route.name === item.routeName"
+          :model-value="isNavigationItemActive(item.routeName)"
         />
       </b-menu-list>
 
@@ -44,4 +44,10 @@ import TariffSummaryCard from "./TariffSummaryCard.vue";
 const route = useRoute();
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceTariff } = storeToRefs(workspaceStore);
+
+function isNavigationItemActive(routeName: string): boolean {
+  return routeName === "workspace"
+    ? route.path.startsWith("/workspace")
+    : route.name === routeName;
+}
 </script>

@@ -12,6 +12,8 @@ import Knowledge from "./components/Knowledge.vue";
 import SectionPlaceholder from "./components/SectionPlaceholder.vue";
 import Settings from "./components/Settings.vue";
 import UiKit from "./components/UiKit.vue";
+import Workspace from "./components/Workspace.vue";
+import WorkspacePlan from "./components/WorkspacePlan.vue";
 
 declare module "vue-router" {
   interface RouteMeta {
@@ -58,26 +60,35 @@ const router = createRouter({
     },
     {
       path: "/settings",
-      name: "settings",
-      component: Settings,
+      redirect: { name: "workspace-settings" },
     },
     {
-      path: "/workspace/members",
-      name: "workspace-members",
-      component: SectionPlaceholder,
-      props: { title: "Участники пространства" },
-    },
-    {
-      path: "/workspace/settings",
-      name: "workspace-settings",
-      component: SectionPlaceholder,
-      props: { title: "Настройки пространства" },
-    },
-    {
-      path: "/workspace/plan",
-      name: "workspace-plan",
-      component: SectionPlaceholder,
-      props: { title: "Тариф" },
+      path: "/workspace/",
+      component: Workspace,
+      children: [
+        {
+          path: "",
+          name: "workspace",
+          component: SectionPlaceholder,
+          props: { title: "Обзор пространства" },
+        },
+        {
+          path: "settings/",
+          name: "workspace-settings",
+          component: Settings,
+        },
+        {
+          path: "members/",
+          name: "workspace-members",
+          component: SectionPlaceholder,
+          props: { title: "Участники пространства" },
+        },
+        {
+          path: "plan/",
+          name: "workspace-plan",
+          component: WorkspacePlan,
+        },
+      ],
     },
     {
       path: "/profile",

@@ -9,7 +9,7 @@ export const mainNavigationItems: MainNavigationItem[] = [
   { routeName: "agents", icon: "robot-outline", label: "Агенты" },
   { routeName: "knowledge", icon: "book-open-page-variant-outline", label: "Знания" },
   { routeName: "integrations", icon: "puzzle-outline", label: "Интеграции" },
-  { routeName: "settings", icon: "cog-outline", label: "Настройки" },
+  { routeName: "workspace", icon: "office-building-cog-outline", label: "Пространство" },
 ];
 
 export const administrationNavigationItems: MainNavigationItem[] = [

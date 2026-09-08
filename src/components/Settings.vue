@@ -2,14 +2,12 @@
   <section class="tr-settings">
     <header class="tr-settings__header">
       <div>
-        <h1>Настройки</h1>
+        <h1>Настройки пространства</h1>
         <p>Параметры интерфейса текущего браузера.</p>
       </div>
     </header>
 
-    <b-tabs v-model="activeTab" class="tr-settings__tabs">
-      <b-tab-item label="Настройки сайта" icon="web" value="site">
-        <div class="tr-settings__panel">
+    <div class="tr-settings__panel">
           <div class="tr-settings__panel-header">
             <h2>Элементы навигации</h2>
             <p>Настройте состав верхней панели. Изменения применяются сразу.</p>
@@ -50,19 +48,15 @@
               Восстановить значения
             </b-button>
           </footer>
-        </div>
-      </b-tab-item>
-    </b-tabs>
+    </div>
   </section>
 </template>
 
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
-import { ref } from "vue";
 
 import { useSiteSettingsStore } from "../stores/siteSettings";
 
-const activeTab = ref("site");
 const settings = useSiteSettingsStore();
 const {
   showSearch,

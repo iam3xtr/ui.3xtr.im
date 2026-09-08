@@ -62,7 +62,7 @@
       <b-dropdown-item
         v-for="item in mainNavigationItems"
         :key="item.routeName"
-        :class="{ 'is-active': route.name === item.routeName }"
+        :class="{ 'is-active': isNavigationItemActive(item.routeName) }"
         aria-role="menuitem"
         @click="router.push({ name: item.routeName })"
       >
@@ -109,6 +109,21 @@
     </b-dropdown>
 
     <Logo />
+
+    <nav
+      v-if="isWorkspaceRoute"
+      class="tr-workspace-nav"
+      aria-label="Навигация по пространству"
+    >
+      <RouterLink
+        v-for="item in workspaceNavigationItems"
+        :key="item.routeName"
+        :to="{ name: item.routeName }"
+        class="tr-workspace-nav__link"
+      >
+        {{ item.label }}
+      </RouterLink>
+    </nav>
 
     <SearchField
       v-if="showSearch"
@@ -399,7 +414,7 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { RouterLink, useRoute, useRouter } from "vue-router";
 
 import {
   administrationNavigationItems,
@@ -430,6 +445,11 @@ interface NotificationEvent {
 }
 
 interface ResourceLink {
+  label: string;
+}
+
+interface WorkspaceNavigationItem {
+  routeName: string;
   label: string;
 }
 
@@ -468,6 +488,15 @@ const resourceLinks: ResourceLink[] = [
   { label: "Документация" },
 ];
 
+const workspaceNavigationItems: WorkspaceNavigationItem[] = [
+  { routeName: "workspace", label: "Обзор" },
+  { routeName: "workspace-settings", label: "Настройки" },
+  { routeName: "workspace-members", label: "Участники" },
+  { routeName: "workspace-plan", label: "Тариф" },
+];
+
+const isWorkspaceRoute = computed(() => route.path.startsWith("/workspace"));
+
 const notificationEvents: NotificationEvent[] = [
   {
     title: "Новый диалог",
@@ -497,7 +526,7 @@ const userInitials = computed(
 );
 
 function goToWorkspaceSettings(): void {
-  router.push({ name: "settings" });
+  router.push({ name: "workspace-settings" });
 }
 
 function goToWorkspaceMembers(): void {
@@ -518,6 +547,12 @@ function closeMobileNav(): void {
 
 function closeUserMenu(): void {
   userDropdown.value?.toggle();
+}
+
+function isNavigationItemActive(routeName: string): boolean {
+  return routeName === "workspace"
+    ? route.path.startsWith("/workspace")
+    : route.name === routeName;
 }
 
 </script>
