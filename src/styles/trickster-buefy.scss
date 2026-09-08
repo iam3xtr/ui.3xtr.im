@@ -557,6 +557,13 @@ a:hover {
   border-radius: tr.$radius;
 }
 
+// Bulma applies an opaque background specifically to link dropdown items.
+// Override that base state so menus stay transparent in the dark theme too.
+a.dropdown-item,
+button.dropdown-item {
+  background-color: transparent;
+}
+
 // Bulma reserves 3rem on the right of every dropdown link for a possible
 // submenu indicator. Workspace items do not have one, so use symmetrical
 // padding and let their row occupy the full content width.
