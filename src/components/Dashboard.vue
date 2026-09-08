@@ -305,7 +305,7 @@ const dashboards = {
         progress: null,
       },
       plan: {
-        value: "Pro",
+        value: "Superior",
         caption: "текущий тариф",
         delta: "",
         secondaryLabel: "Возможности",

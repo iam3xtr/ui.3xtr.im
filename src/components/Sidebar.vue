@@ -1,6 +1,6 @@
 <template>
   <aside class="tr-sidebar">
-    <b-menu>
+    <b-menu class="tr-sidebar__nav">
       <b-menu-list>
         <b-menu-item
           v-for="item in mainNavigationItems"
@@ -25,16 +25,23 @@
         />
       </b-menu-list>
     </b-menu>
+
+    <TariffSummaryCard :tariff="activeWorkspaceTariff" />
   </aside>
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from "pinia";
 import { useRoute } from "vue-router";
 
 import {
   administrationNavigationItems,
   mainNavigationItems,
 } from "../navigation";
+import { useWorkspaceStore } from "../stores/workspace";
+import TariffSummaryCard from "./TariffSummaryCard.vue";
 
 const route = useRoute();
+const workspaceStore = useWorkspaceStore();
+const { activeWorkspaceTariff } = storeToRefs(workspaceStore);
 </script>

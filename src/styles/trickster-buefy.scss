@@ -200,11 +200,18 @@ a:hover {
   position: sticky;
   z-index: 20;
   top: tr.$topbar-height;
+  display: flex;
+  flex-direction: column;
+  gap: tr.$space-6;
   height: calc(100vh - #{tr.$topbar-height});
   overflow-y: auto;
   padding: tr.$space-6 tr.$space-4;
   background: var(--tr-sidebar-bg);
   border-right: 1px solid var(--tr-border-soft);
+}
+
+.tr-sidebar__nav {
+  flex: 1 0 auto;
 }
 
 .tr-toolbar { 
@@ -548,6 +555,13 @@ a:hover {
   font-size: tr.$font-size-base;
   background-color: transparent;
   border-radius: tr.$radius;
+}
+
+// Bulma reserves 3rem on the right of every dropdown link for a possible
+// submenu indicator. Workspace items do not have one, so use symmetrical
+// padding and let their row occupy the full content width.
+.tr-workspace-dropdown a.dropdown-item {
+  padding-inline-end: tr.$space-3;
 }
 
 .dropdown-item.is-active {
