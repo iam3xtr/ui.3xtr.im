@@ -61,7 +61,7 @@
             <b-button size="is-small">Все агенты</b-button>
           </div>
 
-          <b-table :data="agents" striped hoverable>
+          <b-table :data="agents" hoverable>
             <b-table-column field="name" label="Название" v-slot="{ row }">
               <strong>{{ row.name }}</strong>
             </b-table-column>

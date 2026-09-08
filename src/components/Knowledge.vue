@@ -127,7 +127,7 @@
         v-if="selectedCollection.items.length"
         class="tr-knowledge__items"
       >
-        <b-table :data="selectedCollection.items" striped hoverable>
+        <b-table :data="selectedCollection.items" hoverable>
           <b-table-column field="name" label="Название" v-slot="{ row }">
             <strong>{{ row.name }}</strong>
             <br />

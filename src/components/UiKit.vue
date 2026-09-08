@@ -126,6 +126,16 @@
           </section>
 
           <section class="tr-card mb-5">
+            <h2 class="tr-card__title">Выбор тарифа</h2>
+            <TariffSelector
+              v-model="selectedTariffId"
+              v-model:billing-period="selectedBillingPeriod"
+              :tariffs="tariffOptions"
+              :disabled-tariff-ids="['legendary']"
+            />
+          </section>
+
+          <section class="tr-card mb-5">
             <h2 class="tr-card__title">Вкладки</h2>
 
             <b-tabs v-model="activeTab" type="is-boxed">
@@ -154,7 +164,6 @@
 
             <b-table
               :data="agents"
-              striped
               hoverable
               paginated
               :per-page="5"
@@ -179,7 +188,11 @@
               </b-table-column>
 
               <b-table-column v-slot="{ row }" width="80">
-                <b-dropdown position="is-bottom-left" aria-role="list">
+                <b-dropdown
+                  position="is-bottom-left"
+                  aria-role="list"
+                  append-to-body
+                >
                   <template #trigger>
                     <b-button
                       icon-left="dots-vertical"
@@ -248,8 +261,12 @@
 <script setup lang="ts">
 import { reactive, ref } from "vue";
 
+import TariffSelector, { type TariffSelectorTariff } from "./TariffSelector.vue";
+
 const activeTab = ref(0);
 const isModalOpen = ref(false);
+const selectedTariffId = ref("superior");
+const selectedBillingPeriod = ref<"monthly" | "yearly">("monthly");
 
 const form = reactive({
   name: "Консультант",
@@ -271,6 +288,89 @@ const agents = [
     status: "Черновик",
     owner: "Анна Смирнова",
     updated: "Вчера",
+  },
+];
+
+const tariffOptions: TariffSelectorTariff[] = [
+  {
+    id: "free",
+    displayName: "Free",
+    priceLabel: "Бесплатно",
+    monthlyPriceLabel: "Бесплатно",
+    yearlyPriceLabel: "Бесплатно",
+    color: "#6b6b6b",
+    isFree: true,
+    rank: 0,
+    description: "Для знакомства с платформой.",
+    conditions: ["1 рабочее пространство", "Базовая поддержка"],
+    limits: [
+      { key: "credits", label: "Кредиты", caption: "100 / мес", progress: 0 },
+      { key: "cost", label: "Цена за 1 000 кредитов", caption: "$5", progress: null },
+    ],
+  },
+  {
+    id: "fine",
+    displayName: "Fine",
+    priceLabel: "$11 в месяц",
+    monthlyPriceLabel: "$11 в месяц",
+    yearlyPriceLabel: "$111 в год",
+    yearlyRegularPriceLabel: "$132",
+    color: "#169b62",
+    rank: 1,
+    yearlySavingsLabel: "Экономия $21",
+    description: "Для небольших команд.",
+    conditions: ["До 10 участников", "Приоритетная поддержка"],
+    limits: [
+      { key: "credits", label: "Кредиты", caption: "1 000 / мес", progress: 0 },
+      { key: "cost", label: "Цена за 1 000 кредитов", caption: "$4", progress: null },
+    ],
+  },
+  {
+    id: "superior",
+    displayName: "Superior",
+    priceLabel: "$33 в месяц",
+    monthlyPriceLabel: "$33 в месяц",
+    yearlyPriceLabel: "$333 в год",
+    yearlyRegularPriceLabel: "$396",
+    color: "#2f6bc2",
+    rank: 2,
+    yearlySavingsLabel: "Экономия $63",
+    description: "Для растущих команд.",
+    conditions: ["До 25 участников", "Приоритетная поддержка"],
+    limits: [
+      { key: "credits", label: "Кредиты", caption: "5 000 / мес", progress: 0 },
+      { key: "cost", label: "Цена за 1 000 кредитов", caption: "$3", progress: null },
+    ],
+  },
+  {
+    id: "epic",
+    displayName: "Epic",
+    priceLabel: "$55 в месяц",
+    monthlyPriceLabel: "$55 в месяц",
+    yearlyPriceLabel: "$555 в год",
+    yearlyRegularPriceLabel: "$660",
+    color: "#7041d4",
+    rank: 3,
+    yearlySavingsLabel: "Экономия $100",
+    description: "Для команд с большим объёмом задач.",
+    conditions: ["До 50 участников", "Расширенная аналитика"],
+    limits: [
+      { key: "credits", label: "Кредиты", caption: "25 000 / мес", progress: 0 },
+      { key: "cost", label: "Цена за 1 000 кредитов", caption: "$2", progress: null },
+    ],
+  },
+  {
+    id: "legendary",
+    displayName: "Legendary",
+    priceLabel: "По запросу",
+    color: "#b96d00",
+    rank: 4,
+    description: "Максимальные лимиты для крупных команд.",
+    conditions: ["До 100 участников", "Выделенная поддержка"],
+    limits: [
+      { key: "credits", label: "Кредиты", caption: "100 000 / мес", progress: 0 },
+      { key: "cost", label: "Цена за 1 000 кредитов", caption: "$1", progress: null },
+    ],
   },
 ];
 </script>
