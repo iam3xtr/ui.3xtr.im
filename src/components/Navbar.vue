@@ -110,20 +110,11 @@
 
     <Logo />
 
-    <nav
+    <ToolbarTabs
       v-if="isWorkspaceRoute"
-      class="tr-workspace-nav"
+      :items="workspaceTabs"
       aria-label="Навигация по пространству"
-    >
-      <RouterLink
-        v-for="item in workspaceNavigationItems"
-        :key="item.routeName"
-        :to="{ name: item.routeName }"
-        class="tr-workspace-nav__link"
-      >
-        {{ item.label }}
-      </RouterLink>
-    </nav>
+    />
 
     <SearchField
       v-if="showSearch"
@@ -414,7 +405,7 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
-import { RouterLink, useRoute, useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
 import {
   administrationNavigationItems,
@@ -423,6 +414,7 @@ import {
 import { useSiteSettingsStore } from "../stores/siteSettings";
 import Logo from "./Logo.vue";
 import SearchField from "./SearchField.vue";
+import ToolbarTabs, { type ToolbarTabItem } from "./ToolbarTabs.vue";
 
 interface Workspace {
   id: string;
@@ -445,11 +437,6 @@ interface NotificationEvent {
 }
 
 interface ResourceLink {
-  label: string;
-}
-
-interface WorkspaceNavigationItem {
-  routeName: string;
   label: string;
 }
 
@@ -488,11 +475,11 @@ const resourceLinks: ResourceLink[] = [
   { label: "Документация" },
 ];
 
-const workspaceNavigationItems: WorkspaceNavigationItem[] = [
-  { routeName: "workspace", label: "Обзор" },
-  { routeName: "workspace-settings", label: "Настройки" },
-  { routeName: "workspace-members", label: "Участники" },
-  { routeName: "workspace-plan", label: "Тариф" },
+const workspaceTabs: ToolbarTabItem[] = [
+  { label: "Обзор", to: { name: "workspace" } },
+  { label: "Настройки", to: { name: "workspace-settings" } },
+  { label: "Участники", to: { name: "workspace-members" } },
+  { label: "Тариф", to: { name: "workspace-plan" } },
 ];
 
 const isWorkspaceRoute = computed(() => route.path.startsWith("/workspace"));
