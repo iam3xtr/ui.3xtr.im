@@ -1,29 +1,59 @@
 # Trickster UI Kit for Buefy
 
-Готовая основа UI-kit для личного кабинета Trickster.
+Эталонная реализация UI/UX-контракта личного кабинета Trickster
+(`get.3xtr.im`), а не отдельная витрина Buefy. Кит — работающая упрощённая
+копия кабинета без бэкенда: те же маршруты, та же анатомия разметки, те же
+имена классов, тот же иконочный набор. Правка дизайна выполняется в ките,
+проверяется на всех его экранах за один проход и переносится в кабинет через
+`npm run ui-kit:update` кабинета. Контракт целиком описан в
+[`docs/design-system.md`](docs/design-system.md).
 
 ## Состав
 
 - `src/styles/_trickster-tokens.scss` — фирменные цвета, нейтральная палитра, типографика, отступы и геометрия.
-- `src/styles/trickster-buefy.scss` — конфигурация Bulma/Buefy, светлая и тёмная темы, базовые стили приложения.
-- `src/router.ts` — маршруты основных разделов приложения.
+- `src/styles/trickster-buefy.scss` — конфигурация Bulma/Buefy, светлая и тёмная темы, базовые стили приложения. Это **единственный** файл со стилями проекта.
+- `src/router.js` — маршруты основных разделов приложения.
 - `src/components/Dashboard.vue` — главный экран рабочего пространства.
 - `src/components/Conversations.vue` — список и поиск диалогов.
-- `src/components/UiKit.vue` — примеры основных компонентов Buefy.
+- `src/components/UiKit.vue` — примеры основных компонентов Buefy, иконок и загрузчика (страница `/kit`).
 - `ui-kit.html` — HTML-примеры элементов на классах Bulma.
-- `src/main.ts.example` — подключение Buefy и темы.
-- `vite.config.ts.example` — минимальная конфигурация Vite/Dart Sass.
+- `src/assets/icons/` — обоснованный набор кастомных SVG-иконок (вендоры LLM и виды моделей), см. раздел «Иконки».
+- `src/components/common/Icon.vue`, `src/components/common/Loader.vue` — общие компоненты набора иконок и индикации загрузки.
 
 ## Целевая версия
 
 Шаблон ориентирован на:
 
-- Vue 3;
+- Vue 3 (чистый JavaScript, без TypeScript — `<script setup>` без `lang="ts"`);
 - Buefy 3.x;
 - Bulma 1.x;
 - Dart Sass.
 
 Для старого проекта на Vue 2 / Buefy 0.x потребуется legacy-вариант импортов.
+
+## Иконки
+
+UI-иконки — только Material Design Icons (`b-icon`, `@mdi/font`). Собственный
+SVG допускается исключительно там, где у MDI нет эквивалента: иконки
+вендоров LLM и иконки видов моделей. Полный реестр кастомных иконок с
+обоснованием каждой — в [`docs/design-system.md`](docs/design-system.md#иконки);
+карта соответствия «имя из набора кабинета → MDI-имя» — в
+[`docs/agent-migration-guide.md`](docs/agent-migration-guide.md). Иконка без
+записи в реестре в набор не попадает.
+
+## Загрузчик
+
+Индикация загрузки — один компонент `Loader` (`src/components/common/Loader.vue`)
+с тремя размерами (`inline`/`section`/`screen`), темозависимым цветом через
+`currentColor` и статичным вариантом при `prefers-reduced-motion`. Правила
+описаны в [`docs/design-system.md`](docs/design-system.md#загрузчик).
+
+## Стили
+
+Стили проекта живут только в `src/styles/trickster-buefy.scss` (и подключаемом
+им `_trickster-tokens.scss`). Блоков `<style>` в `.vue`-компонентах кита быть
+не должно — это правило, а не соглашение: новые компоненты не заводят
+собственных `<style>`, существующие исключения снимаются по `.plan` (Stage A2).
 
 ## Установка
 
@@ -34,9 +64,9 @@ npm install --save-dev sass
 
 ## Подключение
 
-В `main.ts`:
+В `src/main.js`:
 
-```ts
+```js
 import { createApp } from "vue";
 import Buefy from "buefy";
 import App from "./App.vue";
@@ -52,7 +82,7 @@ createApp(App)
 
 ## Переключение темы
 
-```ts
+```js
 document.documentElement.dataset.theme = "light";
 document.documentElement.dataset.theme = "dark";
 ```

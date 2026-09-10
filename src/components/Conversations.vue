@@ -1,5 +1,8 @@
 <template>
   <section class="tr-workbench-page">
+    <Loader v-if="isLoading" size="section" />
+
+    <template v-else>
     <div
       v-if="conversations.length > 0"
       class="-tr-workbench-page__header tr-page-toolbar"
@@ -238,58 +241,68 @@
       </div>
     </aside>
     </section>
+    </template>
   </section>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { storeToRefs } from "pinia";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
+import { useSimulatedLoading } from "../composables/useSimulatedLoading";
 import { useWorkspaceStore } from "../stores/workspace";
+import Loader from "./common/Loader.vue";
 import MobileFilters from "./MobileFilters.vue";
 import SearchField from "./SearchField.vue";
 import ToolbarDropdown from "./ToolbarDropdown.vue";
 
-type ViewMode = "list" | "chat" | "properties";
+const { isLoading } = useSimulatedLoading();
 
-interface ChatMessage {
-  id: number;
-  text: string;
-  time: string;
-  outgoing: boolean;
-}
+/** @typedef {"list" | "chat" | "properties"} ViewMode */
 
-interface Conversation {
-  id: number;
-  contact: string;
-  initials: string;
-  avatarUrl?: string;
-  email: string;
-  channel: string;
-  agent: string;
-  status: string;
-  updated: string;
-  created: string;
-  preview: string;
-  messages: ChatMessage[];
-}
+/**
+ * @typedef {Object} ChatMessage
+ * @property {number} id
+ * @property {string} text
+ * @property {string} time
+ * @property {boolean} outgoing
+ */
+
+/**
+ * @typedef {Object} Conversation
+ * @property {number} id
+ * @property {string} contact
+ * @property {string} initials
+ * @property {string} [avatarUrl]
+ * @property {string} email
+ * @property {string} channel
+ * @property {string} agent
+ * @property {string} status
+ * @property {string} updated
+ * @property {string} created
+ * @property {string} preview
+ * @property {ChatMessage[]} messages
+ */
 
 const query = ref("");
 const statusFilter = ref("");
 const channelFilter = ref("");
 const draft = ref("");
-const selectedId = ref<number | null>(null);
-const viewMode = ref<ViewMode>("list");
+const selectedId = ref(/** @type {number | null} */ (null));
+/** @type {import("vue").Ref<ViewMode>} */
+const viewMode = ref("list");
 const propertiesOpen = ref(true);
 const isWideLayout = ref(false);
-let wideLayoutQuery: MediaQueryList | null = null;
+/** @type {MediaQueryList | null} */
+let wideLayoutQuery = null;
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId } = storeToRefs(workspaceStore);
 
 const conversationStatuses = ["Активен", "Завершён"];
 const conversationChannels = ["Telegram", "Виджет", "Email"];
 
-const demoConversations: Conversation[] = [
+/** @type {Conversation[]} */
+const demoConversations = [
   {
     id: 1,
     contact: "Анна Смирнова",
@@ -376,7 +389,8 @@ const demoConversations: Conversation[] = [
   },
 ];
 
-const conversationsByWorkspace = ref<Record<string, Conversation[]>>({
+/** @type {import("vue").Ref<Record<string, Conversation[]>>} */
+const conversationsByWorkspace = ref({
   demo: demoConversations,
   trickster: [
     {
@@ -445,7 +459,10 @@ const filteredConversations = computed(() => {
   });
 });
 
-function selectConversation(id: number): void {
+/**
+ * @param {number} id
+ */
+function selectConversation(id) {
   selectedId.value = id;
   viewMode.value = "chat";
 }
@@ -460,7 +477,7 @@ watch(activeWorkspaceId, () => {
   propertiesOpen.value = true;
 });
 
-function openProperties(): void {
+function openProperties() {
   if (isWideLayout.value) {
     propertiesOpen.value = true;
     return;
@@ -469,7 +486,7 @@ function openProperties(): void {
   viewMode.value = "properties";
 }
 
-function closeProperties(): void {
+function closeProperties() {
   if (isWideLayout.value) {
     propertiesOpen.value = false;
     return;
@@ -478,11 +495,14 @@ function closeProperties(): void {
   viewMode.value = "chat";
 }
 
-function syncWideLayout(event: MediaQueryListEvent | MediaQueryList): void {
+/**
+ * @param {MediaQueryListEvent | MediaQueryList} event
+ */
+function syncWideLayout(event) {
   isWideLayout.value = event.matches;
 }
 
-function sendMessage(): void {
+function sendMessage() {
   const text = draft.value.trim();
   const conversation = selectedConversation.value;
 

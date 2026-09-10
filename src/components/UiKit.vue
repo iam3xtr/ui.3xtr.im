@@ -126,6 +126,49 @@
           </section>
 
           <section class="tr-card mb-5">
+            <h2 class="tr-card__title">Загрузчик</h2>
+            <p class="tr-muted mb-4">
+              Единый компонент <code>Loader</code> с тремя размерами.
+              Анимация подчиняется <code>prefers-reduced-motion</code> —
+              в системах с этой настройкой рендерится статичный логотип.
+            </p>
+
+            <div class="tr-stack">
+              <div>
+                <p class="tr-muted mb-2">inline — внутри кнопки</p>
+                <b-button disabled>
+                  <Loader size="inline" label="Сохранение" />
+                  Сохранение…
+                </b-button>
+              </div>
+
+              <div>
+                <p class="tr-muted mb-2">section — в карточке фиксированной высоты</p>
+                <div
+                  class="tr-card"
+                  style="height: 220px; padding: 0; overflow: hidden"
+                >
+                  <Loader size="section" label="Загрузка диалогов" style="height: 100%" />
+                </div>
+              </div>
+
+              <div>
+                <p class="tr-muted mb-2">screen — полноэкранное состояние приложения</p>
+                <div
+                  class="tr-card"
+                  style="height: 320px; padding: 0; overflow: hidden; position: relative"
+                >
+                  <Loader
+                    size="screen"
+                    label="Загрузка приложения"
+                    style="min-height: 100%; height: 100%"
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="tr-card mb-5">
             <h2 class="tr-card__title">Выбор тарифа</h2>
             <TariffSelector
               v-model="selectedTariffId"
@@ -258,15 +301,17 @@
           </b-modal>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { reactive, ref } from "vue";
 
-import TariffSelector, { type TariffSelectorTariff } from "./TariffSelector.vue";
+import Loader from "./common/Loader.vue";
+import TariffSelector from "./TariffSelector.vue";
 
 const activeTab = ref(0);
 const isModalOpen = ref(false);
 const selectedTariffId = ref("superior");
-const selectedBillingPeriod = ref<"monthly" | "yearly">("monthly");
+/** @type {import("vue").Ref<"monthly" | "yearly">} */
+const selectedBillingPeriod = ref("monthly");
 
 const form = reactive({
   name: "Консультант",
@@ -291,7 +336,8 @@ const agents = [
   },
 ];
 
-const tariffOptions: TariffSelectorTariff[] = [
+/** @type {import("./TariffSelector.vue").TariffSelectorTariff[]} */
+const tariffOptions = [
   {
     id: "free",
     displayName: "Free",

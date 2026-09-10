@@ -4,6 +4,7 @@ import { createPinia } from "pinia";
 
 import App from "./App.vue";
 import router from "./router";
+import Icon from "./components/common/Icon.vue";
 
 // Импортируем собственную сборку Bulma + Buefy.
 // Не подключайте одновременно buefy/dist/css/buefy.css.
@@ -18,5 +19,10 @@ app.use(Buefy, {
   defaultContainerElement: "#app",
 });
 app.use(router);
+
+// Кастомный набор иконок (вендоры LLM, виды моделей) — см.
+// docs/design-system.md#иконки. Имя "icon" совпадает с кабинетом, чтобы
+// разметка <icon name="..."> переносилась без правки импортов.
+app.component("icon", Icon);
 
 app.mount("#app");

@@ -47,8 +47,10 @@
       </MobileFilters>
     </header>
 
+    <Loader v-if="viewMode === 'list' && isLoading" size="section" />
+
     <section
-      v-if="viewMode === 'list'"
+      v-else-if="viewMode === 'list'"
       class="tr-catalog"
       aria-label="Список агентов"
     >
@@ -275,48 +277,56 @@
   </b-modal>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { storeToRefs } from "pinia";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
+import { useSimulatedLoading } from "../composables/useSimulatedLoading";
 import { useWorkspaceStore } from "../stores/workspace";
+import Loader from "./common/Loader.vue";
 import MobileFilters from "./MobileFilters.vue";
 import SearchField from "./SearchField.vue";
 import ToolbarDropdown from "./ToolbarDropdown.vue";
 
-type ViewMode = "list" | "chat" | "properties";
+const { isLoading } = useSimulatedLoading();
 
-interface SandboxMessage {
-  id: number;
-  text: string;
-  time: string;
-  outgoing: boolean;
-}
+/** @typedef {"list" | "chat" | "properties"} ViewMode */
 
-interface Agent {
-  id: number;
-  name: string;
-  description: string;
-  model: string;
-  status: string;
-  updated: string;
-  temperature: number;
-  instructions: string;
-  messages: SandboxMessage[];
-}
+/**
+ * @typedef {Object} SandboxMessage
+ * @property {number} id
+ * @property {string} text
+ * @property {string} time
+ * @property {boolean} outgoing
+ */
+
+/**
+ * @typedef {Object} Agent
+ * @property {number} id
+ * @property {string} name
+ * @property {string} description
+ * @property {string} model
+ * @property {string} status
+ * @property {string} updated
+ * @property {number} temperature
+ * @property {string} instructions
+ * @property {SandboxMessage[]} messages
+ */
 
 const query = ref("");
 const statusFilter = ref("");
 const modelFilter = ref("");
 const draft = ref("");
-const selectedId = ref<number | null>(null);
-const viewMode = ref<ViewMode>("list");
+const selectedId = ref(/** @type {number | null} */ (null));
+/** @type {import("vue").Ref<ViewMode>} */
+const viewMode = ref("list");
 const propertiesOpen = ref(true);
 const isWideLayout = ref(false);
 const isCreateOpen = ref(false);
 const newAgentName = ref("");
-let wideLayoutQuery: MediaQueryList | null = null;
+/** @type {MediaQueryList | null} */
+let wideLayoutQuery = null;
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId } = storeToRefs(workspaceStore);
 const route = useRoute();
@@ -324,7 +334,8 @@ const route = useRoute();
 const agentStatuses = ["Активен", "Черновик", "Приостановлен"];
 const agentModels = ["GPT-4.1 mini", "GPT-4.1", "GPT-4o mini"];
 
-const demoAgents: Agent[] = [
+/** @type {Agent[]} */
+const demoAgents = [
   {
     id: 1,
     name: "Консультант",
@@ -367,7 +378,8 @@ const demoAgents: Agent[] = [
   },
 ];
 
-const agentsByWorkspace = ref<Record<string, Agent[]>>({
+/** @type {import("vue").Ref<Record<string, Agent[]>>} */
+const agentsByWorkspace = ref({
   demo: demoAgents,
   trickster: [
     {
@@ -432,21 +444,24 @@ const filteredAgents = computed(() => {
   });
 });
 
-function selectAgent(id: number): void {
+/**
+ * @param {number} id
+ */
+function selectAgent(id) {
   selectedId.value = id;
   viewMode.value = "chat";
 }
 
-function showAgentCatalog(): void {
+function showAgentCatalog() {
   viewMode.value = "list";
 }
 
-function openCreateModal(): void {
+function openCreateModal() {
   newAgentName.value = "";
   isCreateOpen.value = true;
 }
 
-function createAgent(): void {
+function createAgent() {
   const name = newAgentName.value.trim();
 
   if (!name) {
@@ -495,7 +510,7 @@ watch(
   { immediate: true },
 );
 
-function openProperties(): void {
+function openProperties() {
   if (isWideLayout.value) {
     propertiesOpen.value = true;
     return;
@@ -504,7 +519,7 @@ function openProperties(): void {
   viewMode.value = "properties";
 }
 
-function closeProperties(): void {
+function closeProperties() {
   if (isWideLayout.value) {
     propertiesOpen.value = false;
     return;
@@ -513,7 +528,7 @@ function closeProperties(): void {
   viewMode.value = "chat";
 }
 
-function sendMessage(): void {
+function sendMessage() {
   const text = draft.value.trim();
   const agent = selectedAgent.value;
 
@@ -543,7 +558,10 @@ function sendMessage(): void {
   draft.value = "";
 }
 
-function syncWideLayout(event: MediaQueryListEvent | MediaQueryList): void {
+/**
+ * @param {MediaQueryListEvent | MediaQueryList} event
+ */
+function syncWideLayout(event) {
   isWideLayout.value = event.matches;
 }
 

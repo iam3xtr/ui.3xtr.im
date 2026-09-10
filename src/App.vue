@@ -28,7 +28,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { storeToRefs } from "pinia";
 import { computed, onMounted, ref, watch } from "vue";
 import { RouterView, useRoute } from "vue-router";
@@ -37,7 +37,7 @@ import Navbar from "./components/Navbar.vue";
 import Sidebar from "./components/Sidebar.vue";
 import { useWorkspaceStore } from "./stores/workspace";
 
-type Theme = "light" | "dark";
+/** @typedef {"light" | "dark"} Theme */
 
 const user = {
   firstName: "Иван",
@@ -57,7 +57,10 @@ const isFluidContent = computed(
   () => route.meta.contentMode === "fluid",
 );
 
-function applyTheme(theme: Theme): void {
+/**
+ * @param {Theme} theme
+ */
+function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   localStorage.setItem("trickster-theme", theme);
 }
@@ -67,11 +70,14 @@ watch(isDark, (value) => {
 });
 
 onMounted(() => {
-  const saved = localStorage.getItem("trickster-theme") as Theme | null;
-  const preferred: Theme = window.matchMedia("(prefers-color-scheme: dark)").matches
+  /** @type {Theme | null} */
+  const saved = localStorage.getItem("trickster-theme");
+  /** @type {Theme} */
+  const preferred = window.matchMedia("(prefers-color-scheme: dark)").matches
     ? "dark"
     : "light";
-  const initial: Theme = saved ?? preferred;
+  /** @type {Theme} */
+  const initial = saved ?? preferred;
 
   isDark.value = initial === "dark";
   applyTheme(initial);

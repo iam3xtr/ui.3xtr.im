@@ -82,66 +82,71 @@
   </section>
 </template>
 
-<script lang="ts">
-import type { WorkspaceTariff } from "../stores/workspace";
-
-export interface TariffSelectorTariff extends WorkspaceTariff {
-  id: string;
-  color?: string;
-  isFree?: boolean;
-  description?: string;
-  monthlyPriceLabel?: string;
-  yearlyPriceLabel?: string;
-  yearlyRegularPriceLabel?: string;
-  yearlySavingsLabel?: string;
-  rank?: number;
-  conditions?: string[];
-  disabled?: boolean;
-}
-</script>
-
-<script setup lang="ts">
+<script setup>
 import { computed } from "vue";
 
-const props = withDefaults(defineProps<{
-  tariffs: TariffSelectorTariff[];
-  modelValue?: string;
-  billingPeriod?: "monthly" | "yearly";
-  disabledTariffIds?: string[];
-  showFree?: boolean;
-}>(), {
-  modelValue: undefined,
-  billingPeriod: "monthly",
-  disabledTariffIds: () => [],
-  showFree: true,
+/**
+ * @typedef {import("../stores/workspace").WorkspaceTariff & {
+ *   id: string,
+ *   color?: string,
+ *   isFree?: boolean,
+ *   description?: string,
+ *   monthlyPriceLabel?: string,
+ *   yearlyPriceLabel?: string,
+ *   yearlyRegularPriceLabel?: string,
+ *   yearlySavingsLabel?: string,
+ *   rank?: number,
+ *   conditions?: string[],
+ *   disabled?: boolean,
+ * }} TariffSelectorTariff
+ */
+
+const props = defineProps({
+  /** @type {import("vue").PropType<TariffSelectorTariff[]>} */
+  tariffs: {
+    type: Array,
+    required: true,
+  },
+  modelValue: {
+    type: String,
+    default: undefined,
+  },
+  billingPeriod: {
+    type: String,
+    default: "monthly",
+  },
+  disabledTariffIds: {
+    type: Array,
+    default: () => [],
+  },
+  showFree: {
+    type: Boolean,
+    default: true,
+  },
 });
 
-const emit = defineEmits<{
-  "update:modelValue": [tariffId: string];
-  "update:billingPeriod": [billingPeriod: "monthly" | "yearly"];
-  select: [tariff: TariffSelectorTariff];
-}>();
+const emit = defineEmits(["update:modelValue", "update:billingPeriod", "select"]);
 
 const visibleTariffs = computed(() => props.tariffs.filter(
   (tariff) => props.showFree || !tariff.isFree,
 ));
 
-function isDisabled(tariff: TariffSelectorTariff): boolean {
+function isDisabled(tariff) {
   return tariff.disabled || props.disabledTariffIds.includes(tariff.id);
 }
 
-function selectTariff(tariff: TariffSelectorTariff): void {
+function selectTariff(tariff) {
   if (isDisabled(tariff)) return;
 
   emit("update:modelValue", tariff.id);
   emit("select", tariff);
 }
 
-function setBillingPeriod(billingPeriod: "monthly" | "yearly"): void {
+function setBillingPeriod(billingPeriod) {
   emit("update:billingPeriod", billingPeriod);
 }
 
-function getPriceLabel(tariff: TariffSelectorTariff): string {
+function getPriceLabel(tariff) {
   if (props.billingPeriod === "yearly") {
     return tariff.yearlyPriceLabel ?? tariff.priceLabel;
   }
@@ -149,7 +154,7 @@ function getPriceLabel(tariff: TariffSelectorTariff): string {
   return tariff.monthlyPriceLabel ?? tariff.priceLabel;
 }
 
-function getActionLabel(tariff: TariffSelectorTariff): string {
+function getActionLabel(tariff) {
   if (isDisabled(tariff)) return "Недоступен";
   if (tariff.id === props.modelValue) {
     return props.billingPeriod === "monthly"
@@ -165,12 +170,12 @@ function getActionLabel(tariff: TariffSelectorTariff): string {
   return "Выбрать тариф";
 }
 
-function isActionDisabled(tariff: TariffSelectorTariff): boolean {
+function isActionDisabled(tariff) {
   return isDisabled(tariff)
     || (tariff.id === props.modelValue && props.billingPeriod === "yearly");
 }
 
-function handleAction(tariff: TariffSelectorTariff): void {
+function handleAction(tariff) {
   if (tariff.id === props.modelValue) {
     setBillingPeriod("yearly");
     return;

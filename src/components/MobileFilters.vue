@@ -22,11 +22,12 @@
   </b-dropdown>
 </template>
 
-<script setup lang="ts">
-withDefaults(defineProps<{
-  active?: boolean;
-}>(), {
-  active: false,
+<script setup>
+defineProps({
+  active: {
+    type: Boolean,
+    default: false,
+  },
 });
 </script>
 

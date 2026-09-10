@@ -1,27 +1,30 @@
 import { defineStore } from "pinia";
 import { ref, watch } from "vue";
 
-interface StoredSiteSettings {
-  showSearch: boolean;
-  showResourceMenu: boolean;
-  showNotifications: boolean;
-}
+/**
+ * @typedef {Object} StoredSiteSettings
+ * @property {boolean} showSearch
+ * @property {boolean} showResourceMenu
+ * @property {boolean} showNotifications
+ */
 
 const STORAGE_KEY = "trickster-site-settings";
-const defaults: StoredSiteSettings = {
+/** @type {StoredSiteSettings} */
+const defaults = {
   showSearch: true,
   showResourceMenu: true,
   showNotifications: true,
 };
 
-function loadSettings(): StoredSiteSettings {
+/** @returns {StoredSiteSettings} */
+function loadSettings() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
 
     return stored
       ? {
           ...defaults,
-          ...JSON.parse(stored) as Partial<StoredSiteSettings>,
+          ...JSON.parse(stored),
         }
       : defaults;
   } catch {
@@ -42,12 +45,12 @@ export const useSiteSettingsStore = defineStore("site-settings", () => {
         showSearch: search,
         showResourceMenu: resourceMenu,
         showNotifications: notifications,
-      } satisfies StoredSiteSettings));
+      }));
     },
     { flush: "sync" },
   );
 
-  function reset(): void {
+  function reset() {
     showSearch.value = defaults.showSearch;
     showResourceMenu.value = defaults.showResourceMenu;
     showNotifications.value = defaults.showNotifications;

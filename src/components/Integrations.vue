@@ -47,7 +47,9 @@
       </MobileFilters>
     </header>
 
-    <div class="tr-catalog">
+    <Loader v-if="isLoading" size="section" />
+
+    <div v-else class="tr-catalog">
       <div class="tr-catalog__grid">
         <article
           v-for="integration in filteredIntegrations"
@@ -107,44 +109,52 @@
   </section>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { storeToRefs } from "pinia";
 import { computed, ref, watch } from "vue";
 
+import { useSimulatedLoading } from "../composables/useSimulatedLoading";
 import { useWorkspaceStore } from "../stores/workspace";
+import Loader from "./common/Loader.vue";
 import MobileFilters from "./MobileFilters.vue";
 import SearchField from "./SearchField.vue";
 import ToolbarDropdown from "./ToolbarDropdown.vue";
 
-type IntegrationCategory = "Мессенджеры" | "CRM" | "Коммуникации" | "Разработка";
-type IntegrationStatus = "Подключено" | "Доступно" | "Скоро";
+const { isLoading } = useSimulatedLoading();
 
-interface IntegrationDefinition {
-  id: string;
-  name: string;
-  description: string;
-  category: IntegrationCategory;
-  icon: string;
-  isComingSoon?: boolean;
-}
+/** @typedef {"Мессенджеры" | "CRM" | "Коммуникации" | "Разработка"} IntegrationCategory */
+/** @typedef {"Подключено" | "Доступно" | "Скоро"} IntegrationStatus */
 
-interface Integration extends IntegrationDefinition {
-  status: IntegrationStatus;
-}
+/**
+ * @typedef {Object} IntegrationDefinition
+ * @property {string} id
+ * @property {string} name
+ * @property {string} description
+ * @property {IntegrationCategory} category
+ * @property {string} icon
+ * @property {boolean} [isComingSoon]
+ */
 
-const integrationCategories: IntegrationCategory[] = [
+/**
+ * @typedef {IntegrationDefinition & { status: IntegrationStatus }} Integration
+ */
+
+/** @type {IntegrationCategory[]} */
+const integrationCategories = [
   "Мессенджеры",
   "CRM",
   "Коммуникации",
   "Разработка",
 ];
-const integrationStatuses: IntegrationStatus[] = [
+/** @type {IntegrationStatus[]} */
+const integrationStatuses = [
   "Подключено",
   "Доступно",
   "Скоро",
 ];
 
-const integrationCatalog: IntegrationDefinition[] = [
+/** @type {IntegrationDefinition[]} */
+const integrationCatalog = [
   {
     id: "telegram",
     name: "Telegram",
@@ -164,7 +174,7 @@ const integrationCatalog: IntegrationDefinition[] = [
     name: "VK",
     description: "Получайте сообщения сообществ и отвечайте от имени группы.",
     category: "Мессенджеры",
-    icon: "vk",
+    icon: "alpha-v-box-outline",
   },
   {
     id: "email",
@@ -214,27 +224,31 @@ const integrationCatalog: IntegrationDefinition[] = [
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId } = storeToRefs(workspaceStore);
 const query = ref("");
-const categoryFilter = ref<IntegrationCategory | "">("");
-const statusFilter = ref<IntegrationStatus | "">("");
-const categoryFilterProxy = computed<string>({
+/** @type {import("vue").Ref<IntegrationCategory | "">} */
+const categoryFilter = ref("");
+/** @type {import("vue").Ref<IntegrationStatus | "">} */
+const statusFilter = ref("");
+const categoryFilterProxy = computed({
   get: () => categoryFilter.value,
   set: (value) => {
-    categoryFilter.value = value as IntegrationCategory | "";
+    categoryFilter.value = value;
   },
 });
-const statusFilterProxy = computed<string>({
+const statusFilterProxy = computed({
   get: () => statusFilter.value,
   set: (value) => {
-    statusFilter.value = value as IntegrationStatus | "";
+    statusFilter.value = value;
   },
 });
-const connectedByWorkspace = ref<Record<string, string[]>>({
+/** @type {import("vue").Ref<Record<string, string[]>>} */
+const connectedByWorkspace = ref({
   demo: ["telegram", "email", "webhook"],
   trickster: ["telegram"],
   empty: [],
 });
 
-const integrations = computed<Integration[]>(() => {
+/** @type {import("vue").ComputedRef<Integration[]>} */
+const integrations = computed(() => {
   const connected = connectedByWorkspace.value[activeWorkspaceId.value] ?? [];
 
   return integrationCatalog.map((integration) => ({
@@ -265,7 +279,10 @@ const filteredIntegrations = computed(() => {
   });
 });
 
-function connectIntegration(id: string): void {
+/**
+ * @param {string} id
+ */
+function connectIntegration(id) {
   const workspaceId = activeWorkspaceId.value;
   const connected = connectedByWorkspace.value[workspaceId]
     ?? (connectedByWorkspace.value[workspaceId] = []);

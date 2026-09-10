@@ -14,29 +14,34 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 
-type SearchPriority = "navbar" | "page";
+/** @typedef {"navbar" | "page"} SearchPriority */
 
-const props = withDefaults(defineProps<{
-  placeholder: string;
-  ariaLabel?: string;
-  priority?: SearchPriority;
-}>(), {
-  ariaLabel: undefined,
-  priority: "page",
+const props = defineProps({
+  placeholder: {
+    type: String,
+    required: true,
+  },
+  ariaLabel: {
+    type: String,
+    default: undefined,
+  },
+  /** @type {import("vue").PropType<SearchPriority>} */
+  priority: {
+    type: String,
+    default: "page",
+  },
 });
 
-const emit = defineEmits<{
-  shortcut: [];
-}>();
+const emit = defineEmits(["shortcut"]);
 
-const model = defineModel<string>({ required: true });
-const searchInput = ref<{ focus: () => void } | null>(null);
+const model = defineModel({ required: true });
+const searchInput = ref(null);
 const shortcutLabel = ref("Ctrl K");
 
-function handleSearchShortcut(event: KeyboardEvent): void {
+function handleSearchShortcut(event) {
   if (
     !(event.ctrlKey || event.metaKey)
     || event.key.toLocaleLowerCase() !== "k"

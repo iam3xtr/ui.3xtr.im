@@ -1,7 +1,9 @@
 <template>
   <section class="tr-workbench-page tr-knowledge">
+    <Loader v-if="!selectedCollection && isLoading" size="section" />
+
     <header
-      v-if="!selectedCollection"
+      v-if="!selectedCollection && !isLoading"
       class="tr-workbench-page__header tr-page-toolbar"
     >
       <SearchField
@@ -35,7 +37,7 @@
     </header>
 
     <section
-      v-if="!selectedCollection"
+      v-if="!selectedCollection && !isLoading"
       class="tr-catalog"
       aria-label="Коллекции знаний"
     >
@@ -212,39 +214,41 @@
   </b-modal>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { storeToRefs } from "pinia";
 import { computed, ref, watch } from "vue";
 
+import { useSimulatedLoading } from "../composables/useSimulatedLoading";
 import { useWorkspaceStore } from "../stores/workspace";
+import Loader from "./common/Loader.vue";
 import MobileFilters from "./MobileFilters.vue";
 import SearchField from "./SearchField.vue";
 import ToolbarDropdown from "./ToolbarDropdown.vue";
 
-type CollectionType =
-  | "mixed"
-  | "website"
-  | "files"
-  | "links"
-  | "markdown"
-  | "faq";
-type KnowledgeItemType = "file" | "link" | "markdown";
+const { isLoading } = useSimulatedLoading();
 
-interface KnowledgeItem {
-  id: number;
-  name: string;
-  type: KnowledgeItemType;
-  source: string;
-  updated: string;
-}
+/**
+ * @typedef {"mixed" | "website" | "files" | "links" | "markdown" | "faq"} CollectionType
+ */
+/** @typedef {"file" | "link" | "markdown"} KnowledgeItemType */
 
-interface KnowledgeCollection {
-  id: number;
-  name: string;
-  description: string;
-  type: CollectionType;
-  items: KnowledgeItem[];
-}
+/**
+ * @typedef {Object} KnowledgeItem
+ * @property {number} id
+ * @property {string} name
+ * @property {KnowledgeItemType} type
+ * @property {string} source
+ * @property {string} updated
+ */
+
+/**
+ * @typedef {Object} KnowledgeCollection
+ * @property {number} id
+ * @property {string} name
+ * @property {string} description
+ * @property {CollectionType} type
+ * @property {KnowledgeItem[]} items
+ */
 
 const collectionTypes = [
   {
@@ -283,15 +287,17 @@ const collectionTypes = [
     icon: "frequently-asked-questions",
     description: "Структурированные пары вопросов и ответов.",
   },
-] as const;
+];
 
+/** @type {Record<KnowledgeItemType, { label: string, icon: string }>} */
 const itemTypes = {
   file: { label: "Файл", icon: "file-outline" },
   link: { label: "Ссылка", icon: "link-variant" },
   markdown: { label: "Markdown", icon: "language-markdown-outline" },
-} satisfies Record<KnowledgeItemType, { label: string; icon: string }>;
+};
 
-const collectionsByWorkspace = ref<Record<string, KnowledgeCollection[]>>({
+/** @type {import("vue").Ref<Record<string, KnowledgeCollection[]>>} */
+const collectionsByWorkspace = ref({
   demo: [
     {
       id: 1,
@@ -390,20 +396,22 @@ const collectionsByWorkspace = ref<Record<string, KnowledgeCollection[]>>({
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId } = storeToRefs(workspaceStore);
 const query = ref("");
-const typeFilter = ref<CollectionType | "">("");
-const typeFilterProxy = computed<string>({
+/** @type {import("vue").Ref<CollectionType | "">} */
+const typeFilter = ref("");
+const typeFilterProxy = computed({
   get: () => typeFilter.value,
   set: (value) => {
-    typeFilter.value = value as CollectionType | "";
+    typeFilter.value = value;
   },
 });
 const collectionTypeOptions = computed(
   () => collectionTypes.map((type) => ({ value: type.value, label: type.label })),
 );
-const selectedId = ref<number | null>(null);
+const selectedId = ref(/** @type {number | null} */ (null));
 const isCreateOpen = ref(false);
 const newCollectionName = ref("");
-const newCollectionType = ref<CollectionType>("mixed");
+/** @type {import("vue").Ref<CollectionType>} */
+const newCollectionType = ref("mixed");
 
 const collections = computed(
   () => collectionsByWorkspace.value[activeWorkspaceId.value] ?? [],
@@ -431,26 +439,32 @@ const filteredCollections = computed(() => {
   });
 });
 
-function getCollectionType(type: CollectionType) {
+/**
+ * @param {CollectionType} type
+ */
+function getCollectionType(type) {
   return collectionTypes.find((item) => item.value === type)
     ?? collectionTypes[0];
 }
 
-function getItemType(type: KnowledgeItemType) {
+/**
+ * @param {KnowledgeItemType} type
+ */
+function getItemType(type) {
   return itemTypes[type];
 }
 
-function showCollectionCatalog(): void {
+function showCollectionCatalog() {
   selectedId.value = null;
 }
 
-function openCreateModal(): void {
+function openCreateModal() {
   newCollectionName.value = "";
   newCollectionType.value = "mixed";
   isCreateOpen.value = true;
 }
 
-function createCollection(): void {
+function createCollection() {
   const name = newCollectionName.value.trim();
 
   if (!name) {

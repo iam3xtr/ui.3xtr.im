@@ -89,6 +89,7 @@
 
   --tr-overlay: rgb(0 0 0 / 0.36);
   --tr-shadow: #{tr.$shadow-light};
+  --tr-icon-placeholder-stripe: rgb(0 0 0 / 0.08);
 
   --tr-success: #{tr.$success};
   --tr-info: #{tr.$info};
@@ -128,6 +129,9 @@
 
   --tr-overlay: rgb(0 0 0 / 0.68);
   --tr-shadow: #{tr.$shadow-dark};
+  // Light-on-dark stripe (не то же 0.08 чёрного, что в светлой теме — там
+  // оно было бы почти невидимым на тёмной поверхности).
+  --tr-icon-placeholder-stripe: rgb(255 255 255 / 0.12);
 
   --tr-success: #{tr.$success};
   --tr-info: #{tr.$info};
@@ -880,6 +884,113 @@ a.dropdown-item.tr-dropdown-danger:hover {
 }
 
 // =============================================================================
+// Icons
+// =============================================================================
+// Кастомная SVG-иконка (компонент Icon.vue, зарегистрирован как <icon>)
+// получает собственный класс tr-icon / tr-icon--placeholder, а НЕ .icon:
+// у Bulma есть глобальный .icon (inline-flex, центрирование, размер из
+// --bulma-icon-dimensions), который используют все b-icon. Если бы правила
+// компонента жили под именем .icon, они переопределяли бы Bulma для каждой
+// MDI-иконки в обоих проектах. Bulma-.icon остаётся на элементе (вместе с
+// tr-icon) ради размера и центрирования — это то, что выравнивает кастомную
+// SVG с MDI в одной строке.
+//
+// Известный дефект: fill: var(--tr-text) вместо currentColor ломает
+// Bulma-хелперы has-text-* на SVG. Исправление — Stage A3, здесь не
+// трогаем.
+
+.tr-icon {
+  fill: var(--tr-text);
+}
+
+.tr-icon--placeholder {
+  border-radius: tr.$radius-rounded;
+  background: repeating-linear-gradient(
+    180deg,
+    var(--tr-icon-placeholder-stripe),
+    var(--tr-icon-placeholder-stripe) 2px,
+    transparent 2px,
+    transparent 4px
+  );
+}
+
+// =============================================================================
+// Loader
+// =============================================================================
+// Единый загрузчик (Loader.vue) заменяет четыре несвязанных механизма
+// индикации загрузки кабинета: неработавший полноэкранный .app-loader (весь
+// <style> в App.vue был закомментирован), инлайновую SVG-иконку
+// bars-scale-fade (30 использований в 29 компонентах), CSS-спиннер
+// .async-state__spinner и скелетоны. Компонент без <style> — все правила
+// здесь, одной секцией.
+//
+// Центрирование — по обеим осям через display: grid; place-items: center, а
+// не flex column + padding, как было в .async-state кабинета: тот
+// центрировал только по горизонтали и прижимал содержимое к верху в
+// контейнере с заданной высотой.
+//
+// loader-mono.svg красится через currentColor — .tr-loader задаёт color,
+// а не отдельная SVG-палитра, поэтому логотип адаптируется к теме и месту
+// использования так же, как .tr-icon.
+
+.tr-loader {
+  display: grid;
+  place-items: center;
+  color: var(--tr-primary);
+}
+
+.tr-loader__mark {
+  display: block;
+  height: 1em;
+  width: auto;
+  aspect-ratio: 68 / 32;
+}
+
+// inline — внутри кнопки или строки текста: не блокирует поток (inline-grid)
+// и не меняет высоту строки — размер мерки завязан на line-height через em.
+.tr-loader--inline {
+  display: inline-grid;
+  height: 1em;
+  vertical-align: middle;
+}
+
+// section — внутри карточки, панели или области списка: высоту всегда
+// задаёт родитель (флекс-контейнер через flex: 1, см. выше, либо явная
+// height/min-height на обёртке) — сам модификатор высоту не навязывает,
+// иначе он не смог бы уменьшиться до родителя ниже собственного порога
+// (проверяется на карточке 220px в демо на /kit).
+.tr-loader--section {
+  width: 100%;
+  padding: tr.$space-8 tr.$space-4;
+}
+
+.tr-loader--section .tr-loader__mark {
+  height: 2.5rem;
+}
+
+// Для мест, где .tr-loader — не потомок flex-страницы и явной высоты у
+// родителя тоже нет (Dashboard, тариф пространства): собственный запасной
+// min-height, такой же, как у пустого состояния каталога
+// (.tr-dashboard-create), чтобы загрузчик занимал разумную часть экрана, а
+// не жался к верху узкой полосой. Не входит в .tr-loader--section, чтобы не
+// конфликтовать с явной высотой родителя.
+.tr-loader--standalone {
+  min-height: min(520px, calc(100vh - 160px));
+}
+
+// screen — полноэкранное состояние приложения. 100dvh, а не 100vh — на
+// мобильных браузерах с плавающей адресной строкой 100vh либо обрезает
+// загрузчик, либо оставляет его не по центру при скролле адресной строки.
+.tr-loader--screen {
+  min-height: 100dvh;
+  width: 100%;
+}
+
+.tr-loader--screen .tr-loader__mark {
+  height: 4rem;
+}
+
+// =============================================================================
 // Surfaces and dashboard cards
 // =============================================================================
 
@@ -1618,7 +1729,8 @@ button.dropdown-item:hover {
 }
 
 .tr-workbench-page > .tr-conversations,
-.tr-workbench-page > .tr-section-empty {
+.tr-workbench-page > .tr-section-empty,
+.tr-workbench-page > .tr-loader {
   height: auto;
   min-height: 0;
   flex: 1;

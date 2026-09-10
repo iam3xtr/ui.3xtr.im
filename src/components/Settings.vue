@@ -52,7 +52,7 @@
   </section>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { storeToRefs } from "pinia";
 
 import { useSiteSettingsStore } from "../stores/siteSettings";

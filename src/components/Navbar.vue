@@ -402,7 +402,7 @@
   </header>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -414,52 +414,57 @@ import {
 import { useSiteSettingsStore } from "../stores/siteSettings";
 import Logo from "./Logo.vue";
 import SearchField from "./SearchField.vue";
-import ToolbarTabs, { type ToolbarTabItem } from "./ToolbarTabs.vue";
+import ToolbarTabs from "./ToolbarTabs.vue";
 
-interface Workspace {
-  id: string;
-  name: string;
-  role: string;
-  plan: string;
-}
+/**
+ * @typedef {Object} Workspace
+ * @property {string} id
+ * @property {string} name
+ * @property {string} role
+ * @property {string} plan
+ */
 
-interface User {
-  firstName: string;
-  lastName: string;
-  role: string;
-}
+/**
+ * @typedef {Object} User
+ * @property {string} firstName
+ * @property {string} lastName
+ * @property {string} role
+ */
 
-interface NotificationEvent {
-  title: string;
-  description: string;
-  time: string;
-  isRead?: boolean;
-}
+/**
+ * @typedef {Object} NotificationEvent
+ * @property {string} title
+ * @property {string} description
+ * @property {string} time
+ * @property {boolean} [isRead]
+ */
 
-interface ResourceLink {
-  label: string;
-}
+/**
+ * @typedef {Object} ResourceLink
+ * @property {string} label
+ */
 
-interface DropdownInstance {
-  toggle: () => void;
-}
+const props = defineProps({
+  /** @type {import("vue").PropType<Workspace[]>} */
+  workspaces: {
+    type: Array,
+    required: true,
+  },
+  /** @type {import("vue").PropType<User>} */
+  user: {
+    type: Object,
+    required: true,
+  },
+});
 
-const props = defineProps<{
-  workspaces: Workspace[];
-  user: User;
-}>();
+const emit = defineEmits(["create-workspace", "logout"]);
 
-const emit = defineEmits<{
-  "create-workspace": [];
-  logout: [];
-}>();
-
-const workspace = defineModel<string>("workspace", { required: true });
-const isDark = defineModel<boolean>("isDark", { required: true });
+const workspace = defineModel("workspace", { required: true });
+const isDark = defineModel("isDark", { required: true });
 const locale = ref("ru");
 const searchQuery = ref("");
-const mobileNavDropdown = ref<DropdownInstance | null>(null);
-const userDropdown = ref<DropdownInstance | null>(null);
+const mobileNavDropdown = ref(null);
+const userDropdown = ref(null);
 const route = useRoute();
 const router = useRouter();
 const siteSettings = useSiteSettingsStore();
@@ -469,13 +474,17 @@ const {
   showNotifications,
 } = storeToRefs(siteSettings);
 
-const resourceLinks: ResourceLink[] = [
+/** @type {ResourceLink[]} */
+const resourceLinks = [
   { label: "Новости" },
   { label: "API" },
   { label: "Документация" },
 ];
 
-const workspaceTabs: ToolbarTabItem[] = [
+/**
+ * @type {{ label: string, to: import("vue-router").RouteLocationRaw }[]}
+ */
+const workspaceTabs = [
   { label: "Обзор", to: { name: "workspace" } },
   { label: "Настройки", to: { name: "workspace-settings" } },
   { label: "Участники", to: { name: "workspace-members" } },
@@ -484,7 +493,8 @@ const workspaceTabs: ToolbarTabItem[] = [
 
 const isWorkspaceRoute = computed(() => route.path.startsWith("/workspace"));
 
-const notificationEvents: NotificationEvent[] = [
+/** @type {NotificationEvent[]} */
+const notificationEvents = [
   {
     title: "Новый диалог",
     description: "Анна начала диалог с агентом «Консультант».",
@@ -512,31 +522,34 @@ const userInitials = computed(
   () => `${props.user.firstName[0] ?? ""}${props.user.lastName[0] ?? ""}`,
 );
 
-function goToWorkspaceSettings(): void {
+function goToWorkspaceSettings() {
   router.push({ name: "workspace-settings" });
 }
 
-function goToWorkspaceMembers(): void {
+function goToWorkspaceMembers() {
   router.push({ name: "workspace-members" });
 }
 
-function goToProfile(): void {
+function goToProfile() {
   router.push({ name: "profile" });
 }
 
-function goToSecurity(): void {
+function goToSecurity() {
   router.push({ name: "security" });
 }
 
-function closeMobileNav(): void {
+function closeMobileNav() {
   mobileNavDropdown.value?.toggle();
 }
 
-function closeUserMenu(): void {
+function closeUserMenu() {
   userDropdown.value?.toggle();
 }
 
-function isNavigationItemActive(routeName: string): boolean {
+/**
+ * @param {string} routeName
+ */
+function isNavigationItemActive(routeName) {
   return routeName === "workspace"
     ? route.path.startsWith("/workspace")
     : route.name === routeName;

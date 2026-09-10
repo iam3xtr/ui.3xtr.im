@@ -7,7 +7,10 @@
       </div>
     </div>
 
+    <Loader v-if="isLoading" size="section" class="tr-loader--standalone" />
+
     <TariffSelector
+      v-else
       v-model="selectedTariffId"
       v-model:billing-period="billingPeriod"
       :tariffs="tariffOptions"
@@ -15,15 +18,21 @@
   </section>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref } from "vue";
 
-import TariffSelector, { type TariffSelectorTariff } from "./TariffSelector.vue";
+import { useSimulatedLoading } from "../composables/useSimulatedLoading";
+import Loader from "./common/Loader.vue";
+import TariffSelector from "./TariffSelector.vue";
+
+const { isLoading } = useSimulatedLoading();
 
 const selectedTariffId = ref("free");
-const billingPeriod = ref<"monthly" | "yearly">("monthly");
+/** @type {import("vue").Ref<"monthly" | "yearly">} */
+const billingPeriod = ref("monthly");
 
-const tariffOptions: TariffSelectorTariff[] = [
+/** @type {import("./TariffSelector.vue").TariffSelectorTariff[]} */
+const tariffOptions = [
   {
     id: "free",
     displayName: "Free",

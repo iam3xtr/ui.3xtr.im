@@ -1,36 +1,42 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 
-export interface Workspace {
-  id: string;
-  name: string;
-  role: string;
-  plan: string;
-}
+/**
+ * @typedef {Object} Workspace
+ * @property {string} id
+ * @property {string} name
+ * @property {string} role
+ * @property {string} plan
+ */
 
-export interface WorkspaceTariffLimit {
-  key: string;
-  label: string;
-  caption: string;
-  /** 0-100, `null` — лимит не задан (unlimited). */
-  progress: number | null;
-}
+/**
+ * @typedef {Object} WorkspaceTariffLimit
+ * @property {string} key
+ * @property {string} label
+ * @property {string} caption
+ * @property {number | null} progress 0-100, `null` — лимит не задан (unlimited).
+ */
 
-export interface WorkspaceTariff {
-  displayName: string;
-  priceLabel: string;
-  tagType?: string;
-  limits: WorkspaceTariffLimit[];
-}
+/**
+ * @typedef {Object} WorkspaceTariff
+ * @property {string} displayName
+ * @property {string} priceLabel
+ * @property {string} [tagType]
+ * @property {WorkspaceTariffLimit[]} limits
+ */
 
+/**
+ * @param {{
+ *   creditsProgress: number;
+ *   creditsCaption: string;
+ *   conversationsProgress: number | null;
+ *   conversationsCaption: string;
+ * }} params
+ * @returns {WorkspaceTariffLimit[]}
+ */
 const freeTariffLimits = (
-  { creditsProgress, creditsCaption, conversationsProgress, conversationsCaption }: {
-    creditsProgress: number;
-    creditsCaption: string;
-    conversationsProgress: number | null;
-    conversationsCaption: string;
-  },
-): WorkspaceTariffLimit[] => [
+  { creditsProgress, creditsCaption, conversationsProgress, conversationsCaption },
+) => [
   {
     key: "credits",
     label: "Кредиты",
@@ -45,7 +51,8 @@ const freeTariffLimits = (
   },
 ];
 
-const emptyTariff: WorkspaceTariff = {
+/** @type {WorkspaceTariff} */
+const emptyTariff = {
   displayName: "Free",
   priceLabel: "Бесплатно",
   limits: freeTariffLimits({
@@ -56,7 +63,8 @@ const emptyTariff: WorkspaceTariff = {
   }),
 };
 
-const tariffsByWorkspaceId: Record<string, WorkspaceTariff> = {
+/** @type {Record<string, WorkspaceTariff>} */
+const tariffsByWorkspaceId = {
   demo: {
     displayName: "Free",
     priceLabel: "Бесплатно",
@@ -90,7 +98,8 @@ const tariffsByWorkspaceId: Record<string, WorkspaceTariff> = {
 };
 
 export const useWorkspaceStore = defineStore("workspace", () => {
-  const workspaces = ref<Workspace[]>([
+  /** @type {import("vue").Ref<Workspace[]>} */
+  const workspaces = ref([
     {
       id: "demo",
       name: "Демо-пространство",
@@ -115,7 +124,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     () => tariffsByWorkspaceId[activeWorkspaceId.value] ?? emptyTariff,
   );
 
-  function createWorkspace(): void {
+  function createWorkspace() {
     const number = workspaces.value.length + 1;
     const id = `workspace-${number}`;
 

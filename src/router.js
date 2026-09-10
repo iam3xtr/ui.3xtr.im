@@ -15,12 +15,6 @@ import UiKit from "./components/UiKit.vue";
 import Workspace from "./components/Workspace.vue";
 import WorkspacePlan from "./components/WorkspacePlan.vue";
 
-declare module "vue-router" {
-  interface RouteMeta {
-    contentMode?: "contained" | "fluid";
-  }
-}
-
 const router = createRouter({
   history:
     import.meta.env.VITE_ROUTER_MODE === "hash"

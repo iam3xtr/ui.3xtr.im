@@ -30,7 +30,7 @@
   </aside>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { storeToRefs } from "pinia";
 import { useRoute } from "vue-router";
 
@@ -45,7 +45,10 @@ const route = useRoute();
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceTariff } = storeToRefs(workspaceStore);
 
-function isNavigationItemActive(routeName: string): boolean {
+/**
+ * @param {string} routeName
+ */
+function isNavigationItemActive(routeName) {
   return routeName === "workspace"
     ? route.path.startsWith("/workspace")
     : route.name === routeName;

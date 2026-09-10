@@ -347,7 +347,83 @@
   под каждый новый `b-dropdown`. ✅ Общий `.tr-dropdown` (раздел 10) + один
   модификатор-класс на конкретный экземпляр для его ширины/триггера.
 
-## 12. Порядок работы над одной страницей ЛК
+## 12. Карта соответствия иконок «набор кабинета → MDI»
+
+Источник: аудит `src/assets/icons/**` кабинета (114 файлов) в `.todo`
+(Task A1.4), реестр кастомных иконок — в `design-system.md` (раздел
+«Иконки»). Здесь — только та часть набора, что уходит на MDI: 18 служебных
+UI-иконок, 2 типа коллекций и 2 состояния робота, у которых MDI-имя не
+совпадает буквально с MDI-семейством `robot-*`, но перечислены для полноты
+карты. Остальные имена семьи роботов (`robot`, `robot-angry`, `robot-confused`,
+`robot-excited`, `robot-happy`, `robot-off`) в кабинете не используются и в
+карту не входят.
+
+Каждое MDI-имя проверено на существование в установленном `@mdi/font`
+(`node_modules/@mdi/font/css/materialdesignicons.css`) на момент составления
+карты (2026-09-10).
+
+| Имя в наборе кабинета | MDI-имя | Обоснование выбора |
+|---|---|---|
+| `chevron-left` | `chevron-left` | Прямое совпадение |
+| `chevron-right` | `chevron-right` | Прямое совпадение |
+| `close` | `close` | Прямое совпадение; заодно чинит дефект — `close.svg` в наборе кабинета физически отсутствует, хотя `<icon name="close">` используется в разметке (`Members.vue` и другие), поэтому сейчас рендерится placeholder |
+| `copy` | `content-copy` | Стандартное MDI-имя действия «копировать» |
+| `delete` | `delete` | Прямое совпадение по смыслу и форме (не `delete-outline`, чтобы визуальный вес совпадал с остальными перенесёнными иконками) |
+| `down` | `chevron-down` | `down` — не MDI-конвенция; `chevron-down` — стандартное имя для раскрывающегося индикатора |
+| `edit` | `pencil` | В MDI действие «редактировать» называется `pencil`, а не `edit` |
+| `eye` | `eye` | Прямое совпадение |
+| `eye-slash` | `eye-off` | В MDI используется `eye-off`, не `eye-slash` (Font Awesome / Material Symbols конвенция) |
+| `more-vert` | `dots-vertical` | В MDI используется `dots-vertical`, не `more-vert` (Material Symbols конвенция) |
+| `person` | `account` | В MDI используется `account`; `user.svg` в наборе кабинета не используется нигде и в карту не входит |
+| `resend` | `email-sync-outline` | Единственное применение — повторная отправка приглашения участника (`Members.vue`, `inviteResend`); `email-sync-outline` точнее передаёт «переслать письмо ещё раз», чем нейтральный `refresh` |
+| `upload` | `upload` | Прямое совпадение |
+| `workspace` | `briefcase` | В MDI нет иконки `workspace`; `briefcase` — принятая MDI-метафора рабочего пространства |
+| `chats` | `forum` | В MDI нет иконки `chats`; `forum` — принятая MDI-метафора списка диалогов |
+| `dark-mode` | `weather-night` | В MDI переключатель тёмной темы называется `weather-night`, не `dark-mode` (Material Symbols конвенция) |
+| `light-mode` | `weather-sunny` | В MDI переключатель светлой темы называется `weather-sunny`, не `light-mode` (Material Symbols конвенция) |
+| `star-smile` | `star-face` | Ближайшее по смыслу MDI-имя для «оценки с улыбкой» |
+| `collection-links` | `link-variant` | Тип коллекции знаний «ссылки»; прямой MDI-эквивалент есть, кастомная иконка избыточна |
+| `collection-storage` | `database` | Тип коллекции знаний «хранилище»; прямой MDI-эквивалент есть, кастомная иконка избыточна |
+| `robot-love` | `robot-love` | Состояние агента; MDI содержит всю семью эмоций робота под теми же именами |
+| `robot-dead` | `robot-dead` | Состояние агента; MDI содержит всю семью эмоций робота под теми же именами |
+
+Не входят ни в реестр кастомных иконок, ни в эту карту — решены иначе:
+
+- `checkbox-checked`, `checkbox-partial`, `checkbox-unchecked` — это
+  состояния контрола, а не иконки; переходят на `b-checkbox` (с
+  `indeterminate` для промежуточного состояния) в Stage A3, а не копируются
+  в кит как SVG.
+- `bars-scale-fade` — инлайновый спиннер, вставленный вручную 30 раз в 29
+  компонентах кабинета; поглощается единым компонентом `Loader`
+  (Task A1.7) и в кит как отдельная SVG-иконка не переносится.
+- Пять брендовых иконок каналов связи (`channels/instagram`,
+  `channels/messenger`, `channels/telegram`, `channels/web`,
+  `channels/whatsapp`) — не используются: `ChannelCard.vue` рендерит канал
+  через `b-icon` (MDI), а не через `<icon>`. В кит не переносятся, пока это
+  не изменится.
+- Остальные 58 файлов набора не используются нигде в разметке кабинета
+  (`<icon name="…">` ни статически, ни динамически) и в кит не переносятся:
+  `account`, `admin`, `agents`, `agents-empty`, `audio`, `chat-bubble`,
+  `chat-unread`, `cloud-upload`, `credit-card`, `docs`, `draft`, `gear`,
+  `group`, `image`, `invite`, `knowledge`, `language`, `library`,
+  `library-add`, `library-books`, `link`, `lock`, `login`, `logout`,
+  `members`, `menu`, `menu-open`, `monitoring`, `moon`, `more-horiz`,
+  `new-tab`, `playground`, `plug`, `plus`, `premium`, `radio-checked`,
+  `radio-partial`, `radio-unchecked`, `reset`, `return`, `robot`,
+  `robot-angry`, `robot-confused`, `robot-excited`, `robot-happy`,
+  `robot-off`, `robot-pig`, `script-text`, `send`, `settings`, `shield-moon`,
+  `shield-sun`, `sun`, `text`, `translate`, `user`, `video`, `workspaces`.
+
+Итог по решению для всех 114 физических файлов набора кабинета: 26 — в
+реестр кастомных иконок кита; 22 имени уходят на MDI по карте выше (18
+UI-имён + 2 типа коллекций + 2 состояния робота), из них у одного
+(`close`) физического файла в наборе нет — используется в разметке, но
+рендерится placeholder, поэтому реально файлов среди перенесённых на MDI
+21, а не 22; 3 — на `b-checkbox`; 1 (`bars-scale-fade`) — в `Loader`; 63 —
+не переносятся никуда (58 неиспользуемых прочих плюс 5 неиспользуемых
+брендовых иконок каналов). `26 + 21 + 3 + 1 + 63 = 114`.
+
+## 13. Порядок работы над одной страницей ЛК
 
 1. Определить тип страницы по чек-листу (раздел 2).
 2. Открыть в `trickster-ui-kit` эталонный компонент с тем же типом и

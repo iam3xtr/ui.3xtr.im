@@ -11,18 +11,24 @@
   </nav>
 </template>
 
-<script setup lang="ts">
-import { RouterLink, type RouteLocationRaw } from "vue-router";
+<script setup>
+import { RouterLink } from "vue-router";
 
-export interface ToolbarTabItem {
-  label: string;
-  to: RouteLocationRaw;
-}
+/**
+ * @typedef {Object} ToolbarTabItem
+ * @property {string} label
+ * @property {import("vue-router").RouteLocationRaw} to
+ */
 
-withDefaults(defineProps<{
-  items: ToolbarTabItem[];
-  ariaLabel?: string;
-}>(), {
-  ariaLabel: "Навигационные вкладки",
+defineProps({
+  /** @type {import("vue").PropType<ToolbarTabItem[]>} */
+  items: {
+    type: Array,
+    required: true,
+  },
+  ariaLabel: {
+    type: String,
+    default: "Навигационные вкладки",
+  },
 });
 </script>

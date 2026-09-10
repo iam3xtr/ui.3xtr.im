@@ -32,12 +32,16 @@
   </RouterLink>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { RouterLink } from "vue-router";
 
-import type { WorkspaceTariff } from "../stores/workspace";
+/** @typedef {import("../stores/workspace").WorkspaceTariff} WorkspaceTariff */
 
-defineProps<{
-  tariff: WorkspaceTariff;
-}>();
+defineProps({
+  /** @type {import("vue").PropType<WorkspaceTariff>} */
+  tariff: {
+    type: Object,
+    required: true,
+  },
+});
 </script>

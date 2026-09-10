@@ -34,25 +34,34 @@
   </b-dropdown>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { computed } from "vue";
 
-interface ToolbarDropdownOption {
-  value: string;
-  label: string;
-}
+/**
+ * @typedef {Object} ToolbarDropdownOption
+ * @property {string} value
+ * @property {string} label
+ */
 
-const props = withDefaults(defineProps<{
-  options: (string | ToolbarDropdownOption)[];
-  allLabel: string;
-  ariaLabel?: string;
-}>(), {
-  ariaLabel: undefined,
+const props = defineProps({
+  /** @type {import("vue").PropType<(string | ToolbarDropdownOption)[]>} */
+  options: {
+    type: Array,
+    required: true,
+  },
+  allLabel: {
+    type: String,
+    required: true,
+  },
+  ariaLabel: {
+    type: String,
+    default: undefined,
+  },
 });
 
-const model = defineModel<string>({ required: true });
+const model = defineModel({ required: true });
 
-const normalizedOptions = computed<ToolbarDropdownOption[]>(
+const normalizedOptions = computed(
   () => props.options.map((option) => (
     typeof option === "string"
       ? { value: option, label: option }

@@ -1,7 +1,9 @@
 <template>
   <div>
+    <Loader v-if="isLoading" size="section" class="tr-loader--standalone" />
+
     <RouterLink
-      v-if="agents.length === 0"
+      v-else-if="agents.length === 0"
       :to="{ name: 'agents', query: { create: '1' } }"
       class="tr-card tr-card--interactive tr-dashboard-create"
     >
@@ -96,12 +98,17 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { storeToRefs } from "pinia";
 import { computed } from "vue";
 import { RouterLink } from "vue-router";
 
+import { useSimulatedLoading } from "../composables/useSimulatedLoading";
 import { useWorkspaceStore } from "../stores/workspace";
+
+import Loader from "./common/Loader.vue";
+
+const { isLoading } = useSimulatedLoading();
 
 const dashboardSections = [
   {
@@ -140,7 +147,7 @@ const dashboardSections = [
     label: "Тариф",
     icon: "credit-card-outline",
   },
-] as const;
+];
 
 const emptyDashboard = {
   sections: {
@@ -330,8 +337,7 @@ const dashboards = {
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId } = storeToRefs(workspaceStore);
 const dashboard = computed(
-  () => dashboards[activeWorkspaceId.value as keyof typeof dashboards]
-    ?? emptyDashboard,
+  () => dashboards[activeWorkspaceId.value] ?? emptyDashboard,
 );
 const dashboardNavigationItems = computed(() =>
   dashboardSections.map((section) => ({

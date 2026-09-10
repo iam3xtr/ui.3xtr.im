@@ -1,10 +1,12 @@
-export interface MainNavigationItem {
-  routeName: string;
-  icon: string;
-  label: string;
-}
+/**
+ * @typedef {Object} MainNavigationItem
+ * @property {string} routeName
+ * @property {string} icon
+ * @property {string} label
+ */
 
-export const mainNavigationItems: MainNavigationItem[] = [
+/** @type {MainNavigationItem[]} */
+export const mainNavigationItems = [
   { routeName: "conversations", icon: "forum-outline", label: "Диалоги" },
   { routeName: "agents", icon: "robot-outline", label: "Агенты" },
   { routeName: "knowledge", icon: "book-open-page-variant-outline", label: "Знания" },
@@ -12,6 +14,7 @@ export const mainNavigationItems: MainNavigationItem[] = [
   { routeName: "workspace", icon: "office-building-cog-outline", label: "Пространство" },
 ];
 
-export const administrationNavigationItems: MainNavigationItem[] = [
+/** @type {MainNavigationItem[]} */
+export const administrationNavigationItems = [
   { routeName: "ui-kit", icon: "palette-outline", label: "UI Kit" },
 ];
