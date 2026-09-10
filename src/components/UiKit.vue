@@ -144,24 +144,22 @@
 
               <div>
                 <p class="tr-muted mb-2">section — в карточке фиксированной высоты</p>
-                <div
-                  class="tr-card"
-                  style="height: 220px; padding: 0; overflow: hidden"
-                >
-                  <Loader size="section" label="Загрузка диалогов" style="height: 100%" />
+                <div class="tr-card tr-uikit-demo-frame tr-uikit-demo-frame--section">
+                  <Loader
+                    size="section"
+                    label="Загрузка диалогов"
+                    class="tr-uikit-demo-frame__fill"
+                  />
                 </div>
               </div>
 
               <div>
                 <p class="tr-muted mb-2">screen — полноэкранное состояние приложения</p>
-                <div
-                  class="tr-card"
-                  style="height: 320px; padding: 0; overflow: hidden; position: relative"
-                >
+                <div class="tr-card tr-uikit-demo-frame tr-uikit-demo-frame--screen">
                   <Loader
                     size="screen"
                     label="Загрузка приложения"
-                    style="min-height: 100%; height: 100%"
+                    class="tr-uikit-demo-frame__fill"
                   />
                 </div>
               </div>
@@ -208,6 +206,7 @@
             <b-table
               :data="agents"
               hoverable
+              mobile-cards
               paginated
               :per-page="5"
               pagination-size="is-small"
@@ -252,14 +251,141 @@
                 </b-dropdown>
               </b-table-column>
             </b-table>
+
+            <p class="tr-muted mt-4 mb-2">
+              Модификатор <code>--compact</code> — плотные списки без
+              построчных действий.
+            </p>
+            <b-table :data="limitsBreakdown" class="tr-table--compact" hoverable mobile-cards>
+              <b-table-column field="label" label="Лимит" v-slot="{ row }">
+                {{ row.label }}
+              </b-table-column>
+              <b-table-column field="caption" label="Использовано" v-slot="{ row }">
+                {{ row.caption }}
+              </b-table-column>
+            </b-table>
+
+            <p class="tr-muted mt-4 mb-2">
+              Модификатор <code>--breakdown</code> — сводка «строка: значение»
+              без шапки, например разбивка стоимости.
+            </p>
+            <b-table :data="costBreakdown" class="tr-table--breakdown" mobile-cards>
+              <b-table-column field="label" label="Статья" v-slot="{ row }">
+                {{ row.label }}
+              </b-table-column>
+              <b-table-column field="value" label="Сумма" v-slot="{ row }">
+                {{ row.value }}
+              </b-table-column>
+            </b-table>
+          </section>
+
+          <section class="tr-card mb-5">
+            <h2 class="tr-card__title">Диалог подтверждения</h2>
+            <p class="tr-muted mb-4">
+              Подтверждение опасного действия — штатный <code>b-dialog</code>,
+              не собственная реализация.
+            </p>
+            <b-button type="is-danger" outlined @click="confirmDeleteAgent">
+              Удалить агента…
+            </b-button>
+          </section>
+
+          <section class="tr-card mb-5">
+            <h2 class="tr-card__title">Баннер и тост</h2>
+            <div class="tr-stack">
+              <b-message
+                title="Индексация завершена"
+                type="is-success"
+                :closable="false"
+              >
+                Коллекция «База знаний» проиндексирована, доступно 128
+                документов.
+              </b-message>
+              <b-button @click="showSavedToast">Показать тост</b-button>
+            </div>
+          </section>
+
+          <section class="tr-card mb-5">
+            <h2 class="tr-card__title">Загрузка поверх контента и скелет</h2>
+
+            <div class="tr-grid tr-grid--2">
+              <div>
+                <p class="tr-muted mb-2">b-loading — оверлей поверх блока</p>
+                <div class="tr-card tr-uikit-demo-frame tr-uikit-demo-frame--overlay">
+                  <b-loading v-model="isOverlayLoading" :is-full-page="false" />
+                  <div class="tr-uikit-demo-frame__body">
+                    <b-button
+                      size="is-small"
+                      @click="isOverlayLoading = !isOverlayLoading"
+                    >
+                      Переключить загрузку
+                    </b-button>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p class="tr-muted mb-2">b-skeleton — заглушка на время запроса</p>
+                <b-skeleton width="80%" />
+                <b-skeleton width="60%" />
+                <b-skeleton width="90%" />
+              </div>
+            </div>
+          </section>
+
+          <section class="tr-card mb-5">
+            <h2 class="tr-card__title">Загрузка файлов</h2>
+            <b-upload v-model="uploadedFile" drag-drop expanded>
+              <div class="has-text-centered tr-uikit-demo-padded">
+                <p><b-icon icon="upload" size="is-medium" /></p>
+                <p>Перетащите файл сюда или нажмите для выбора</p>
+              </div>
+            </b-upload>
+            <p v-if="uploadedFile" class="tr-muted mt-2">
+              Выбран файл: {{ uploadedFile.name }}
+            </p>
+          </section>
+
+          <section class="tr-card mb-5">
+            <div class="tr-row tr-row--between mb-4">
+              <h2 class="tr-card__title mb-0">Пагинация</h2>
+              <span class="tr-muted">Страница {{ paginationPage }} из 5</span>
+            </div>
+            <b-pagination
+              v-model="paginationPage"
+              :total="50"
+              :per-page="10"
+              order="is-centered"
+            />
+          </section>
+
+          <section class="tr-card mb-5">
+            <h2 class="tr-card__title">Боковая панель</h2>
+            <b-button @click="isSidebarOpen = true">Открыть панель</b-button>
+            <b-sidebar v-model="isSidebarOpen" type="is-light" right overlay>
+              <div class="tr-uikit-demo-padded">
+                <h3 class="tr-card__title">Свойства</h3>
+                <p class="tr-muted">
+                  Демонстрация штатной боковой панели Buefy.
+                </p>
+                <b-button class="mt-4" @click="isSidebarOpen = false">
+                  Закрыть
+                </b-button>
+              </div>
+            </b-sidebar>
           </section>
 
           <section class="tr-card has-text-centered">
-            <div class="tr-icon-tile" style="margin: 0 auto 12px">◇</div>
-            <h2 class="tr-card__title">Здесь пока пусто</h2>
-            <p class="tr-muted">
-              Создайте первый объект, чтобы он появился в списке.
-            </p>
+            <h2 class="tr-card__title">Пустое состояние</h2>
+            <div class="tr-async-state tr-async-state--empty">
+              <span class="tr-async-state__icon">
+                <b-icon icon="shape-outline" size="is-large" />
+              </span>
+              <strong class="tr-async-state__title">Здесь пока пусто</strong>
+              <span class="tr-async-state__message">
+                Создайте первый объект, чтобы он появился в списке.
+              </span>
+            </div>
             <b-button
               class="mt-4"
               type="is-primary"
@@ -275,7 +401,7 @@
             trap-focus
             :destroy-on-hide="false"
           >
-            <div class="modal-card" style="width: min(520px, 92vw)">
+            <div class="modal-card">
               <header class="modal-card-head">
                 <p class="modal-card-title">Новый агент</p>
                 <button
@@ -303,6 +429,7 @@
 
 <script setup>
 import { reactive, ref } from "vue";
+import { useDialog, useToast } from "buefy";
 
 import Loader from "./common/Loader.vue";
 import TariffSelector from "./TariffSelector.vue";
@@ -312,6 +439,30 @@ const isModalOpen = ref(false);
 const selectedTariffId = ref("superior");
 /** @type {import("vue").Ref<"monthly" | "yearly">} */
 const selectedBillingPeriod = ref("monthly");
+
+const isOverlayLoading = ref(false);
+const uploadedFile = ref(null);
+const paginationPage = ref(1);
+const isSidebarOpen = ref(false);
+
+const dialog = useDialog();
+const toast = useToast();
+
+function confirmDeleteAgent() {
+  dialog.confirm({
+    title: "Удалить агента",
+    message: "Действие необратимо. Продолжить?",
+    confirmText: "Удалить",
+    cancelText: "Отмена",
+    type: "is-danger",
+    hasIcon: true,
+    onConfirm: () => toast.open({ message: "Агент удалён", type: "is-danger" }),
+  });
+}
+
+function showSavedToast() {
+  toast.open({ message: "Изменения сохранены", type: "is-success" });
+}
 
 const form = reactive({
   name: "Консультант",
@@ -334,6 +485,18 @@ const agents = [
     owner: "Анна Смирнова",
     updated: "Вчера",
   },
+];
+
+const limitsBreakdown = [
+  { label: "Месячный бюджет", caption: "38%" },
+  { label: "Хранилище знаний", caption: "51%" },
+  { label: "API-запросы", caption: "67 240 из 100 000" },
+];
+
+const costBreakdown = [
+  { label: "Подписка Superior", value: "$33,00" },
+  { label: "Дополнительные кредиты", value: "$8,40" },
+  { label: "Итого", value: "$41,40" },
 ];
 
 /** @type {import("./TariffSelector.vue").TariffSelectorTariff[]} */

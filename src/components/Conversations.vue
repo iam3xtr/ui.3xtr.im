@@ -5,9 +5,9 @@
     <template v-else>
     <div
       v-if="conversations.length > 0"
-      class="-tr-workbench-page__header tr-page-toolbar"
+      class="tr-workbench-page__header tr-page-toolbar"
     >
-      <SearchField
+      <ToolbarSearch
         v-model="query"
         class="tr-page-toolbar__search"
         placeholder="Поиск по диалогам"
@@ -52,9 +52,15 @@
     </div>
 
     <section v-if="conversations.length === 0" class="tr-section-empty">
-      <b-icon icon="message-outline" size="is-large" />
-      <strong>Диалогов пока нет</strong>
-      <span>Новые диалоги появятся после обращения пользователей.</span>
+      <div class="tr-async-state tr-async-state--empty">
+        <span class="tr-async-state__icon">
+          <b-icon icon="message-outline" size="is-large" />
+        </span>
+        <strong class="tr-async-state__title">Диалогов пока нет</strong>
+        <span class="tr-async-state__message">
+          Новые диалоги появятся после обращения пользователей.
+        </span>
+      </div>
     </section>
 
     <section
@@ -65,8 +71,8 @@
         { 'is-properties-open': isPropertiesVisible },
       ]"
     >
-    <aside class="tr-conversations__panel tr-conversations__list">
-      <nav class="tr-conversations__items" aria-label="Список диалогов">
+    <aside class="tr-conversation-panel tr-conversations-list">
+      <nav class="tr-conversations-list__items" aria-label="Список диалогов">
         <button
           v-for="conversation in filteredConversations"
           :key="conversation.id"
@@ -93,18 +99,18 @@
           </span>
         </button>
 
-        <p
+        <div
           v-if="filteredConversations.length === 0"
-          class="tr-conversations__empty"
+          class="tr-async-state tr-async-state--no-results"
         >
-          Диалоги не найдены.
-        </p>
+          <span class="tr-async-state__message">Диалоги не найдены.</span>
+        </div>
       </nav>
     </aside>
 
     <article
       v-if="!selectedConversation"
-      class="tr-conversations__placeholder"
+      class="tr-conversations-placeholder"
     >
       <b-icon icon="message-text-outline" size="is-large" />
       <strong>Выберите диалог</strong>
@@ -113,18 +119,18 @@
 
     <article
       v-if="selectedConversation"
-      class="tr-conversations__panel tr-conversations__chat"
+      class="tr-conversation-panel tr-conversation-chat"
     >
-      <header class="tr-conversations__header">
+      <header class="tr-conversation-header">
         <b-button
-          class="tr-conversations__list-action tr-conversations__icon-action"
+          class="tr-conversation-list-action tr-conversation-icon-action"
           icon-left="arrow-left"
           aria-label="К диалогам"
           title="К диалогам"
           @click="viewMode = 'list'"
         />
 
-        <div class="tr-conversations__identity">
+        <div class="tr-conversation-identity">
           <span class="tr-conversation-avatar">
             {{ selectedConversation.initials }}
           </span>
@@ -136,7 +142,7 @@
 
         <b-button
           v-if="!isPropertiesVisible"
-          class="tr-conversations__settings-action tr-conversations__icon-action"
+          class="tr-conversation-settings-action tr-conversation-icon-action"
           icon-left="cog-outline"
           aria-label="Открыть свойства диалога"
           title="Открыть свойства диалога"
@@ -144,7 +150,7 @@
         />
       </header>
 
-      <div class="tr-conversations__messages" aria-live="polite">
+      <div class="tr-conversation-messages" aria-live="polite">
         <div
           v-for="message in selectedConversation.messages"
           :key="message.id"
@@ -156,10 +162,10 @@
         </div>
       </div>
 
-      <footer class="tr-conversations__composer">
+      <footer class="tr-conversation-composer">
         <b-input
           v-model="draft"
-          class="tr-conversations__composer-input"
+          class="tr-conversation-composer-input"
           placeholder="Напишите сообщение"
           @keyup.enter="sendMessage"
         />
@@ -174,19 +180,19 @@
 
     <aside
       v-if="selectedConversation"
-      class="tr-conversations__panel tr-conversations__properties"
+      class="tr-conversation-panel tr-conversation-properties"
     >
-      <header class="tr-conversations__header">
+      <header class="tr-conversation-header">
         <b-button
-          class="tr-conversations__properties-action tr-conversations__icon-action"
+          class="tr-conversation-properties-action tr-conversation-icon-action"
           icon-left="arrow-left"
           aria-label="К диалогу"
           title="К диалогу"
           @click="viewMode = 'chat'"
         />
-        <h2 class="tr-conversations__title">Свойства</h2>
+        <h2 class="tr-conversation-title">Свойства</h2>
         <b-button
-          class="tr-conversations__properties-close tr-conversations__icon-action"
+          class="tr-conversation-properties-close tr-conversation-icon-action"
           icon-left="close"
           aria-label="Закрыть свойства диалога"
           title="Закрыть свойства диалога"
@@ -194,11 +200,11 @@
         />
       </header>
 
-      <div class="tr-conversations__properties-body">
-        <div class="tr-conversations__profile">
+      <div class="tr-conversation-properties-body">
+        <div class="tr-conversation-profile">
           <img
             v-if="selectedConversation.avatarUrl"
-            class="tr-conversations__profile-image"
+            class="tr-conversation-profile-image"
             :src="selectedConversation.avatarUrl"
             :alt="selectedConversation.contact"
           />
@@ -216,7 +222,7 @@
           </b-select>
         </b-field>
 
-        <dl class="tr-conversations__details">
+        <dl class="tr-conversation-details">
           <div>
             <dt>Статус</dt>
             <dd>
@@ -253,8 +259,8 @@ import { useSimulatedLoading } from "../composables/useSimulatedLoading";
 import { useWorkspaceStore } from "../stores/workspace";
 import Loader from "./common/Loader.vue";
 import MobileFilters from "./MobileFilters.vue";
-import SearchField from "./SearchField.vue";
 import ToolbarDropdown from "./ToolbarDropdown.vue";
+import ToolbarSearch from "./ToolbarSearch.vue";
 
 const { isLoading } = useSimulatedLoading();
 

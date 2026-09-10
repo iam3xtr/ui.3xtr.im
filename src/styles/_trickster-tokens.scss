@@ -124,6 +124,25 @@ $shadow-light: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px rgb(0 0 0 / 0.04);
 $shadow-dark: 0 1px 2px rgb(0 0 0 / 0.28), 0 8px 24px rgb(0 0 0 / 0.18);
 
 // -----------------------------------------------------------------------------
+// Z-index scale — single source of truth for every layer in the shell
+// -----------------------------------------------------------------------------
+// Values are theme-independent, so they are exposed once as `--tr-z-*` custom
+// properties (see trickster-buefy.scss § 1. Tokens) instead of being
+// duplicated per theme. Bulma's own `$dropdown-content-z` / `$modal-z` are
+// fed from the same constants so Buefy-rendered dropdowns and modals share
+// this scale automatically. No selector in the kit may declare a raw
+// `z-index` literal — every value is one of these tokens, optionally offset
+// with `calc()` (e.g. a panel that must sit just above its own backdrop).
+$z-content: 0;         // Normal document flow; local elevation above an
+                        // immediate sibling uses `calc(#{$z-content} + 1)`.
+$z-sticky-header: 20;  // .tr-topbar
+$z-overlay: 29;        // Backdrop/scrim shared by drawers, modal and dialog
+$z-sidebar: 30;        // .tr-sidebar (desktop) and the mobile drawer panel
+$z-dropdown: 35;       // Bulma/Buefy dropdown-content, select, autocomplete
+$z-modal: 40;          // Modal layer; ConfirmDialog stacks at +1 above it
+$z-toast: 10001;       // Toast stack — always on top
+
+// -----------------------------------------------------------------------------
 // Motion
 // -----------------------------------------------------------------------------
 $transition-fast: 120ms ease;

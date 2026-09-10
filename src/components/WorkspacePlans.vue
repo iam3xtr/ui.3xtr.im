@@ -1,5 +1,5 @@
 <template>
-  <section class="tr-workspace-plan">
+  <section class="tr-workspace-plans">
     <div class="tr-page-header">
       <div>
         <h1 class="tr-page-title">Тариф</h1>

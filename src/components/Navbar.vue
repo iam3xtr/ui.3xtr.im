@@ -110,15 +110,15 @@
 
     <Logo />
 
-    <ToolbarTabs
+    <NavbarTabs
       v-if="isWorkspaceRoute"
       :items="workspaceTabs"
       aria-label="Навигация по пространству"
     />
 
-    <SearchField
+    <ToolbarSearch
       v-if="showSearch"
-      class="tr-topbar__search"
+      class="tr-search-field--navbar"
       priority="navbar"
       placeholder="Поиск"
       aria-label="Поиск"
@@ -413,8 +413,8 @@ import {
 } from "../navigation";
 import { useSiteSettingsStore } from "../stores/siteSettings";
 import Logo from "./Logo.vue";
-import SearchField from "./SearchField.vue";
-import ToolbarTabs from "./ToolbarTabs.vue";
+import NavbarTabs from "./NavbarTabs.vue";
+import ToolbarSearch from "./ToolbarSearch.vue";
 
 /**
  * @typedef {Object} Workspace

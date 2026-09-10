@@ -1,10 +1,10 @@
 <template>
-  <nav class="tr-toolbar-tabs" :aria-label="ariaLabel">
+  <nav class="tr-navbar-tabs" :aria-label="ariaLabel">
     <RouterLink
       v-for="item in items"
       :key="item.label"
       :to="item.to"
-      class="tr-toolbar-tabs__link"
+      class="tr-navbar-tabs__link"
     >
       {{ item.label }}
     </RouterLink>
@@ -15,13 +15,13 @@
 import { RouterLink } from "vue-router";
 
 /**
- * @typedef {Object} ToolbarTabItem
+ * @typedef {Object} NavbarTabItem
  * @property {string} label
  * @property {import("vue-router").RouteLocationRaw} to
  */
 
 defineProps({
-  /** @type {import("vue").PropType<ToolbarTabItem[]>} */
+  /** @type {import("vue").PropType<NavbarTabItem[]>} */
   items: {
     type: Array,
     required: true,

@@ -14,6 +14,13 @@ import "@mdi/font/css/materialdesignicons.css";
 const app = createApp(App);
 
 app.use(createPinia());
+// `app.use(Buefy)` registers the entire library in one pass — Table, Field,
+// Modal, Dialog, Toast, Loading, Pagination, Skeleton, Upload, Tabs, Message,
+// Sidebar included — so the Buefy-first registry in
+// docs/design-system.md#собственный-компонент-или-buefy is satisfied by this
+// single call; no per-component registration is needed. Do not switch to
+// selective component imports without updating that registry and the smoke
+// examples in UiKit.vue that exercise it.
 app.use(Buefy, {
   defaultIconPack: "mdi",
   defaultContainerElement: "#app",

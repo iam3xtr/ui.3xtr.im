@@ -39,6 +39,7 @@
 //  12. Conversations       — workbench layout, conversation list/chat/properties
 //  13. Utilities           — layout helpers, settings screen, theme toggle
 //  14. Responsive          — breakpoint overrides for the sections above
+//  15. Deprecated aliases  — transitional `@deprecated` selectors, see below
 // -----------------------------------------------------------------------------
 
 @use "./trickster-tokens" as tr;
@@ -64,7 +65,12 @@
   $radius-rounded: tr.$radius-rounded,
 
   $control-border-width: 1px,
-  $input-shadow: none
+  $input-shadow: none,
+
+  // Bulma/Buefy dropdowns and modals share the kit's z-index scale — see
+  // trickster-tokens.scss "Z-index scale".
+  $dropdown-content-z: tr.$z-dropdown,
+  $modal-z: tr.$z-modal
 );
 
 // Подключаем стили компонентов Buefy после конфигурации Bulma.
@@ -119,6 +125,17 @@
   --tr-info: #{tr.$info};
   --tr-warning: #{tr.$warning};
   --tr-danger: #{tr.$danger};
+
+  // Z-index scale — theme-independent, declared once here (see
+  // trickster-tokens.scss "Z-index scale" for the ordering rationale).
+  // :root[data-theme="dark"] below does not need to repeat it.
+  --tr-z-content: #{tr.$z-content};
+  --tr-z-sticky-header: #{tr.$z-sticky-header};
+  --tr-z-overlay: #{tr.$z-overlay};
+  --tr-z-sidebar: #{tr.$z-sidebar};
+  --tr-z-dropdown: #{tr.$z-dropdown};
+  --tr-z-modal: #{tr.$z-modal};
+  --tr-z-toast: #{tr.$z-toast};
 }
 
 :root[data-theme="dark"] {
@@ -227,7 +244,7 @@ a:hover {
 
 .tr-sidebar {
   position: sticky;
-  z-index: 20;
+  z-index: var(--tr-z-sidebar);
   top: tr.$topbar-height;
   display: flex;
   flex-direction: column;
@@ -249,7 +266,7 @@ a:hover {
 
 .tr-topbar {
   position: sticky;
-  z-index: 30;
+  z-index: var(--tr-z-sticky-header);
   top: 0;
   min-height: tr.$topbar-height;
   display: flex;
@@ -370,7 +387,11 @@ a:hover {
 }
 
 .tr-icon {
-  fill: var(--tr-text);
+  // Custom SVGs (src/assets/icons/**) ship with `fill="currentColor"` on
+  // their own root element; this rule only has to not fight that — any
+  // wrapping `has-text-*`/`color` context recolors the icon the same way it
+  // recolors adjacent text, in both themes.
+  fill: currentColor;
 }
 
 .tr-icon--placeholder {
@@ -829,7 +850,7 @@ a:hover {
   position: relative;
 }
 
-.tr-topbar__search {
+.tr-search-field--navbar {
   width: clamp(220px, 18vw, 300px);
   flex: 0 1 clamp(220px, 18vw, 300px);
   margin-inline-start: calc(#{tr.$space-8} + #{tr.$space-1});
@@ -952,7 +973,11 @@ a:hover {
   min-width: 0;
 }
 
-.tr-knowledge__toolbar {
+// Renamed from .tr-knowledge__toolbar in Task A3.6: the "toolbar" contract
+// is owned exclusively by .tr-page-toolbar (search/filters/action-group);
+// this row has neither and is not that contract. Not present in get.3xtr.im
+// markup at time of rename, so no transitional alias is required (rule R8).
+.tr-knowledge__items-header {
   min-height: 56px;
   display: flex;
   align-items: center;
@@ -971,7 +996,7 @@ a:hover {
 // 5. Tabs
 // =============================================================================
 
-.tr-toolbar-tabs {
+.tr-navbar-tabs {
   display: flex;
   align-items: stretch;
   align-self: end;
@@ -980,7 +1005,7 @@ a:hover {
   margin-inline-start: calc(#{tr.$space-8} + var(--tr-content-inline-offset));
 }
 
-.tr-toolbar-tabs__link {
+.tr-navbar-tabs__link {
   min-height: 48px;
   display: inline-flex;
   align-items: center;
@@ -993,23 +1018,23 @@ a:hover {
   transition: color tr.$transition-fast, border-color tr.$transition-fast;
 }
 
-.tr-toolbar-tabs__link:hover,
-.tr-toolbar-tabs__link:focus-visible {
+.tr-navbar-tabs__link:hover,
+.tr-navbar-tabs__link:focus-visible {
   color: var(--tr-text-strong);
 }
 
-.tr-toolbar-tabs__link:focus-visible {
+.tr-navbar-tabs__link:focus-visible {
   outline: 2px solid var(--tr-primary);
   outline-offset: -2px;
 }
 
-.tr-toolbar-tabs__link.router-link-exact-active {
+.tr-navbar-tabs__link.router-link-exact-active {
   color: var(--tr-primary);
   border-bottom-color: currentcolor;
 }
 
 // Icon-only tab: matches the conversation action's 40px box and 24px icon.
-.tr-toolbar-tabs__link--icon {
+.tr-navbar-tabs__link--icon {
   width: 40px;
   min-width: 40px;
   height: 40px;
@@ -1020,14 +1045,14 @@ a:hover {
   padding: 0;
 }
 
-.tr-toolbar-tabs__icon {
+.tr-navbar-tabs__icon {
   width: 24px;
   height: 24px;
   font-size: 24px;
   line-height: 1;
 }
 
-.tr-toolbar-tabs__icon::before {
+.tr-navbar-tabs__icon::before {
   font-size: 24px;
   line-height: 1;
 }
@@ -1162,7 +1187,40 @@ a:hover {
 }
 
 // Mobile row-stacking (.tr-table--stack) is a breakpoint override — see
-// section 14 (Responsive), "@media (max-width: 767px)" block.
+// section 14 (Responsive), "@media (max-width: 767px)" block. It is a legacy
+// hand-rolled table pattern kept only for downstream consumers that have not
+// migrated to `b-table` yet — new markup uses `b-table`'s own `mobile-cards`
+// prop instead (styled below via `.b-table .table-wrapper.has-mobile-cards`,
+// already covered by `.table`/`.table-wrapper` above; Buefy supplies the
+// breakpoint behavior itself).
+
+// Single base look for every `b-table` (the `.table`/`.table-wrapper` rules
+// above already apply, since that's what Buefy renders inside `.b-table`).
+// Variants are modifiers on the root `.b-table` element (R6), passed as
+// `class="tr-table--compact"` / `class="tr-table--breakdown"` on `<b-table>`
+// — never a parallel table component or duplicated column markup.
+
+// `--compact`: denser rows for long, low-action lists (limits, log lines).
+.b-table.tr-table--compact .table th,
+.b-table.tr-table--compact .table td {
+  padding: tr.$space-2 tr.$space-3;
+}
+
+// `--breakdown`: headerless label/value summary (cost breakdown, usage
+// summary) — no hover affordance, since rows carry no row-level action.
+.b-table.tr-table--breakdown .table thead {
+  display: none;
+}
+
+.b-table.tr-table--breakdown .table td {
+  padding: tr.$space-2 tr.$space-3;
+}
+
+.b-table.tr-table--breakdown .table td:last-child {
+  color: var(--tr-text-strong);
+  font-weight: tr.$font-weight-medium;
+  text-align: end;
+}
 
 // =============================================================================
 // 7. Forms
@@ -1265,80 +1323,21 @@ a:hover {
   color: var(--tr-text);
 }
 
-// Shared form pattern (label/help/error/required, secret input, destructive
-// zone, save/cancel footer). Structural rules only — validation/submit logic
-// stays in each form component; nothing here fetches data or gates
-// permissions.
+// WorkspaceSettings.vue full-page-form foundation (Stage A4 target
+// component): layout, destructive zone and save/cancel footer for a
+// full-screen settings/danger-zone form. Label, help text, validation
+// error/type and secret-field reveal are b-field/b-input's own job (label,
+// message, type="is-danger", password-reveal) — this stylesheet does not
+// re-implement them. Structural rules only — validation/submit logic stays
+// in each form component; nothing here fetches data or gates permissions.
+// No consumer in src/components/** yet — the kit's current forms are all
+// modal-card forms (Agents.vue, Knowledge.vue, Channels.vue), which don't
+// need this layout; it lands with the Stage A4 settings page.
 
 .tr-form {
   display: flex;
   flex-direction: column;
   gap: tr.$space-4;
-}
-
-.tr-field {
-  display: flex;
-  flex-direction: column;
-  gap: tr.$space-1;
-}
-
-.tr-field__label {
-  font-weight: tr.$font-weight-semibold;
-  color: var(--tr-text-strong);
-}
-
-// Sub-label variant (nested/secondary fields inside a form) — smaller than a
-// top-level .tr-field__label. Consumers add this alongside .tr-field__label.
-.tr-field__label.is-small {
-  font-size: tr.$font-size-sm;
-}
-
-// Required-field marker. Never the only indicator of a control's required
-// state — inputs still carry the native `required` attribute, and the form
-// footer repeats a textual legend once per form.
-.tr-field__required {
-  color: var(--tr-danger);
-}
-
-.tr-field__help {
-  margin: 0;
-  color: var(--tr-text-muted);
-  font-size: tr.$font-size-sm;
-}
-
-// Validation error text. Paired with aria-invalid/aria-describedby on the
-// control by the consuming form, not by this class — CSS only owns color.
-.tr-field__error {
-  margin: 0;
-  color: var(--tr-danger);
-  font-size: tr.$font-size-sm;
-}
-
-// Secret input (API keys, tokens): a text field with a reveal/hide toggle.
-// The toggle button is markup owned by the consumer; this class only sizes
-// the wrapper so the toggle overlays the input's trailing edge.
-.tr-field__secret {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.tr-field__secret input {
-  padding-inline-end: tr.$space-8;
-}
-
-.tr-field__secret-toggle {
-  position: absolute;
-  inset-inline-end: tr.$space-2;
-  padding: tr.$space-1;
-  color: var(--tr-text-muted);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-}
-
-.tr-field__secret-toggle:hover {
-  color: var(--tr-text);
 }
 
 // Destructive zone: a visually separated section for irreversible actions
@@ -1369,10 +1368,6 @@ a:hover {
   justify-content: flex-start;
   gap: tr.$space-4;
   margin-top: auto;
-}
-
-.tr-form__footer .tr-field__help {
-  margin-inline-end: auto;
 }
 
 // =============================================================================
@@ -1447,14 +1442,14 @@ a:hover {
   padding: 2px;
 }
 
-.tr-catalog__grid {
+.tr-catalog-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
   padding-bottom: 1rem;
 }
 
-.tr-catalog__empty {
+.tr-catalog-empty {
   grid-column: 1 / -1;
   min-height: 220px;
   display: grid;
@@ -1691,29 +1686,6 @@ a:hover {
   padding: tr.$space-2;
 }
 
-.tr-knowledge__items-empty {
-  min-height: 0;
-  display: flex;
-  flex: 1;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: tr.$space-2;
-  padding: tr.$space-6;
-  color: var(--tr-text-muted);
-  text-align: center;
-}
-
-.tr-knowledge__items-empty .icon {
-  margin-bottom: tr.$space-2;
-  color: var(--tr-text-subtle);
-}
-
-.tr-knowledge__items-empty strong {
-  color: var(--tr-text-strong);
-  font-weight: tr.$font-weight-semibold;
-}
-
 .tr-knowledge__type-hint {
   display: flex;
   align-items: flex-start;
@@ -1791,19 +1763,41 @@ a:hover {
   background: var(--tr-primary);
 }
 
+// .tr-section-empty is a pure sizing wrapper for the "whole page/section is
+// empty" layout (full available height, single centered child). Content
+// styling (icon/title/message) belongs to the .tr-async-state block it
+// wraps — see below — not to this selector.
 .tr-section-empty {
   min-height: calc(100vh - #{tr.$topbar-height} - #{tr.$space-12});
   display: flex;
+}
+
+// Single content block for every async/empty state in the Kit: loading,
+// empty, no-results, error, permission-denied — the only five modifiers
+// this block is limited to (Task A3.7). Presentation-only: data fetching
+// and permission decisions stay with the caller. Stage A4 wraps this in an
+// AsyncState.vue component with the same class contract.
+//
+// - --loading has no dedicated styling: the caller places <Loader> inside,
+//   .tr-async-state only centers it. No manual spinner is drawn here.
+// - --error colors the icon with the danger token; the caller is
+//   responsible for role="alert" / assertive live region on this variant.
+// - --empty, --no-results, --permission-denied share the same neutral
+//   presentation and differ only in icon/copy supplied by the caller.
+.tr-async-state {
+  display: flex;
+  flex: 1;
+  min-height: 0;
   align-items: center;
   justify-content: center;
   flex-direction: column;
   gap: tr.$space-2;
-  padding: tr.$space-6;
+  padding: tr.$space-8 tr.$space-4;
   color: var(--tr-text-muted);
   text-align: center;
 }
 
-.tr-section-empty > .icon {
+.tr-async-state__icon {
   display: flex;
   align-self: center;
   align-items: center;
@@ -1814,7 +1808,7 @@ a:hover {
   text-align: center;
 }
 
-.tr-section-empty > .icon .mdi {
+.tr-async-state__icon .mdi {
   width: 100%;
   height: 100%;
   display: flex;
@@ -1823,80 +1817,25 @@ a:hover {
   line-height: 1;
 }
 
-.tr-section-empty strong {
+.tr-async-state--error .tr-async-state__icon {
+  color: var(--tr-danger);
+}
+
+.tr-async-state__title {
+  margin: 0;
   color: var(--tr-text-strong);
   font-weight: tr.$font-weight-semibold;
 }
 
-.tr-section-empty > span {
+.tr-async-state__message {
   width: 100%;
   max-width: 360px;
+  margin: 0;
   overflow-wrap: anywhere;
   text-wrap: balance;
 }
 
-.tr-section-empty > .button {
-  margin-top: tr.$space-2;
-}
-
-// AsyncState.vue foundation (Stage A4 target component): loading/empty/
-// no-results/error/permission-denied block. Presentation-only — data
-// fetching and permission checks stay with the caller.
-.async-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: tr.$space-2;
-  padding: tr.$space-8 tr.$space-4;
-  color: var(--tr-text-muted);
-  text-align: center;
-}
-
-.async-state__spinner {
-  width: tr.$space-8;
-  height: tr.$space-8;
-  display: inline-block;
-  border: 3px solid var(--tr-border);
-  border-top-color: var(--tr-primary);
-  border-radius: tr.$radius-rounded;
-  animation: tr-async-state-spin 0.8s linear infinite;
-}
-
-@keyframes tr-async-state-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .async-state__spinner {
-    animation-duration: 2.4s;
-  }
-}
-
-.async-state__icon {
-  color: var(--tr-text-muted);
-}
-
-.async-state__icon--danger {
-  color: var(--tr-danger);
-}
-
-.async-state__title {
-  margin: tr.$space-2 0 0;
-  color: var(--tr-text-strong);
-  font-size: tr.$font-size-lg;
-  font-weight: tr.$font-weight-semibold;
-}
-
-.async-state__message {
-  margin: 0;
-  max-width: 32rem;
-  color: var(--tr-text-muted);
-}
-
-.async-state__actions {
+.tr-async-state__actions {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2178,168 +2117,23 @@ button.dropdown-item:hover {
   border: 1px solid var(--tr-border);
 }
 
-// Modal.vue foundation (Stage A4 target component): a right-edge sliding
-// panel with a blurred backdrop, distinct from Buefy's centered b-modal
-// card above — Stage A3 decides whether this survives as its own contract
-// or folds into b-modal.
-.modal-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  overflow: hidden;
+// b-toast (via `useToast`/`$buefy.toast.open`) renders into Buefy's own
+// `.notices` container, which ships a literal z-index — align it with the
+// kit's `--tr-z-toast` token instead of leaving that literal as the only
+// source of truth. This is a style hook onto Buefy's own class, not a
+// competing overlay layer.
+.notices {
+  z-index: var(--tr-z-toast);
 }
 
-.modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background-color: var(--tr-overlay);
-  backdrop-filter: blur(8px);
-}
-
-.modal-panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  z-index: 1;
-  width: min(100%, 42rem);
-  height: 100%;
-  overflow: auto;
-  color: var(--tr-text);
-  background-color: var(--tr-surface-1);
-  box-shadow: var(--tr-shadow);
-}
-
-.modal-panel header {
-  padding-inline: tr.$space-4;
-}
-
-.modal-panel footer {
-  margin-top: auto;
-  padding: tr.$space-4 0;
-  display: flex;
-  justify-content: flex-end;
-  gap: tr.$space-2;
-  border-top: 1px solid var(--tr-border);
-}
-
-.modal-backdrop-enter-active,
-.modal-backdrop-leave-active {
-  transition: opacity 0.3s ease-in-out;
-}
-
-.modal-backdrop-enter-from,
-.modal-backdrop-leave-to {
-  opacity: 0;
-}
-
-.modal-panel-enter-active,
-.modal-panel-leave-active {
-  transition: transform 0.3s ease-in-out;
-}
-
-.modal-panel-enter-from,
-.modal-panel-leave-to {
-  transform: translateX(100%);
-}
-
-// ConfirmDialog.vue foundation (Stage A4 target component): a centered
-// confirm/cancel dialog, distinct from Buefy's b-dialog — Stage A3 decides
-// whether this survives as its own contract or folds into b-dialog.
-.confirm-dialog__backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 41;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding-bottom: tr.$space-12;
-  background-color: var(--tr-overlay);
-}
-
-.confirm-dialog__panel {
-  width: min(100%, 28rem);
-  max-width: calc(100vw - #{tr.$space-6});
-  padding: tr.$space-8 tr.$space-6 tr.$space-4;
-  color: var(--tr-text);
-  background-color: var(--tr-surface-1);
-  border: 1px solid var(--tr-border);
-  border-radius: tr.$radius-large;
-  box-shadow: var(--tr-shadow);
-}
-
-.confirm-dialog__title {
-  margin: tr.$space-2 0;
-  color: var(--tr-text-strong);
-  font-size: tr.$font-size-lg;
-  font-weight: tr.$font-weight-semibold;
-}
-
-.confirm-dialog__body {
-  margin: 0 0 tr.$space-4;
-  color: var(--tr-text);
-}
-
-.confirm-dialog__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: tr.$space-3;
-  padding-top: tr.$space-4;
-  border-top: 1px solid var(--tr-border);
-}
-
-// Toaster.vue foundation (Stage A4 target component): fixed bottom-right
-// toast stack, distinct from Buefy's b-toast — Stage A3 decides whether
-// this survives as its own contract or folds into b-toast.
-.toaster-layer {
-  position: fixed;
-  right: tr.$space-4;
-  bottom: tr.$space-4;
-  z-index: 10001;
-  pointer-events: none;
-}
-
-.toaster-layer > div {
-  display: flex;
-  flex-direction: column;
-  gap: tr.$space-2;
-}
-
-.toast-enter-active,
-.toast-leave-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-.toast-enter-from,
-.toast-leave-to {
-  opacity: 0;
-  transform: translateY(tr.$space-2);
-}
-
-.toast-enter-to,
-.toast-leave-from {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.toast-item {
-  max-width: 20rem;
-  display: flex;
-  align-items: center;
-  padding: tr.$space-3 tr.$space-4;
-  color: var(--tr-text);
-  background-color: var(--tr-surface-2);
-  border: 1px solid var(--tr-border);
-  border-radius: tr.$radius-large;
-  box-shadow: var(--tr-shadow);
-}
-
-.toast-success {
-  border-inline-start: 4px solid var(--tr-success);
-}
-
-.toast-error {
-  border-inline-start: 4px solid var(--tr-danger);
-}
+// Stage A3.8: modal, confirm, side panel and toast overlays are Buefy's own
+// `b-modal`, `b-dialog`, `b-sidebar` and `b-toast` — see
+// docs/design-system.md#собственный-компонент-или-buefy. There is no
+// standalone Modal.vue/ConfirmDialog.vue/Toaster.vue in the kit, so this
+// section carries only style hooks for Buefy's own overlay markup (the
+// `.modal-card-*` rules above, plus `b-sidebar`/`b-dialog` inherit theme
+// tokens from Bulma variables configured in § Tokens); it does not define a
+// competing overlay layer.
 
 .material-icons-outlined {
   font-size: tr.$font-size-md;
@@ -2668,15 +2462,21 @@ button.dropdown-item:hover {
     minmax(0, var(--tr-conversation-main-column));
 }
 
-.tr-conversations:not(.is-properties-open) .tr-conversations__properties {
+.tr-conversations:not(.is-properties-open) .tr-conversation-properties {
   display: none;
 }
 
-.tr-conversations:not(.is-properties-open) .tr-conversations__placeholder {
+.tr-conversations:not(.is-properties-open) .tr-conversations-placeholder {
   grid-column: span 1;
 }
 
-.tr-conversations__panel {
+// .tr-conversation-panel is the shared "workbench column" box style: it
+// decorates the conversations list panel (.tr-conversations-list) as well
+// as the reusable single-conversation chat/properties widget
+// (.tr-conversation-chat / .tr-conversation-properties) that Agents.vue
+// reuses verbatim for its agent sandbox — see docs/agent-migration-guide.md
+// section 6.
+.tr-conversation-panel {
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -2688,7 +2488,7 @@ button.dropdown-item:hover {
   box-shadow: var(--tr-shadow);
 }
 
-.tr-conversations__placeholder {
+.tr-conversations-placeholder {
   min-width: 0;
   min-height: 0;
   grid-column: span 2;
@@ -2702,27 +2502,27 @@ button.dropdown-item:hover {
   text-align: center;
 }
 
-.tr-conversations__placeholder .icon {
+.tr-conversations-placeholder .icon {
   margin-bottom: tr.$space-2;
   color: var(--tr-text-subtle);
 }
 
-.tr-conversations__placeholder strong {
+.tr-conversations-placeholder strong {
   color: var(--tr-text-strong);
   font-weight: tr.$font-weight-semibold;
 }
 
-.tr-conversations__placeholder span {
+.tr-conversations-placeholder span {
   max-width: 320px;
 }
 
-.tr-conversations__placeholder > *,
-.tr-section-empty > * {
+.tr-conversations-placeholder > *,
+.tr-section-empty > .tr-async-state {
   transform: translateY(-12vh);
   transform: translateY(-12dvh);
 }
 
-.tr-conversations__header {
+.tr-conversation-header {
   height: tr.$topbar-height;
   min-height: tr.$topbar-height;
   display: flex;
@@ -2733,21 +2533,21 @@ button.dropdown-item:hover {
   border-bottom: 1px solid var(--tr-divider);
 }
 
-.tr-conversations__title {
+.tr-conversation-title {
   margin: 0 auto 0 0;
   color: var(--tr-text-strong);
   font-size: tr.$font-size-md;
   font-weight: tr.$font-weight-semibold;
 }
 
-.tr-conversations__items,
-.tr-conversations__messages,
-.tr-conversations__properties-body {
+.tr-conversations-list__items,
+.tr-conversation-messages,
+.tr-conversation-properties-body {
   min-height: 0;
   overflow-y: auto;
 }
 
-.tr-conversations__items {
+.tr-conversations-list__items {
   padding: tr.$space-2;
 }
 
@@ -2838,13 +2638,7 @@ button.dropdown-item:hover {
   white-space: nowrap;
 }
 
-.tr-conversations__empty {
-  margin: tr.$space-6 tr.$space-3;
-  color: var(--tr-text-muted);
-  text-align: center;
-}
-
-.tr-conversations__identity {
+.tr-conversation-identity {
   min-width: 0;
   display: flex;
   align-items: center;
@@ -2852,12 +2646,12 @@ button.dropdown-item:hover {
   margin-right: auto;
 }
 
-.tr-conversations__identity .tr-conversation-avatar {
+.tr-conversation-identity .tr-conversation-avatar {
   width: 32px;
   height: 32px;
 }
 
-.tr-conversations__identity > span:last-child {
+.tr-conversation-identity > span:last-child {
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -2866,7 +2660,7 @@ button.dropdown-item:hover {
   line-height: 1;
 }
 
-.tr-conversations__identity strong {
+.tr-conversation-identity strong {
   overflow: hidden;
   color: var(--tr-text-strong);
   font-weight: tr.$font-weight-medium;
@@ -2874,12 +2668,12 @@ button.dropdown-item:hover {
   white-space: nowrap;
 }
 
-.tr-conversations__identity small {
+.tr-conversation-identity small {
   color: var(--tr-text-muted);
   font-size: tr.$font-size-xs;
 }
 
-.tr-conversations__messages {
+.tr-conversation-messages {
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -2915,7 +2709,7 @@ button.dropdown-item:hover {
   text-align: end;
 }
 
-.tr-conversations__composer {
+.tr-conversation-composer {
   display: flex;
   align-items: center;
   gap: tr.$space-2;
@@ -2924,19 +2718,19 @@ button.dropdown-item:hover {
   border-top: 1px solid var(--tr-divider);
 }
 
-.tr-conversations__composer-input {
+.tr-conversation-composer-input {
   min-width: 0;
   flex: 1;
 }
 
-.tr-conversations__properties-body {
+.tr-conversation-properties-body {
   display: flex;
   flex-direction: column;
   gap: tr.$space-5;
   padding: tr.$space-5;
 }
 
-.tr-conversations__profile {
+.tr-conversation-profile {
   width: 100%;
   display: flex;
   align-items: center;
@@ -2945,7 +2739,7 @@ button.dropdown-item:hover {
   text-align: center;
 }
 
-.tr-conversations__profile-image {
+.tr-conversation-profile-image {
   width: 100%;
   aspect-ratio: 1;
   display: block;
@@ -2966,7 +2760,7 @@ button.dropdown-item:hover {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.tr-agents__workbench .tr-conversations__list-action {
+.tr-agents__workbench .tr-conversation-list-action {
   display: inline-flex;
 }
 
@@ -2984,46 +2778,46 @@ button.dropdown-item:hover {
   font-size: tr.$font-size-xs;
 }
 
-.tr-conversations__profile strong {
+.tr-conversation-profile strong {
   color: var(--tr-text-strong);
   font-weight: tr.$font-weight-semibold;
 }
 
-.tr-conversations__details {
+.tr-conversation-details {
   display: flex;
   flex-direction: column;
   gap: tr.$space-4;
   margin: 0;
 }
 
-.tr-conversations__details > div {
+.tr-conversation-details > div {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: tr.$space-4;
 }
 
-.tr-conversations__details dt {
+.tr-conversation-details dt {
   color: var(--tr-text-muted);
 }
 
-.tr-conversations__details dd {
+.tr-conversation-details dd {
   margin: 0;
   color: var(--tr-text-strong);
   text-align: end;
 }
 
-.tr-conversations__list-action,
-.tr-conversations__properties-action {
+.tr-conversation-list-action,
+.tr-conversation-properties-action {
   display: none;
 }
 
-.tr-conversations__settings-action,
-.tr-conversations__properties-close {
+.tr-conversation-settings-action,
+.tr-conversation-properties-close {
   display: inline-flex;
 }
 
-.tr-conversations__icon-action.button {
+.tr-conversation-icon-action.button {
   width: 40px;
   min-width: 40px;
   height: 40px;
@@ -3035,24 +2829,24 @@ button.dropdown-item:hover {
   font-size: tr.$font-size-md;
 }
 
-.tr-conversations__icon-action.button .icon {
+.tr-conversation-icon-action.button .icon {
   width: 24px;
   height: 24px;
   font-size: 24px;
 }
 
-.tr-conversations__icon-action.button .mdi::before {
+.tr-conversation-icon-action.button .mdi::before {
   font-size: 24px;
   line-height: 1;
 }
 
-.tr-conversations__icon-action.button:hover {
+.tr-conversation-icon-action.button:hover {
   color: var(--tr-text-strong);
   background: var(--tr-surface-hover);
   border-color: transparent;
 }
 
-.tr-conversations__icon-action.button:focus-visible {
+.tr-conversation-icon-action.button:focus-visible {
   border-color: transparent;
   box-shadow: 0 0 0 3px rgb(142 100 206 / 0.16);
 }
@@ -3097,6 +2891,42 @@ button.dropdown-item:hover {
 
 .tr-muted {
   color: var(--tr-text-muted);
+}
+
+// UiKit.vue showcase frames: fixed-height preview boxes for the Loader/
+// b-loading demo sections (`/ui-kit`). Height differs per demo; padding,
+// overflow and positioning are shared — kept here instead of inline `style=`
+// so the reference page follows the same single-stylesheet contract as every
+// other kit screen.
+.tr-uikit-demo-frame {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+}
+
+.tr-uikit-demo-frame--section {
+  height: 220px;
+}
+
+.tr-uikit-demo-frame--screen {
+  height: 320px;
+}
+
+.tr-uikit-demo-frame--overlay {
+  height: 160px;
+}
+
+.tr-uikit-demo-frame__fill {
+  height: 100%;
+  min-height: 100%;
+}
+
+.tr-uikit-demo-frame__body {
+  padding: tr.$space-4;
+}
+
+.tr-uikit-demo-padded {
+  padding: tr.$space-6;
 }
 
 .tr-settings {
@@ -3206,7 +3036,7 @@ button.dropdown-item:hover {
   position: absolute;
   top: tr.$space-2;
   right: tr.$space-6;
-  z-index: 1;
+  z-index: calc(var(--tr-z-content) + 1);
   min-width: 2.25rem;
   display: inline-flex;
   align-items: center;
@@ -3326,7 +3156,7 @@ button.dropdown-item:hover {
 }
 
 @media (max-width: 1024px) {
-  .tr-catalog__grid {
+  .tr-catalog-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -3336,7 +3166,7 @@ button.dropdown-item:hover {
 }
 
 @media (max-width: 768px) {
-  .tr-catalog__grid {
+  .tr-catalog-grid {
     grid-template-columns: 1fr;
   }
 
@@ -3356,21 +3186,21 @@ button.dropdown-item:hover {
       minmax(0, var(--tr-conversation-main-column));
   }
 
-  .tr-conversations__panel {
+  .tr-conversation-panel {
     display: none;
   }
 
-  .tr-conversations__placeholder {
+  .tr-conversations-placeholder {
     grid-column: span 1;
     display: flex;
   }
 
-  .tr-conversations.is-list-view .tr-conversations__list,
-  .tr-conversations.is-list-view .tr-conversations__chat,
-  .tr-conversations.is-chat-view .tr-conversations__list,
-  .tr-conversations.is-chat-view .tr-conversations__chat,
-  .tr-conversations.is-properties-view .tr-conversations__chat,
-  .tr-conversations.is-properties-view .tr-conversations__properties {
+  .tr-conversations.is-list-view .tr-conversations-list,
+  .tr-conversations.is-list-view .tr-conversation-chat,
+  .tr-conversations.is-chat-view .tr-conversations-list,
+  .tr-conversations.is-chat-view .tr-conversation-chat,
+  .tr-conversations.is-properties-view .tr-conversation-chat,
+  .tr-conversations.is-properties-view .tr-conversation-properties {
     display: flex;
   }
 
@@ -3380,15 +3210,15 @@ button.dropdown-item:hover {
       minmax(0, 1fr);
   }
 
-  .tr-conversations__properties-action {
+  .tr-conversation-properties-action {
     display: inline-flex;
   }
 
-  .tr-conversations.is-properties-view .tr-conversations__list-action {
+  .tr-conversations.is-properties-view .tr-conversation-list-action {
     display: inline-flex;
   }
 
-  .tr-conversations.is-properties-view .tr-conversations__properties-action {
+  .tr-conversations.is-properties-view .tr-conversation-properties-action {
     display: none;
   }
 }
@@ -3410,18 +3240,18 @@ button.dropdown-item:hover {
 }
 
 @media (max-width: 1023px) {
-  .tr-toolbar-tabs {
+  .tr-navbar-tabs {
     flex: 1 1 auto;
     margin-inline-start: 0;
     overflow-x: auto;
     scrollbar-width: none;
   }
 
-  .tr-toolbar-tabs::-webkit-scrollbar {
+  .tr-navbar-tabs::-webkit-scrollbar {
     display: none;
   }
 
-  .tr-topbar:has(.tr-toolbar-tabs) .tr-topbar__search {
+  .tr-topbar:has(.tr-navbar-tabs) .tr-search-field--navbar {
     display: none;
   }
 
@@ -3483,7 +3313,7 @@ button.dropdown-item:hover {
 
   .tr-mobile-menu-header {
     position: sticky;
-    z-index: 2;
+    z-index: calc(var(--tr-z-content) + 2);
     top: calc(-1 * env(safe-area-inset-top));
   // stylelint-disable-next-line declaration-no-important -- Stage A3 debt: overrides Bulma/Buefy base specificity, tracked for buefy-first cleanup.
     display: block !important;
@@ -3498,7 +3328,7 @@ button.dropdown-item:hover {
     border-radius: 0 !important;
   }
 
-  .tr-topbar__search {
+  .tr-search-field--navbar {
     width: auto;
     min-width: 0;
     flex: 1 1 auto;
@@ -3609,23 +3439,23 @@ button.dropdown-item:hover {
     display: block;
   }
 
-  .tr-conversations.is-list-view .tr-conversations__list,
-  .tr-conversations.is-chat-view .tr-conversations__chat,
-  .tr-conversations.is-properties-view .tr-conversations__properties {
+  .tr-conversations.is-list-view .tr-conversations-list,
+  .tr-conversations.is-chat-view .tr-conversation-chat,
+  .tr-conversations.is-properties-view .tr-conversation-properties {
     height: 100%;
     display: flex;
   }
 
-  .tr-conversations.is-list-view .tr-conversations__chat,
-  .tr-conversations.is-list-view .tr-conversations__properties,
-  .tr-conversations.is-chat-view .tr-conversations__list,
-  .tr-conversations.is-chat-view .tr-conversations__properties,
-  .tr-conversations.is-properties-view .tr-conversations__list,
-  .tr-conversations.is-properties-view .tr-conversations__chat {
+  .tr-conversations.is-list-view .tr-conversation-chat,
+  .tr-conversations.is-list-view .tr-conversation-properties,
+  .tr-conversations.is-chat-view .tr-conversations-list,
+  .tr-conversations.is-chat-view .tr-conversation-properties,
+  .tr-conversations.is-properties-view .tr-conversations-list,
+  .tr-conversations.is-properties-view .tr-conversation-chat {
     display: none;
   }
 
-  .tr-conversations__placeholder {
+  .tr-conversations-placeholder {
     display: none;
   }
 
@@ -3639,30 +3469,245 @@ button.dropdown-item:hover {
     background: var(--tr-surface-hover);
   }
 
-  .tr-conversations__messages {
+  .tr-conversation-messages {
     padding: tr.$space-4;
   }
 
-  .tr-conversations__header {
+  .tr-conversation-header {
     padding-inline: tr.$space-3;
   }
 
-  .tr-conversations__list-action {
+  .tr-conversation-list-action {
     display: inline-flex;
   }
 
-  .tr-conversations.is-properties-view .tr-conversations__properties-action {
+  .tr-conversations.is-properties-view .tr-conversation-properties-action {
     display: inline-flex;
   }
 
   // The back arrow above replaces this close button once the properties
-  // panel is the only visible column — mirrors .tr-conversations__list-action
-  // vs .tr-conversations__settings-action in the chat header.
-  .tr-conversations.is-properties-view .tr-conversations__properties-close {
+  // panel is the only visible column — mirrors .tr-conversation-list-action
+  // vs .tr-conversation-settings-action in the chat header.
+  .tr-conversations.is-properties-view .tr-conversation-properties-close {
     display: none;
   }
 
   .tr-page-header {
     flex-direction: column;
   }
+}
+
+// =============================================================================
+// 15. Deprecated aliases
+// =============================================================================
+// A class renamed for A3 naming/consistency reasons (Task A3.3+) keeps its
+// old selector here as a transitional alias, so a cabinet consumer that has
+// not yet ported the rename does not break silently between an
+// `ui-kit:update` and its own migration.
+//
+// Convention for every entry:
+//   // @deprecated <old-selector> — renamed to <new-selector> in <Task Id>.
+//   //   Removed in Stage B4. Tracked in agent-migration-guide.md
+//   //   "Реестр алиасов миграции".
+//   .<old-selector> {
+//     @extend .<new-selector>;
+//   }
+// An alias forwards to the current rule (`@extend`, or a duplicated
+// declaration list when `@extend` would cross an incompatible selector
+// context) — it never carries its own new styling. Keep this section's own
+// registry entry (agent-migration-guide.md) in sync with every addition and
+// removal.
+//
+// Task A3.3 — first renames: NavbarTabs (ex-ToolbarTabs), ToolbarSearch's
+// navbar-context modifier (ex-.tr-topbar__search), catalog grid/empty, and
+// the conversations/conversation split. See agent-migration-guide.md
+// "Реестр алиасов миграции" for the matching table.
+
+// @deprecated .tr-toolbar-tabs — renamed to .tr-navbar-tabs in Task A3.3.
+//   Removed in Stage B4. Tracked in agent-migration-guide.md
+//   "Реестр алиасов миграции".
+.tr-toolbar-tabs {
+  @extend .tr-navbar-tabs;
+}
+
+// @deprecated .tr-toolbar-tabs__link — renamed to .tr-navbar-tabs__link in
+//   Task A3.3. Removed in Stage B4. Tracked in agent-migration-guide.md
+//   "Реестр алиасов миграции".
+.tr-toolbar-tabs__link {
+  @extend .tr-navbar-tabs__link;
+}
+
+// @deprecated .tr-toolbar-tabs__link--icon — renamed to
+//   .tr-navbar-tabs__link--icon in Task A3.3. Removed in Stage B4. Tracked
+//   in agent-migration-guide.md "Реестр алиасов миграции".
+.tr-toolbar-tabs__link--icon {
+  @extend .tr-navbar-tabs__link--icon;
+}
+
+// @deprecated .tr-toolbar-tabs__icon — renamed to .tr-navbar-tabs__icon in
+//   Task A3.3. Removed in Stage B4. Tracked in agent-migration-guide.md
+//   "Реестр алиасов миграции".
+.tr-toolbar-tabs__icon {
+  @extend .tr-navbar-tabs__icon;
+}
+
+// @deprecated .tr-topbar__search — renamed to .tr-search-field--navbar (a
+//   modifier of the search component's own block, not a topbar element) in
+//   Task A3.3. Removed in Stage B4. Tracked in agent-migration-guide.md
+//   "Реестр алиасов миграции".
+.tr-topbar__search {
+  @extend .tr-search-field--navbar;
+}
+
+// @deprecated .tr-catalog__grid — renamed to .tr-catalog-grid in Task A3.3
+//   (BEM `__` dropped: catalog and grid are the same layout primitive, not
+//   block/element). Removed in Stage B4. Tracked in
+//   agent-migration-guide.md "Реестр алиасов миграции".
+.tr-catalog__grid {
+  @extend .tr-catalog-grid;
+}
+
+// @deprecated .tr-catalog__empty — renamed to .tr-catalog-empty in Task
+//   A3.3. Removed in Stage B4. Tracked in agent-migration-guide.md
+//   "Реестр алиасов миграции".
+.tr-catalog__empty {
+  @extend .tr-catalog-empty;
+}
+
+// .tr-conversations__* (Task A3.3) split by actual ownership: elements that
+// belong only to the conversations *list* page stay under the
+// `tr-conversations-` (plural) namespace; elements that belong to the
+// reusable single-conversation chat/properties widget — verbatim reused by
+// Agents.vue for its agent sandbox, see agent-migration-guide.md section 6
+// — move to the singular `tr-conversation-` namespace. Removed in
+// Stage B4. Tracked in agent-migration-guide.md "Реестр алиасов миграции".
+
+// @deprecated .tr-conversations__panel — renamed to .tr-conversation-panel.
+.tr-conversations__panel {
+  @extend .tr-conversation-panel;
+}
+
+// @deprecated .tr-conversations__list — renamed to .tr-conversations-list.
+.tr-conversations__list {
+  @extend .tr-conversations-list;
+}
+
+// @deprecated .tr-conversations__chat — renamed to .tr-conversation-chat.
+.tr-conversations__chat {
+  @extend .tr-conversation-chat;
+}
+
+// @deprecated .tr-conversations__properties — renamed to
+//   .tr-conversation-properties.
+.tr-conversations__properties {
+  @extend .tr-conversation-properties;
+}
+
+// @deprecated .tr-conversations__placeholder — renamed to
+//   .tr-conversations-placeholder.
+.tr-conversations__placeholder {
+  @extend .tr-conversations-placeholder;
+}
+
+// @deprecated .tr-conversations__header — renamed to
+//   .tr-conversation-header.
+.tr-conversations__header {
+  @extend .tr-conversation-header;
+}
+
+// @deprecated .tr-conversations__title — renamed to .tr-conversation-title.
+.tr-conversations__title {
+  @extend .tr-conversation-title;
+}
+
+// @deprecated .tr-conversations__items — renamed to
+//   .tr-conversations-list__items.
+.tr-conversations__items {
+  @extend .tr-conversations-list__items;
+}
+
+// @deprecated .tr-conversations__empty — .tr-conversations-list__empty
+//   (Task A3.3) was folded into the unified .tr-async-state contract in
+//   Task A3.7. Removed in Stage B4. Tracked in agent-migration-guide.md
+//   "Реестр алиасов миграции".
+.tr-conversations__empty {
+  @extend .tr-async-state;
+}
+
+// @deprecated .tr-conversations__identity — renamed to
+//   .tr-conversation-identity.
+.tr-conversations__identity {
+  @extend .tr-conversation-identity;
+}
+
+// @deprecated .tr-conversations__messages — renamed to
+//   .tr-conversation-messages.
+.tr-conversations__messages {
+  @extend .tr-conversation-messages;
+}
+
+// @deprecated .tr-conversations__composer — renamed to
+//   .tr-conversation-composer.
+.tr-conversations__composer {
+  @extend .tr-conversation-composer;
+}
+
+// @deprecated .tr-conversations__composer-input — renamed to
+//   .tr-conversation-composer-input.
+.tr-conversations__composer-input {
+  @extend .tr-conversation-composer-input;
+}
+
+// @deprecated .tr-conversations__properties-body — renamed to
+//   .tr-conversation-properties-body.
+.tr-conversations__properties-body {
+  @extend .tr-conversation-properties-body;
+}
+
+// @deprecated .tr-conversations__profile — renamed to
+//   .tr-conversation-profile.
+.tr-conversations__profile {
+  @extend .tr-conversation-profile;
+}
+
+// @deprecated .tr-conversations__profile-image — renamed to
+//   .tr-conversation-profile-image.
+.tr-conversations__profile-image {
+  @extend .tr-conversation-profile-image;
+}
+
+// @deprecated .tr-conversations__details — renamed to
+//   .tr-conversation-details.
+.tr-conversations__details {
+  @extend .tr-conversation-details;
+}
+
+// @deprecated .tr-conversations__list-action — renamed to
+//   .tr-conversation-list-action.
+.tr-conversations__list-action {
+  @extend .tr-conversation-list-action;
+}
+
+// @deprecated .tr-conversations__settings-action — renamed to
+//   .tr-conversation-settings-action.
+.tr-conversations__settings-action {
+  @extend .tr-conversation-settings-action;
+}
+
+// @deprecated .tr-conversations__properties-action — renamed to
+//   .tr-conversation-properties-action.
+.tr-conversations__properties-action {
+  @extend .tr-conversation-properties-action;
+}
+
+// @deprecated .tr-conversations__properties-close — renamed to
+//   .tr-conversation-properties-close.
+.tr-conversations__properties-close {
+  @extend .tr-conversation-properties-close;
+}
+
+// @deprecated .tr-conversations__icon-action — renamed to
+//   .tr-conversation-icon-action.
+.tr-conversations__icon-action {
+  @extend .tr-conversation-icon-action;
 }

@@ -5,15 +5,15 @@ import {
 } from "vue-router";
 
 import Agents from "./components/Agents.vue";
+import Channels from "./components/Channels.vue";
 import Conversations from "./components/Conversations.vue";
 import Dashboard from "./components/Dashboard.vue";
-import Integrations from "./components/Integrations.vue";
 import Knowledge from "./components/Knowledge.vue";
 import SectionPlaceholder from "./components/SectionPlaceholder.vue";
-import Settings from "./components/Settings.vue";
 import UiKit from "./components/UiKit.vue";
 import Workspace from "./components/Workspace.vue";
-import WorkspacePlan from "./components/WorkspacePlan.vue";
+import WorkspacePlans from "./components/WorkspacePlans.vue";
+import WorkspaceSettings from "./components/WorkspaceSettings.vue";
 
 const router = createRouter({
   history:
@@ -44,13 +44,15 @@ const router = createRouter({
       component: Knowledge,
     },
     {
-      path: "/integrations",
-      name: "integrations",
-      component: Integrations,
+      path: "/channels",
+      name: "channels",
+      component: Channels,
     },
     {
-      path: "/channels",
-      redirect: { name: "integrations" },
+      // @deprecated /integrations — renamed to /channels in Task A3.3.
+      //   Kept as a redirect so existing links keep working.
+      path: "/integrations",
+      redirect: { name: "channels" },
     },
     {
       path: "/settings",
@@ -69,7 +71,7 @@ const router = createRouter({
         {
           path: "settings/",
           name: "workspace-settings",
-          component: Settings,
+          component: WorkspaceSettings,
         },
         {
           path: "members/",
@@ -80,7 +82,7 @@ const router = createRouter({
         {
           path: "plan/",
           name: "workspace-plan",
-          component: WorkspacePlan,
+          component: WorkspacePlans,
         },
       ],
     },

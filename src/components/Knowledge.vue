@@ -6,7 +6,7 @@
       v-if="!selectedCollection && !isLoading"
       class="tr-workbench-page__header tr-page-toolbar"
     >
-      <SearchField
+      <ToolbarSearch
         v-model="query"
         class="tr-page-toolbar__search"
         placeholder="Поиск коллекций"
@@ -41,7 +41,7 @@
       class="tr-catalog"
       aria-label="Коллекции знаний"
     >
-      <div class="tr-catalog__grid">
+      <div class="tr-catalog-grid">
         <button
           v-for="collection in filteredCollections"
           :key="collection.id"
@@ -76,7 +76,7 @@
 
         <p
           v-if="filteredCollections.length === 0 && hasActiveFilters"
-          class="tr-catalog__empty"
+          class="tr-catalog-empty"
         >
           По вашему запросу коллекции не найдены.
         </p>
@@ -116,7 +116,7 @@
         <b-tag>{{ getCollectionType(selectedCollection.type).label }}</b-tag>
       </header>
 
-      <div class="tr-knowledge__toolbar">
+      <div class="tr-knowledge__items-header">
         <span>
           {{ selectedCollection.items.length }} элементов
         </span>
@@ -129,7 +129,7 @@
         v-if="selectedCollection.items.length"
         class="tr-knowledge__items"
       >
-        <b-table :data="selectedCollection.items" hoverable>
+        <b-table :data="selectedCollection.items" hoverable mobile-cards>
           <b-table-column field="name" label="Название" v-slot="{ row }">
             <strong>{{ row.name }}</strong>
             <br />
@@ -145,19 +145,35 @@
           </b-table-column>
 
           <b-table-column v-slot="{ row }" width="56">
-            <b-button
-              type="is-text"
-              icon-left="dots-horizontal"
-              :aria-label="`Действия с элементом «${row.name}»`"
-            />
+            <b-dropdown position="is-bottom-left" aria-role="list" append-to-body>
+              <template #trigger>
+                <b-button
+                  type="is-text"
+                  icon-left="dots-horizontal"
+                  size="is-small"
+                  :aria-label="`Действия с элементом «${row.name}»`"
+                />
+              </template>
+              <b-dropdown-item aria-role="listitem">
+                Переименовать {{ row.name }}
+              </b-dropdown-item>
+              <b-dropdown-item separator />
+              <b-dropdown-item aria-role="listitem" @click="removeItem(row)">
+                Удалить
+              </b-dropdown-item>
+            </b-dropdown>
           </b-table-column>
         </b-table>
       </div>
 
-      <div v-else class="tr-knowledge__items-empty">
-        <b-icon icon="file-plus-outline" size="is-large" />
-        <strong>В коллекции пока нет элементов</strong>
-        <span>Добавьте файл, ссылку или Markdown-документ.</span>
+      <div v-else class="tr-async-state tr-async-state--empty">
+        <span class="tr-async-state__icon">
+          <b-icon icon="file-plus-outline" size="is-large" />
+        </span>
+        <strong class="tr-async-state__title">В коллекции пока нет элементов</strong>
+        <span class="tr-async-state__message">
+          Добавьте файл, ссылку или Markdown-документ.
+        </span>
       </div>
     </article>
   </section>
@@ -222,8 +238,8 @@ import { useSimulatedLoading } from "../composables/useSimulatedLoading";
 import { useWorkspaceStore } from "../stores/workspace";
 import Loader from "./common/Loader.vue";
 import MobileFilters from "./MobileFilters.vue";
-import SearchField from "./SearchField.vue";
 import ToolbarDropdown from "./ToolbarDropdown.vue";
+import ToolbarSearch from "./ToolbarSearch.vue";
 
 const { isLoading } = useSimulatedLoading();
 
@@ -456,6 +472,19 @@ function getItemType(type) {
 
 function showCollectionCatalog() {
   selectedId.value = null;
+}
+
+/**
+ * @param {KnowledgeItem} item
+ */
+function removeItem(item) {
+  const collection = selectedCollection.value;
+
+  if (!collection) {
+    return;
+  }
+
+  collection.items = collection.items.filter(({ id }) => id !== item.id);
 }
 
 function openCreateModal() {

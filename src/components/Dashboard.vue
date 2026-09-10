@@ -63,7 +63,7 @@
             <b-button size="is-small">Все агенты</b-button>
           </div>
 
-          <b-table :data="agents" hoverable>
+          <b-table :data="agents" hoverable mobile-cards>
             <b-table-column field="name" label="Название" v-slot="{ row }">
               <strong>{{ row.name }}</strong>
             </b-table-column>
@@ -124,8 +124,8 @@ const dashboardSections = [
     icon: "robot-outline",
   },
   {
-    routeName: "integrations",
-    dataKey: "integrations",
+    routeName: "channels",
+    dataKey: "channels",
     label: "Интеграции",
     icon: "puzzle-outline",
   },
@@ -175,7 +175,7 @@ const emptyDashboard = {
       secondaryValue: "0%",
       progress: 0,
     },
-    integrations: {
+    channels: {
       value: "0",
       caption: "подключено",
       delta: "",
@@ -234,7 +234,7 @@ const dashboards = {
         secondaryValue: "51%",
         progress: 51,
       },
-      integrations: {
+      channels: {
         value: "3",
         caption: "подключено",
         delta: "",
@@ -295,7 +295,7 @@ const dashboards = {
         secondaryValue: "8%",
         progress: 8,
       },
-      integrations: {
+      channels: {
         value: "1",
         caption: "подключён",
         delta: "",

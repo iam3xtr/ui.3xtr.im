@@ -15,8 +15,7 @@
 - `src/router.js` — маршруты основных разделов приложения.
 - `src/components/Dashboard.vue` — главный экран рабочего пространства.
 - `src/components/Conversations.vue` — список и поиск диалогов.
-- `src/components/UiKit.vue` — примеры основных компонентов Buefy, иконок и загрузчика (страница `/kit`).
-- `ui-kit.html` — HTML-примеры элементов на классах Bulma.
+- `src/components/UiKit.vue` — примеры основных компонентов Buefy, иконок и загрузчика (страница `/ui-kit`).
 - `src/assets/icons/` — обоснованный набор кастомных SVG-иконок (вендоры LLM и виды моделей), см. раздел «Иконки».
 - `src/components/common/Icon.vue`, `src/components/common/Loader.vue` — общие компоненты набора иконок и индикации загрузки.
 
@@ -146,7 +145,8 @@ npx sass \
   dist/trickster-buefy.css
 ```
 
-После этого можно открыть `ui-kit.html`.
+Готовый CSS не привязан к Vue-приложению кита и годится для standalone-проверки
+классов вне `npm run dev`.
 
 ## Публикация на GitHub Pages
 

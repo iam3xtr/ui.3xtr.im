@@ -1,7 +1,7 @@
 <template>
-  <section class="tr-workbench-page tr-integrations">
+  <section class="tr-workbench-page tr-channels">
     <header class="tr-page-toolbar">
-      <SearchField
+      <ToolbarSearch
         v-model="query"
         class="tr-page-toolbar__search"
         placeholder="Поиск интеграций"
@@ -50,7 +50,7 @@
     <Loader v-if="isLoading" size="section" />
 
     <div v-else class="tr-catalog">
-      <div class="tr-catalog__grid">
+      <div class="tr-catalog-grid">
         <article
           v-for="integration in filteredIntegrations"
           :key="integration.id"
@@ -100,7 +100,7 @@
 
         <p
           v-if="filteredIntegrations.length === 0"
-          class="tr-catalog__empty"
+          class="tr-catalog-empty"
         >
           Интеграции не найдены.
         </p>
@@ -117,8 +117,8 @@ import { useSimulatedLoading } from "../composables/useSimulatedLoading";
 import { useWorkspaceStore } from "../stores/workspace";
 import Loader from "./common/Loader.vue";
 import MobileFilters from "./MobileFilters.vue";
-import SearchField from "./SearchField.vue";
 import ToolbarDropdown from "./ToolbarDropdown.vue";
+import ToolbarSearch from "./ToolbarSearch.vue";
 
 const { isLoading } = useSimulatedLoading();
 

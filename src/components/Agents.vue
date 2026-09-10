@@ -4,7 +4,7 @@
       v-if="viewMode === 'list'"
       class="tr-workbench-page__header tr-page-toolbar"
     >
-      <SearchField
+      <ToolbarSearch
         v-model="query"
         class="tr-page-toolbar__search"
         placeholder="Поиск по агентам"
@@ -54,7 +54,7 @@
       class="tr-catalog"
       aria-label="Список агентов"
     >
-      <div class="tr-catalog__grid">
+      <div class="tr-catalog-grid">
         <button
           v-for="agent in filteredAgents"
           :key="agent.id"
@@ -87,7 +87,7 @@
 
         <p
           v-if="filteredAgents.length === 0 && hasActiveAgentFilters"
-          class="tr-catalog__empty"
+          class="tr-catalog-empty"
         >
           По вашему запросу агенты не найдены.
         </p>
@@ -116,18 +116,18 @@
     >
       <article
         v-if="selectedAgent"
-        class="tr-conversations__panel tr-conversations__chat"
+        class="tr-conversation-panel tr-conversation-chat"
       >
-        <header class="tr-conversations__header">
+        <header class="tr-conversation-header">
           <b-button
-            class="tr-conversations__list-action tr-conversations__icon-action"
+            class="tr-conversation-list-action tr-conversation-icon-action"
             icon-left="arrow-left"
             aria-label="К агентам"
             title="К агентам"
             @click="showAgentCatalog"
           />
 
-          <div class="tr-conversations__identity">
+          <div class="tr-conversation-identity">
             <span class="tr-conversation-avatar">
               <b-icon icon="robot-outline" size="is-small" />
             </span>
@@ -139,7 +139,7 @@
 
           <b-button
             v-if="!isPropertiesVisible"
-            class="tr-conversations__settings-action tr-conversations__icon-action"
+            class="tr-conversation-settings-action tr-conversation-icon-action"
             icon-left="cog-outline"
             aria-label="Открыть настройки агента"
             title="Открыть настройки агента"
@@ -147,7 +147,7 @@
           />
         </header>
 
-        <div class="tr-conversations__messages" aria-live="polite">
+        <div class="tr-conversation-messages" aria-live="polite">
           <div class="tr-agents__sandbox-note">
             <b-icon icon="flask-outline" size="is-small" />
             Сообщения здесь не попадут в реальные диалоги.
@@ -164,10 +164,10 @@
           </div>
         </div>
 
-        <footer class="tr-conversations__composer">
+        <footer class="tr-conversation-composer">
           <b-input
             v-model="draft"
-            class="tr-conversations__composer-input"
+            class="tr-conversation-composer-input"
             placeholder="Сообщение для агента"
             @keyup.enter="sendMessage"
           />
@@ -182,19 +182,19 @@
 
       <aside
         v-if="selectedAgent"
-        class="tr-conversations__panel tr-conversations__properties"
+        class="tr-conversation-panel tr-conversation-properties"
       >
-        <header class="tr-conversations__header">
+        <header class="tr-conversation-header">
           <b-button
-            class="tr-conversations__properties-action tr-conversations__icon-action"
+            class="tr-conversation-properties-action tr-conversation-icon-action"
             icon-left="arrow-left"
             aria-label="К песочнице"
             title="К песочнице"
             @click="viewMode = 'chat'"
           />
-          <h2 class="tr-conversations__title">Настройки</h2>
+          <h2 class="tr-conversation-title">Настройки</h2>
           <b-button
-            class="tr-conversations__properties-close tr-conversations__icon-action"
+            class="tr-conversation-properties-close tr-conversation-icon-action"
             icon-left="close"
             aria-label="Закрыть настройки агента"
             title="Закрыть настройки агента"
@@ -202,7 +202,7 @@
           />
         </header>
 
-        <div class="tr-conversations__properties-body">
+        <div class="tr-conversation-properties-body">
           <b-field label="Название">
             <b-input v-model="selectedAgent.name" />
           </b-field>
@@ -286,8 +286,8 @@ import { useSimulatedLoading } from "../composables/useSimulatedLoading";
 import { useWorkspaceStore } from "../stores/workspace";
 import Loader from "./common/Loader.vue";
 import MobileFilters from "./MobileFilters.vue";
-import SearchField from "./SearchField.vue";
 import ToolbarDropdown from "./ToolbarDropdown.vue";
+import ToolbarSearch from "./ToolbarSearch.vue";
 
 const { isLoading } = useSimulatedLoading();
 

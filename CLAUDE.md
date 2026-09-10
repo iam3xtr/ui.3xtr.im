@@ -19,6 +19,19 @@ Both `lint:style` checks require no network access and are what CI
 (`.github/workflows/deploy-pages.yml`) runs before building and deploying to GitHub Pages
 on push to `main` (post-merge gate, not a PR gate — there is no `pull_request` trigger).
 
+## Verification policy
+
+A manual visual regression pass (comparing a screen in light/dark at
+`360/768/1024/1280/1440px`, exercising overlay/keyboard interaction, etc.) is **not** a
+blocking acceptance criterion for any task or stage in `.plan`/`.todo`, at any point —
+there is no headless browser in the agent environment to run one. The required checks
+are the narrow, automatable ones: `lint:style`, `guard:no-component-styles`, `build`,
+`git diff --check`, plus whatever a specific task's own acceptance criteria name. When
+the user asks for a review or to close a task/stage, treat any necessary user-side
+review as already done — do not re-ask for confirmation or hold a task in `review`
+pending a manual matrix run. Where older wording in `.plan`/`.todo` still frames the
+matrix as a gate, that's leftover phrasing to fix in passing, not an active requirement.
+
 ## Stack
 
 Vue 3 (plain JavaScript, `<script setup>`, no TypeScript) · Buefy 3.x · Bulma 1.x ·
@@ -48,8 +61,11 @@ guard:no-component-styles`), run in CI via `npm run lint:style` alongside Stylel
 (`stylelint.config.js` bans `!important` and duplicate selectors). When adding a rule,
 put it in the matching banner-commented section of `trickster-buefy.scss` (tokens,
 shell, navigation, toolbar, tabs, tables, forms, cards and catalogs, states, overlays,
-tariffs, conversations, utilities, responsive — see the file's own table of contents at
-the top) rather than creating a new file or an inline component style. Inherited
+tariffs, conversations, utilities, responsive, deprecated aliases — see the file's own
+table of contents at the top) rather than creating a new file or an inline component
+style. A class renamed for the A3 contract keeps its old selector as a transitional
+`@deprecated` alias in that last section until Stage B4; log every alias in
+`docs/agent-migration-guide.md` ("Реестр алиасов миграции"). Inherited
 Bulma/Buefy specificity overrides are explicitly marked as `Stage A3 debt` in the
 stylesheet; do not add new `!important` declarations or suppressions.
 
@@ -79,13 +95,12 @@ src/
   router.js            # Routes for every kit screen (hash history when VITE_ROUTER_MODE=hash)
   navigation.js         # Nav item registry consumed by Sidebar/Navbar
   components/           # One component per cabinet screen (Dashboard, Agents, Conversations,
-                         #   Knowledge, Integrations, Settings, Workspace, WorkspacePlan, UiKit, ...)
+                         #   Knowledge, Channels, WorkspaceSettings, Workspace, WorkspacePlans, UiKit, ...)
   components/common/    # Shared primitives: Icon.vue, Loader.vue
   composables/          # Shared composition functions
   stores/                # Pinia stores backing kit-only demo state (no real API)
   styles/                # The two managed stylesheets — see "Styling rule" above
   assets/icons/          # Custom SVGs — see "Icons" above
-ui-kit.html              # Static HTML examples of raw Bulma-class elements
 docs/design-system.md            # The design contract (canonical)
 docs/agent-migration-guide.md    # Icon/content-pattern mapping for consuming apps
 ```
@@ -127,7 +142,7 @@ only changed managed files, and advances the lock — it never touches Vue compo
 product-specific CSS on the consuming side. Do not restructure or rename these two files
 casually: a rename or split changes the sync contract and requires updating
 `get.3xtr.im`'s allowlist in the same effort. Everything else in this repo (components,
-router, stores, `ui-kit.html`) is reference/demo material and is **not** synced
+router, stores) is reference/demo material and is **not** synced
 automatically — changes to component markup/anatomy are ported manually and reviewed
 against `docs/design-system.md`.
 

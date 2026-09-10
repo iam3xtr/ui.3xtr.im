@@ -15,9 +15,19 @@
    переносится **структура и имена классов**, а не сами Vue-компоненты
    один в один — но CSS-классы должны совпадать буквально, чтобы стили из
    `trickster-buefy.scss` подхватились без модификаций.
-3. Эталонные файлы для сверки (в этом репозитории):
-   `Agents.vue`, `Knowledge.vue`, `Integrations.vue`, `Conversations.vue`,
-   `Dashboard.vue`, `Settings.vue`, `UiKit.vue`. Перед правкой любой страницы
+3. Регистрация Buefy — только полным плагином (`app.use(Buefy, { ... })` в
+   точке входа, как в `src/main.js` этого репозитория): это одним вызовом
+   регистрирует весь набор из таблицы «Собственный компонент или Buefy» в
+   `docs/design-system.md` (Table/Field/Modal/Dialog/Toast/Loading/
+   Pagination/Skeleton/Upload/Tabs/Message/Sidebar). Если элемент из этой
+   таблицы покрывает нужную часть разметки ЛК — используется штатный
+   Buefy-компонент, а не ручной аналог; единственное документированное
+   исключение — `NavbarTabs` (маршрутные вкладки, а не переключение
+   контента). Живые примеры каждого пункта — в разделе «Buefy-first
+   реестр» `UiKit.vue`.
+4. Эталонные файлы для сверки (в этом репозитории):
+   `Agents.vue`, `Knowledge.vue`, `Channels.vue`, `Conversations.vue`,
+   `Dashboard.vue`, `WorkspaceSettings.vue`, `UiKit.vue`. Перед правкой любой страницы
    ЛК — открыть страницу отсюда с максимально похожей структурой и
    переносить разметку поэлементно.
 
@@ -25,7 +35,7 @@
 
 **Одинаковый визуальный контейнер = одинаковое имя класса.**
 Если на двух страницах ЛК есть, например, сетка карточек — это не
-"agents-grid" и "knowledge-grid", это один `.tr-catalog__grid` в обоих
+"agents-grid" и "knowledge-grid", это один `.tr-catalog-grid` в обоих
 местах. Перед тем как писать новый класс — искать в `trickster-buefy.scss`,
 нет ли уже подходящего. Собственный `scoped`-класс заводится только под
 то, что реально уникально для страницы (например, специфичная логика
@@ -45,11 +55,17 @@
   переключением вида → **раздел 6, workbench**.
 - Есть вкладки → **раздел 7, b-tabs**.
 - Страница/блок с переключателями-настройками → **раздел 8, settings-панель**.
+- Форма с обязательными полями (создание/редактирование записи, логин,
+  профиль) → **раздел 14, формы**.
+- Постраничный список вне `b-table` (нужны отдельные "предыдущая/следующая") →
+  **раздел 15, пагинация**.
+- Модалка, подтверждение опасного действия, боковая панель или уведомление →
+  **раздел 16, оверлеи**.
 - Пустое состояние (нет данных) → **раздел 9**.
 
 ## 3. Каталоги карточек
 
-Эталон: `Agents.vue`, `Knowledge.vue`, `Integrations.vue` — визуально и
+Эталон: `Agents.vue`, `Knowledge.vue`, `Channels.vue` — визуально и
 структурно это один и тот же паттерн, только с разными данными.
 
 ```html
@@ -59,7 +75,7 @@
   </header>
 
   <section class="tr-catalog" aria-label="...">
-    <div class="tr-catalog__grid">
+    <div class="tr-catalog-grid">
       <button
         class="tr-card tr-card--interactive tr-entity-card tr-entity-card--interactive"
         type="button"
@@ -80,7 +96,7 @@
         </span>
       </button>
 
-      <p v-if="isEmptyByFilter" class="tr-catalog__empty">
+      <p v-if="isEmptyByFilter" class="tr-catalog-empty">
         По вашему запросу ничего не найдено.
       </p>
 
@@ -106,12 +122,12 @@
   клика) — добавлять `tr-entity-card--interactive` (сброс курсора/шрифта/
   выравнивания текста под кнопку).
 - Если карточка статична, а действие — во внутренней кнопке (как в
-  `Integrations.vue`) — брать только `tr-card tr-card--interactive
+  `Channels.vue`) — брать только `tr-card tr-card--interactive
   tr-entity-card`, без `--interactive`.
 - Иконка карточки — всегда `tr-icon-tile tr-icon-tile--plain` вместе с
   размерным классом (`tr-entity-card__icon` = 44px, `__create-icon` = 48px).
   Не переопределять `border-radius`/`background` вручную в компоненте.
-- Пустое состояние внутри сетки — всегда `tr-catalog__empty`, растягивается
+- Пустое состояние внутри сетки — всегда `tr-catalog-empty`, растягивается
   на всю ширину грида (`grid-column: 1 / -1` уже в стилях).
 - Ничего из этого не описывается в `<style scoped>` компонента — вся эта
   система уже в `trickster-buefy.scss`. В `scoped`-стилях страницы остаётся
@@ -131,7 +147,7 @@
     </b-button>
   </div>
 
-  <b-table :data="rows" striped hoverable paginated :per-page="10">
+  <b-table :data="rows" hoverable mobile-cards paginated :per-page="10">
     <b-table-column field="name" label="Название" v-slot="{ row }">
       <strong>{{ row.name }}</strong>
     </b-table-column>
@@ -164,8 +180,20 @@
   логи, тарифы, API-ключи, элементы коллекции знаний и т.п.) заворачивается
   в `b-table`, а не рисуется вручную через `<table>` или `div`-сетку. Пример
   такого списка — таблица элементов коллекции в `Knowledge.vue`.
-- `striped hoverable` — по умолчанию всегда. `paginated` — если список
+- `hoverable` — по умолчанию всегда. `paginated` — если список
   потенциально длинный.
+- `mobile-cards` — по умолчанию всегда. Это штатный мобильный режим Buefy
+  (строки превращаются в карточки label/value ниже брейкпоинта `mobile`),
+  замена ручному `.tr-table--stack` и `data-label`-разметке. Не собирать
+  мобильный вид таблицы вручную.
+- Частные случаи оформления — модификаторы на корневом элементе:
+  `<b-table class="tr-table--compact">` (плотные списки без построчных
+  действий: лимиты, логи) и `<b-table class="tr-table--breakdown">`
+  (сводка «статья: значение» без шапки: разбивка стоимости, итоги). Класс,
+  переданный на `<b-table>`, доходит до корневого `.b-table`, потому что
+  Buefy 3 прокидывает `class`/`style`/`id` через `compatFallthrough`. Смотри
+  раздел «Таблица» в `UiKit.vue`. Новый визуальный вариант таблицы — это один
+  из этих модификаторов или ещё один такой же, а не новый компонент.
 - Статус — всегда через `b-tag` с тем же тернарным паттерном
   `:type="row.<field> === '<активное значение>' ? 'is-primary' : undefined"`,
   как во всех остальных местах кита (Agents/Conversations/Dashboard/UiKit).
@@ -182,12 +210,12 @@
 
 ## 5. Toolbar (поиск + фильтры над списком)
 
-Эталон: шапка `Agents.vue` / `Knowledge.vue` / `Integrations.vue` /
+Эталон: шапка `Agents.vue` / `Knowledge.vue` / `Channels.vue` /
 `Conversations.vue`.
 
 ```html
 <header class="tr-workbench-page__header tr-page-toolbar">
-  <SearchField v-model="query" class="tr-page-toolbar__search" placeholder="..." />
+  <ToolbarSearch v-model="query" class="tr-page-toolbar__search" placeholder="..." />
 
   <ToolbarDropdown
     v-model="filter"
@@ -229,11 +257,33 @@
 Ключевые классы: корень `tr-workbench-page`, внутри —
 `tr-conversations` (да, буквально этот класс, даже не для диалогов — это
 имя общего layout-примитива "список + рабочая область + панель свойств")
-с модификаторами `is-${viewMode}-view` и `is-properties-open`;
-`tr-conversations__panel`, `__list`, `__chat`, `__properties`, `__header`,
-`__messages`, `__composer`, `__properties-body`; кнопки навигации между
-панелями — `tr-conversations__icon-action` + `__list-action` /
-`__settings-action` / `__properties-action` / `__properties-close`.
+с модификаторами `is-${viewMode}-view` и `is-properties-open`.
+
+С Task A3.3 элементы этого блока разделены по фактической принадлежности
+(правило R1 — `__`-элемент не может называть то, что используется в шаблоне
+другого компонента):
+
+- **`tr-conversations-*`** (множественное число) — то, что принадлежит
+  только странице-списку: `tr-conversations-list` (панель списка),
+  `tr-conversations-list__items`, `tr-conversations-placeholder` (заглушка
+  "выберите диалог"). Состояние "поиск/фильтр ничего не нашёл" внутри списка
+  — не отдельный класс, а `.tr-async-state.tr-async-state--no-results`, см.
+  раздел 9.
+- **`tr-conversation-*`** (единственное число) — переиспользуемый виджет
+  "чат + свойства одного диалога", который `Agents.vue` берёт целиком под
+  свою песочницу: `tr-conversation-panel`, `tr-conversation-chat`,
+  `tr-conversation-properties`, `tr-conversation-header`,
+  `tr-conversation-title`, `tr-conversation-identity`,
+  `tr-conversation-messages`, `tr-conversation-composer`,
+  `tr-conversation-composer-input`, `tr-conversation-properties-body`,
+  `tr-conversation-profile`, `tr-conversation-profile-image`,
+  `tr-conversation-details`; кнопки навигации между панелями —
+  `tr-conversation-icon-action` + `tr-conversation-list-action` /
+  `tr-conversation-settings-action` / `tr-conversation-properties-action` /
+  `tr-conversation-properties-close`.
+
+Старые `tr-conversations__*`-имена (до Task A3.3) остаются только как
+`@deprecated`-алиасы — см. раздел 13.
 
 Если у ЛК появляется новая master-detail страница (например, "заявки" со
 списком и деталями заявки) — переиспользовать этот набор классов целиком,
@@ -244,7 +294,29 @@
 
 ## 7. Вкладки
 
-Эталон: раздел «Вкладки» в `UiKit.vue`, `tr-settings__tabs` в `Settings.vue`.
+Два контракта, у каждого своя роль — третьего (ручной Bulma `.tabs`) не
+заводить нигде.
+
+**Маршрутные вкладки раздела** — переключают URL, а не контент на месте.
+Единственное документированное исключение из Buefy-first (раздел 0, п. 3):
+`b-tabs` умеет переключать только локальный контент, а не маршрут.
+
+Эталон: `NavbarTabs` в `Navbar.vue` (рендерится в шапке для маршрутов
+рабочего пространства).
+
+```html
+<NavbarTabs :items="workspaceTabs" aria-label="Навигация по пространству" />
+```
+
+`items` — массив `{ label, to }`, `to` — `RouteLocationRaw` для `RouterLink`.
+Классы `tr-navbar-tabs`, `tr-navbar-tabs__link`,
+`tr-navbar-tabs__link--icon` (иконка вместо подписи), `tr-navbar-tabs__icon`
+— часть контракта компонента, отдельно не переопределять.
+
+**Вкладки внутри страницы или модалки** — переключают контент на месте, а
+маршрут не меняют.
+
+Эталон: раздел «Вкладки» в `UiKit.vue`.
 
 ```html
 <b-tabs v-model="activeTab" type="is-boxed">
@@ -252,14 +324,13 @@
 </b-tabs>
 ```
 
-- Всегда `b-tabs`/`b-tab-item` из Buefy, не самодельные табы на `div`+`button`.
-- Если вкладки открывают панель настроек — контент вкладки оборачивается в
-  `tr-settings__panel` (см. раздел 8), а сам `b-tabs` — в `tr-settings__tabs`,
-  чтобы получить единый отступ `.tab-content` из темы.
+Всегда `b-tabs`/`b-tab-item` из Buefy, не самодельные табы на `div`+`button`.
+Если вкладки открывают панель настроек — контент вкладки оборачивается в
+`tr-settings__panel` (см. раздел 8).
 
 ## 8. Панели настроек (список опций с переключателями)
 
-Эталон: `Settings.vue` целиком.
+Эталон: `WorkspaceSettings.vue` целиком.
 
 ```html
 <div class="tr-settings__panel">
@@ -286,17 +357,56 @@
 (уведомления, права доступа, интеграционные флаги и т.п.) — этот паттерн,
 не самодельные строки.
 
-## 9. Пустые состояния
+## 9. Пустые состояния и загрузка — `.tr-async-state`
 
-Два вида, не путать и не изобретать третий:
+Единственный контент-блок для состояний "контента нет" — `.tr-async-state`.
+Он ограничен пятью модификаторами и третьего не заводится:
+`--loading`, `--empty`, `--no-results`, `--error`, `--permission-denied`.
+Presentation-only: блок ничего не запрашивает и не решает про permissions —
+это остаётся на вызывающей странице (Stage A4 оборачивает контракт в
+компонент `AsyncState.vue`/`ListAsyncState.vue` с той же разметкой).
 
-- **Вся страница пуста** (нет вообще ни одной записи, действие "создать
-  первую") → `.tr-section-empty` (см. `Conversations.vue`, когда список
-  диалогов пуст) или предметная CTA-карточка вроде `.tr-dashboard-create` в
-  `Dashboard.vue`, если предполагается крупный акцент на "создать первое".
-- **Список пуст из-за фильтра/поиска** (записи есть, просто ничего не
-  подошло) → `.tr-catalog__empty` внутри сетки (раздел 3) или пустая строка
-  в `b-table` (стандартное поведение Buefy, ничего доп. не рисовать).
+```html
+<div class="tr-async-state tr-async-state--empty">
+  <span class="tr-async-state__icon">
+    <b-icon icon="..." size="is-large" />
+  </span>
+  <strong class="tr-async-state__title">Заголовок</strong>
+  <span class="tr-async-state__message">Пояснение и что делать дальше.</span>
+  <!-- необязательно: <div class="tr-async-state__actions">...</div> -->
+</div>
+```
+
+Правила по модификаторам:
+
+- **`--loading`** — своей разметки нет; внутрь кладётся `Loader`
+  (`size="section"` или `inline`), `.tr-async-state` его только
+  центрирует. Ручной спиннер (`.async-state__spinner` и подобное) не
+  заводится нигде — это единственный источник "нет контента".
+- **`--empty`** — вся страница/секция пуста (нет ни одной записи), с
+  предметной CTA. Для полностраничного варианта `.tr-async-state`
+  оборачивается в `.tr-section-empty` (растягивает высоту на весь
+  `tr-workbench-page`, ничего не рисует сам) — см. `Conversations.vue`, когда
+  список диалогов пуст. Внутри карточки/панели (например, у пустой
+  коллекции знаний в `Knowledge.vue`) обёртка `.tr-section-empty` не нужна —
+  `.tr-async-state` сам растягивается на `flex: 1` родителя. Альтернатива —
+  предметная CTA-карточка вроде `.tr-dashboard-create` в `Dashboard.vue`,
+  если предполагается крупный акцент на "создать первое".
+- **`--no-results`** — записи есть, но фильтр/поиск ничего не нашёл.
+  Для каталога карточек — не `.tr-async-state`, а `.tr-catalog-empty`
+  внутри сетки (раздел 3); для `b-table` — пустая строка (штатное поведение
+  Buefy, ничего доп. не рисовать); во всех остальных списках (например,
+  список диалогов в `Conversations.vue`) — `.tr-async-state--no-results`.
+- **`--error`** — `role="alert"` и `aria-live="assertive"` на самом блоке
+  (это ответственность вызывающей страницы, не CSS); иконка красится
+  токеном danger автоматически.
+- **`--permission-denied`** — визуально не отличается от `--empty`/
+  `--error` по умолчанию; модификатор существует для явной семантики и
+  будущих CSS-хуков, а не для собственного оформления.
+
+Третьего вида "пусто" не заводится: `.tr-section-empty`,
+`.tr-knowledge__items-empty`, `.tr-conversations-list__empty` и подобные
+постраничные дубликаты — упразднены в Task A3.7 в пользу `.tr-async-state`.
 
 ## 10. Общие элементы поверхности
 
@@ -312,23 +422,32 @@
   классом конкретного места использования, не трогать `.tr-icon-tile`
   напрямую.
 - `.tr-grid`, `.tr-grid--2`, `.tr-grid--3` — генерик-сетки для произвольных
-  блоков (не для каталогов карточек — там `.tr-catalog__grid`).
+  блоков (не для каталогов карточек — там `.tr-catalog-grid`).
 - `.tr-row`, `.tr-row--between`, `.tr-stack`, `.tr-muted`, `.tr-strong`,
   `.tr-divider` — типографские/layout-утилиты, использовать вместо
   инлайновых стилей.
-- `.tr-dropdown` — общий вид меню `b-dropdown` (`dropdown-content`,
-  `dropdown-item`, `dropdown-item.is-active`, `dropdown-divider`). Ставить
-  на **любой** `b-dropdown`, будь то меню в navbar (`Navbar.vue`) или
-  `ToolbarDropdown`, вместе со своим модификатором для специфичной ширины/
-  триггера (`tr-workspace-dropdown`, `tr-toolbar-dropdown` и т.п.) — так все
-  дропдауны в приложении выглядят одинаково, а точечные отличия (ширина
-  меню, вид кнопки-триггера) описываются в паре `.tr-dropdown.<модификатор>`.
+- Общий вид меню `b-dropdown` (`dropdown-content`, `dropdown-item`,
+  `dropdown-item.is-active`, `dropdown-divider`) стилизован глобально в
+  `trickster-buefy.scss` — любой `b-dropdown` выглядит одинаково без
+  дополнительного класса. Точечные отличия (ширина панели, вид
+  кнопки-триггера) описываются отдельным модификатор-классом на корневом
+  `b-dropdown` (`tr-workspace-dropdown`, `tr-toolbar-dropdown`,
+  `tr-notifications-dropdown`, `tr-user-dropdown` и т.п.), а не
+  переопределением `dropdown-content` заново. `.tr-navbar-dropdown` — общий
+  маркер только для панелей topbar (мобильное меню, пространство,
+  уведомления, профиль): ограничивает ширину панели вьюпортом на узких
+  экранах и ставится **вместе** со своим модификатором
+  (`class="tr-navbar-dropdown tr-workspace-dropdown"`). На 2026-09-10
+  `Navbar.vue` вместо этого использует класс-заглушку `tr-dropdown`, у
+  которого нет собственного CSS-правила, — `.tr-navbar-dropdown` объявлен,
+  но не подключён ни к одной из четырёх панелей navbar; см.
+  `design-system.md`, «Расхождения контракта и реализации».
 
 ## 11. Чего не делать (антипаттерны — уже встречались и исправлены в ките)
 
 - ❌ Заводить `<feature>-card`, `<feature>__grid`, `<feature>__catalog`,
   `<feature>__empty` под каждую страницу. ✅ Только `tr-entity-card`,
-  `tr-catalog__grid`, `tr-catalog`, `tr-catalog__empty`.
+  `tr-catalog-grid`, `tr-catalog`, `tr-catalog-empty`.
 - ❌ Копировать `transition`/`:hover`/`:focus-visible` карточки в
   `<style scoped>` каждой страницы. ✅ `.tr-card--interactive`.
 - ❌ Переопределять `border-radius`/`background`/`border` иконки-бейджа
@@ -340,12 +459,37 @@
   `.vue`-шаблонах — удалять.
 - ❌ Разное поведение "нет данных из-за фильтра" на разных страницах
   (где-то просто текст, где-то с иконкой на всю высоту карточки). ✅ Один
-  `.tr-catalog__empty` (раздел 9).
+  `.tr-catalog-empty` (раздел 9).
+- ❌ Заводить `<feature>__empty`/`<feature>-empty` под каждую страницу
+  (`tr-knowledge__items-empty`, `tr-conversations-list__empty` и подобные —
+  упразднены в A3.7). ✅ Один `.tr-async-state` с одним из пяти модификаторов
+  (раздел 9).
+- ❌ Рисовать спиннер вручную (CSS-анимация `border-top-color`, SVG-иконка
+  `bars-scale-fade` и подобное). ✅ `Loader` — единственный индикатор "нет
+  контента"; загрузка поверх контента — `b-loading`.
 - ❌ `b-select` для пилюли-фильтра в `tr-page-toolbar`. ✅ `ToolbarDropdown`
   (раздел 5); `b-select` остаётся только внутри `MobileFilters`.
 - ❌ Свой набор `dropdown-content`/`dropdown-item`/`dropdown-divider`-стилей
-  под каждый новый `b-dropdown`. ✅ Общий `.tr-dropdown` (раздел 10) + один
-  модификатор-класс на конкретный экземпляр для его ширины/триггера.
+  под каждый новый `b-dropdown`. ✅ Глобальный вид уже общий (раздел 10) —
+  добавлять нужен только модификатор-класс на конкретный экземпляр для его
+  ширины/триггера.
+- ❌ Класс-заглушка вида `-is-*` (`btn-is-primary`, `card-is-active` и
+  подобное) вместо настоящего Bulma/Buefy-модификатора. ✅ Штатные `is-*`
+  модификаторы Bulma/Buefy как есть (`is-primary`, `is-danger`, `is-active`),
+  без обёртывающего дефиса.
+- ❌ Классы Tailwind (`flex`, `gap-4`, `text-sm`, `rounded-lg` и т.п.) в
+  разметке — параллельного Tailwind-entrypoint в ките нет (см.
+  `design-system.md`, «Единственный entrypoint»). ✅ `tr-*`-контракт и
+  штатные Bulma/Buefy-классы, уже настроенные в `trickster-buefy.scss`.
+- ❌ Ручная Bulma-разметка там, где есть штатный Buefy-компонент (`.tabs`
+  руками, `.modal`/`.dropdown-content`/`.pagination` без `b-*`-обёртки).
+  ✅ Соответствующий `b-*`-компонент — таблица «Собственный компонент или
+  Buefy» в `design-system.md`.
+- ❌ Неверный `__`: BEM-элемент одного блока, который на деле рендерится
+  шаблоном другого компонента (пример — старое `tr-conversations__chat`
+  внутри одиночного диалога, а не списка). ✅ Разделять класс по фактической
+  принадлежности шаблону — правило R1, раздел 6 (`tr-conversations-*` для
+  списка, `tr-conversation-*` для виджета одного диалога).
 
 ## 12. Карта соответствия иконок «набор кабинета → MDI»
 
@@ -423,11 +567,205 @@ UI-имён + 2 типа коллекций + 2 состояния робота)
 не переносятся никуда (58 неиспользуемых прочих плюс 5 неиспользуемых
 брендовых иконок каналов). `26 + 21 + 3 + 1 + 63 = 114`.
 
-## 13. Порядок работы над одной страницей ЛК
+## 13. Реестр алиасов миграции
+
+Каждый класс кабинета, переименованный в ките ради контракта A3 (нейминг,
+BEM-принадлежность и т. п.), получает временный `@deprecated`-алиас в секции
+«15. Deprecated aliases» `trickster-buefy.scss` — старый селектор продолжает
+работать, пока переносящий кабинет не перейдёт на новое имя. Алиас
+удаляется в Stage B4, когда `get.3xtr.im` подтверждённо мигрировал на новое
+имя по всем маршрутам.
+
+| Старый класс/компонент | Новый класс/компонент | Добавлен | Удаляется |
+|---|---|---|---|
+| `ToolbarTabs` (компонент) | `NavbarTabs` | A3.3 | B4 |
+| `.tr-toolbar-tabs` | `.tr-navbar-tabs` | A3.3 | B4 |
+| `.tr-toolbar-tabs__link` | `.tr-navbar-tabs__link` | A3.3 | B4 |
+| `.tr-toolbar-tabs__link--icon` | `.tr-navbar-tabs__link--icon` | A3.3 | B4 |
+| `.tr-toolbar-tabs__icon` | `.tr-navbar-tabs__icon` | A3.3 | B4 |
+| `SearchField` (компонент) | `ToolbarSearch` | A3.3 | B4 |
+| `.tr-topbar__search` | `.tr-search-field--navbar` | A3.3 | B4 |
+| `Integrations` (компонент/маршрут `/integrations`) | `Channels` (маршрут `/channels`) | A3.3 | B4 |
+| `WorkspacePlan` (компонент) | `WorkspacePlans` | A3.3 | B4 |
+| `Settings.vue` (workspace-settings) | `WorkspaceSettings.vue` | A3.3 | — (имя файла, не класс — алиас не требуется) |
+| `.tr-catalog__grid` | `.tr-catalog-grid` | A3.3 | B4 |
+| `.tr-catalog__empty` | `.tr-catalog-empty` | A3.3 | B4 |
+| `.tr-conversations__panel` | `.tr-conversation-panel` | A3.3 | B4 |
+| `.tr-conversations__list` | `.tr-conversations-list` | A3.3 | B4 |
+| `.tr-conversations__chat` | `.tr-conversation-chat` | A3.3 | B4 |
+| `.tr-conversations__properties` | `.tr-conversation-properties` | A3.3 | B4 |
+| `.tr-conversations__placeholder` | `.tr-conversations-placeholder` | A3.3 | B4 |
+| `.tr-conversations__header` | `.tr-conversation-header` | A3.3 | B4 |
+| `.tr-conversations__title` | `.tr-conversation-title` | A3.3 | B4 |
+| `.tr-conversations__items` | `.tr-conversations-list__items` | A3.3 | B4 |
+| `.tr-conversations__empty` | `.tr-async-state` (`--no-results`) | A3.3, superseded A3.7 | B4 |
+| `.tr-conversations__identity` | `.tr-conversation-identity` | A3.3 | B4 |
+| `.tr-conversations__messages` | `.tr-conversation-messages` | A3.3 | B4 |
+| `.tr-conversations__composer` | `.tr-conversation-composer` | A3.3 | B4 |
+| `.tr-conversations__composer-input` | `.tr-conversation-composer-input` | A3.3 | B4 |
+| `.tr-conversations__properties-body` | `.tr-conversation-properties-body` | A3.3 | B4 |
+| `.tr-conversations__profile` | `.tr-conversation-profile` | A3.3 | B4 |
+| `.tr-conversations__profile-image` | `.tr-conversation-profile-image` | A3.3 | B4 |
+| `.tr-conversations__details` | `.tr-conversation-details` | A3.3 | B4 |
+| `.tr-conversations__list-action` | `.tr-conversation-list-action` | A3.3 | B4 |
+| `.tr-conversations__settings-action` | `.tr-conversation-settings-action` | A3.3 | B4 |
+| `.tr-conversations__properties-action` | `.tr-conversation-properties-action` | A3.3 | B4 |
+| `.tr-conversations__properties-close` | `.tr-conversation-properties-close` | A3.3 | B4 |
+| `.tr-conversations__icon-action` | `.tr-conversation-icon-action` | A3.3 | B4 |
+
+Каждая строка выше соответствует `@deprecated`-записи в секции «15.
+Deprecated aliases» `trickster-buefy.scss`, кроме переименования файла
+`Settings.vue` → `WorkspaceSettings.vue` (имя `.vue`-файла не является CSS-
+селектором и не нуждается в переходном алиасе; сам маршрут `workspace-settings`
+не менялся). Маршрут `/integrations` сохранён как `redirect` на `/channels`
+в `src/router.js` — это функциональный эквивалент CSS-алиаса для ссылок,
+ведущих на старый URL.
+
+## 14. Формы
+
+Эталон композиции — `.tr-form` из `design-system.md` (раздел «Формы»);
+конкретные поля в ките сегодня живут внутри модалок создания записи
+(`Agents.vue`, `Knowledge.vue`), а не на отдельной full-page форме — оба места
+показывают один и тот же паттерн `b-field` + штатный control, без ручного
+`<input>`/`<select>`.
+
+```html
+<form class="modal-card" @submit.prevent="createAgent">
+  <header class="modal-card-head">
+    <p class="modal-card-title">Новый агент</p>
+    <button class="delete" type="button" aria-label="Закрыть" @click="..." />
+  </header>
+
+  <section class="modal-card-body">
+    <b-field label="Название">
+      <b-input v-model="newAgentName" placeholder="Например, Консультант" required />
+    </b-field>
+  </section>
+
+  <footer class="modal-card-foot">
+    <b-button @click="...">Отмена</b-button>
+    <b-button native-type="submit" type="is-primary">Создать</b-button>
+  </footer>
+</form>
+```
+
+Правила:
+
+- Каждое поле — `b-field label="..."` вокруг `b-input`/`b-select`/
+  `b-checkbox`/`b-switch`; ошибка — `type="is-danger"` и `message` на
+  `b-field`, не отдельный `<span>` под контролом.
+- Секретное поле — `b-input type="password" password-reveal`, свой
+  toggle-глаз не рисуется.
+- Полноразмерная форма (не в модалке) использует `.tr-form` только как
+  layout-обёртку (`display: flex; flex-direction: column`) вокруг набора
+  `b-field` и `.tr-form__footer` для submit/cancel; опасные действия
+  выносятся в `.tr-destructive-zone` с `.tr-destructive-zone__title`.
+  На 2026-09-10 в ките нет отдельного маршрута с такой полноразмерной формой
+  (панели настроек кита — `tr-settings__panel`, раздел 8, а не форма), и эти
+  три класса пока без потребителя в `src/components/**` — известный разрыв,
+  см. `design-system.md`, «Расхождения контракта и реализации».
+- Форма не эмулирует контролы иконками (чекбокс/радио — только
+  `b-checkbox`/`b-radio`, включая `indeterminate` для промежуточного
+  состояния).
+
+## 15. Пагинация
+
+Эталон — раздел «Пагинация» в `UiKit.vue`.
+
+```html
+<div class="tr-row tr-row--between mb-4">
+  <h2 class="tr-card__title mb-0">Заголовок списка</h2>
+  <span class="tr-muted">Страница {{ page }} из {{ totalPages }}</span>
+</div>
+<b-pagination
+  v-model="page"
+  :total="total"
+  :per-page="perPage"
+  order="is-centered"
+/>
+```
+
+Правила:
+
+- Единственный способ постранично листать список вне `b-table` — `b-pagination`.
+  Внутри `b-table` пагинация — атрибуты `paginated`/`per-page` того же
+  компонента (раздел 4), отдельный `b-pagination` рядом с таблицей не
+  добавляется.
+- Собственная реализация («предыдущая/следующая» кнопки на `b-button`, ручной
+  счётчик страниц) не заводится нигде. `PaginationControls` существует только
+  в потребляющем приложении (`get.3xtr.im`) и в кит окончательно не
+  переносится — по решению `.plan` (Stage A4) его заменяет `b-pagination`
+  везде, включая случаи, которые сейчас закрывает `PaginationControls`.
+
+## 16. Оверлеи
+
+Эталон — разделы «Диалог подтверждения», «Боковая панель» и последняя модалка
+в `UiKit.vue`; рабочие модалки создания — `Agents.vue`, `Knowledge.vue`.
+
+```html
+<!-- Модальное окно -->
+<b-modal v-model="isModalOpen" has-modal-card trap-focus :destroy-on-hide="false">
+  <div class="modal-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title">...</p>
+      <button class="delete" aria-label="Закрыть" @click="isModalOpen = false" />
+    </header>
+    <section class="modal-card-body">...</section>
+    <footer class="modal-card-foot">
+      <b-button @click="isModalOpen = false">Отмена</b-button>
+      <b-button type="is-primary" @click="isModalOpen = false">Создать</b-button>
+    </footer>
+  </div>
+</b-modal>
+```
+
+```js
+// Подтверждение — программный вызов, не самодельная разметка
+import { useDialog } from "buefy";
+const dialog = useDialog();
+dialog.confirm({
+  title: "Удалить агента?",
+  message: "Действие необратимо.",
+  confirmText: "Удалить",
+  type: "is-danger",
+  onConfirm: () => { /* ... */ },
+});
+```
+
+```html
+<!-- Боковая панель -->
+<b-sidebar v-model="isSidebarOpen" type="is-light" right overlay>
+  <div style="padding: 24px">...</div>
+</b-sidebar>
+```
+
+```js
+// Тост — программный вызов
+import { useToast } from "buefy";
+const toast = useToast();
+toast.open({ message: "Сохранено", type: "is-success" });
+```
+
+Правила:
+
+- Обычная модалка — `b-modal`; подтверждение опасного действия — `b-dialog`
+  (программно через `useDialog()`), не «модалка с текстом вместо формы»;
+  боковая панель — `b-sidebar`; уведомление — `b-toast`/`useToast()`. Третьего
+  способа показать overlay в ките нет.
+  - Escape, backdrop-клик и возврат фокуса — штатное поведение Buefy,
+  переопределять их в компоненте не нужно и не следует.
+- Разметка модалки — `modal-card`/`modal-card-head`/`modal-card-title`/
+  `modal-card-body`/`modal-card-foot` (классы самой Buefy/Bulma), кастомных
+  `tr-modal__*`-классов нет.
+- Баннер (не всплывающий, встроенный в страницу) — `b-message`, это не
+  overlay и в данный раздел не входит (см. пример в `UiKit.vue`, «Баннер и
+  тост»).
+
+## 17. Порядок работы над одной страницей ЛК
 
 1. Определить тип страницы по чек-листу (раздел 2).
 2. Открыть в `trickster-ui-kit` эталонный компонент с тем же типом и
-   скопировать структуру/имена классов поэлементно (разделы 3–9).
+   скопировать структуру/имена классов поэлементно (разделы 3–9, 15–17).
 3. Перенести только разметку и классы; данные, стор, бизнес-логику ЛК —
    оставить как есть, адаптировать по месту.
 4. Убрать из `<style scoped>` страницы всё, что теперь покрывается
