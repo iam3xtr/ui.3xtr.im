@@ -610,7 +610,8 @@ Stage A1 закрыт после `stage-review`: исправление загр
 
 ### [P0] Stage A2. Собрать все стили в `trickster-buefy.scss`
 
-Статус: active
+Статус: done — все задачи A2.1–A2.4 закрыты 2026-09-10 после stage-review и ручной
+визуальной матрицы девяти экранов в light/dark на 360/768/1024/1280/1440 px.
 
 Источник: 33 неопределённых `tr-*`-класса кабинета; 43 неиспользуемых
 `tr-*`-класса кита; `<style>`-блоки кита (`MobileFilters`, `Agents`,
@@ -691,6 +692,16 @@ Stage A1 закрыт после `stage-review`: исправление загр
   360/768/1024/1280/1440 px.
 - `npm run lint:style`, `npm run build`, guard-скрипт и `git diff --check`
   проходят в CI.
+
+Evidence закрытия (2026-09-10): `npm.cmd run lint:style`,
+`npm.cmd run build`, `git diff --check` и `git diff --staged --check` прошли;
+guard подтвердил отсутствие `<style>` в `src/**/*.vue`. Ручная матрица девяти
+экранов в light/dark на 360/768/1024/1280/1440 px пройдена без визуальных
+регрессий. Review finding о прямом `#fff` устранён через
+`--tr-text-on-primary`. Унаследованные переопределения Bulma/Buefy с
+`!important` приняты как ограниченный остаточный риск: каждое помечено
+`stylelint-disable-next-line` с причиной и снимается в Stage A3 в рамках
+Buefy-first; новые `!important` по-прежнему запрещены Stylelint.
 
 ---
 

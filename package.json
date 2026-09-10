@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint:style": "stylelint \"src/**/*.{css,scss}\""
+    "guard:no-component-styles": "node scripts/no-component-styles.js",
+    "lint:style": "stylelint \"src/**/*.{css,scss}\" && npm run guard:no-component-styles"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",

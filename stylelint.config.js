@@ -24,7 +24,8 @@ export default {
         ],
       },
     ],
-    'no-duplicate-selectors': null,
+    'no-duplicate-selectors': true,
+    'declaration-no-important': true,
     'no-descending-specificity': null,
   },
 }

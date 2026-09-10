@@ -575,17 +575,3 @@ onBeforeUnmount(() => {
   wideLayoutQuery?.removeEventListener("change", syncWideLayout);
 });
 </script>
-
-<style scoped lang="scss">
-.tr-agents__workbench {
-  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
-}
-
-.tr-agents__workbench:not(.is-properties-open) {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.tr-agents__workbench .tr-conversations__list-action {
-  display: inline-flex;
-}
-</style>

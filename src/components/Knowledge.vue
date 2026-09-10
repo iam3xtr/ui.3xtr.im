@@ -497,15 +497,3 @@ watch(
   { flush: "sync" },
 );
 </script>
-
-<style scoped lang="scss">
-.tr-knowledge > .tr-knowledge__details {
-  flex: 1;
-}
-
-@media (max-width: 768px) {
-  .tr-knowledge > .tr-knowledge__details {
-    min-height: 560px;
-  }
-}
-</style>
