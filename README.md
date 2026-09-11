@@ -12,14 +12,19 @@
 
 - `src/styles/_trickster-tokens.scss` — фирменные цвета, нейтральная палитра, типографика, отступы и геометрия.
 - `src/styles/trickster-buefy.scss` — конфигурация Bulma/Buefy, светлая и тёмная темы, базовые стили приложения. Это **единственный** файл со стилями проекта.
-- `src/router.js`, `src/navigation.js` — маршруты и реестр навигации основных разделов приложения.
-- `src/components/Dashboard.vue` — главный экран рабочего пространства.
-- `src/components/{Agents,Knowledge,Channels,Conversations}.vue` — каталоги/списки сущностей на общем контракте `Toolbar` + каталог карточек или `b-table`.
-- `src/components/{Workspace,WorkspaceSettings,WorkspacePlans}.vue` — экраны пространства (вкладки навбара, настройки, тарифы).
-- `src/components/UiKit.vue` — витрина компонентов Buefy, общих примитивов, иконок и загрузчика (страница `/ui-kit`).
+- `src/router.js`, `src/navigation.js` — маршруты кита повторяют реальные пути кабинета (`/`, `/agents/**`, `/conversations/**`, `/knowledge/**`, `/workspace/**`, `/profile/**`, `/auth/**`, `/404`) и реестр навигации основных разделов приложения.
+- `src/components/Dashboard.vue` — главный экран рабочего пространства; `src/components/NotFound.vue` — экран `/404` на контракте `.tr-async-state`.
+- `src/components/{Agents,Knowledge,Conversations}.vue` — каталоги/списки сущностей на общем контракте `Toolbar` + каталог карточек или `b-table`; каждый ведёт на свой route-driven detail:
+  - `src/components/agents/{AgentDetail,AgentPlayground,AgentSettings}.vue` — `/agents/:id` (песочница/настройки) и `src/components/channels/{ChannelsView,ChannelCard,ChannelFormModal,ChannelLimits,TakeoverModal}.vue` — `/agents/:id/channels`;
+  - `src/components/knowledge/{CollectionDetail,Files,Settings,Statistics,CollectionFormModal,KnowledgeFileFormModal}.vue` — `/knowledge/:id` и его вкладки настроек/статистики;
+  - `src/components/conversations/{ConversationDetail,History,Settings,ConversationHeader,MessageDeliveryStatus}.vue` — `/conversations/:agentId/:conversationId` и его настройки.
+- `src/components/{Workspace,WorkspaceSettings,WorkspacePlans}.vue` и `src/components/workspace/{Usage,Members,InviteMemberForm,WorkspaceBilling}.vue` — пять вкладок `/workspace/*` (обзор, настройки, участники, тарифы, биллинг).
+- `src/components/profile/{ProfileShell,Settings,Security}.vue` — `/profile` и `/profile/security` (форма профиля с переключателями уведомлений, активные сеансы).
+- `src/components/auth/{AuthPage,LoginView,SignupView,ForgotView,VerifyView,InviteView,GoogleButton,WorkspaceSelector}.vue` — `/auth/{login,signup,forgot,verify,invite}` на общем контейнере `AuthPage`, без сетевых запросов.
+- `src/components/UiKit.vue` — витрина-справочник контрактов Stage A3 (кнопки, таблицы, вкладки, async-состояния и т.д.), страница `/kit`.
 - `src/components/common/` — общие примитивы, которых нет в Buefy: `Toolbar`/`ToolbarSearch`/`ToolbarDropdown`/`MobileFilters` (поиск, фильтры и действия над списком), `NavbarMenu`/`NavbarTabs` (маршрутные вкладки раздела в навбаре через Teleport), `PageHeader`, `AsyncState`/`ListAsyncState` (состояния `loading`/`empty`/`no-results`/`error`/`permission-denied`), `CopyPre`, `TariffSummaryCard`, `Icon`, `Loader`. Подробный контракт каждого — в [`docs/design-system.md`](docs/design-system.md#общие-компоненты).
 - `src/composables/` — `navbarMenu.js` (provide/inject target для `NavbarMenu`), `useFocusTrap.js` (возврат фокуса для мобильных `mobile-modal` панелей), `useSimulatedLoading.js` (демо-задержка кит-экранов).
-- `src/stores/` — Pinia-сторы демо-состояния: `modal.js`/`toaster.js` — тонкие адаптеры над программным API Buefy (`b-modal`/`b-sidebar`/`b-dialog`/`b-toast`), `workspace.js`/`siteSettings.js` — фикстуры кита. Реального API кит не вызывает.
+- `src/stores/` — Pinia-сторы демо-состояния, все in-memory: `modal.js`/`toaster.js` — тонкие адаптеры над программным API Buefy (`b-modal`/`b-sidebar`/`b-dialog`/`b-toast`); `workspace.js`, `agents.js`, `channels.js`, `knowledge.js`, `conversations.js`, `members.js`, `profile.js`, `auth.js` — доменные фикстуры экранов Stage A5. Реального API кит не вызывает.
 - `src/assets/icons/` — обоснованный набор кастомных SVG-иконок (вендоры LLM и виды моделей), см. раздел «Иконки».
 
 ## Целевая версия

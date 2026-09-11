@@ -1,403 +1,110 @@
 <template>
-  <section class="tr-workbench-page tr-knowledge">
-    <Loader v-if="!selectedCollection && isLoading" size="section" />
+  <section class="tr-workbench-page">
+    <Loader v-if="isLoading" size="section" />
 
-    <Toolbar
-      v-if="!selectedCollection && !isLoading"
-      class="tr-workbench-page__header"
-      v-model:search="query"
-      search-placeholder="Поиск коллекций"
-      :filters-active="Boolean(typeFilter)"
-    >
-      <template #filters>
-        <ToolbarDropdown
-          v-model="typeFilterProxy"
-          class="tr-page-toolbar__filter"
-          aria-label="Фильтр коллекций по типу"
-          all-label="Все типы"
-          :options="collectionTypeOptions"
-        />
-      </template>
-    </Toolbar>
-
-    <section
-      v-if="!selectedCollection && !isLoading"
-      class="tr-catalog"
-      aria-label="Коллекции знаний"
-    >
-      <div class="tr-catalog-grid">
-        <button
-          v-for="collection in filteredCollections"
-          :key="collection.id"
-          class="tr-card tr-card--interactive tr-entity-card tr-entity-card--interactive"
-          type="button"
-          @click="selectedId = collection.id"
-        >
-          <span class="tr-entity-card__header">
-            <span class="tr-icon-tile tr-icon-tile--plain tr-entity-card__icon">
-              <b-icon
-                :icon="getCollectionType(collection.type).icon"
-                size="is-medium"
-              />
-            </span>
-            <b-tag size="is-small">
-              {{ getCollectionType(collection.type).label }}
-            </b-tag>
-          </span>
-
-          <strong class="tr-entity-card__title">
-            {{ collection.name }}
-          </strong>
-          <span class="tr-entity-card__description">
-            {{ collection.description }}
-          </span>
-
-          <span class="tr-entity-card__footer">
-            <span>{{ collection.items.length }} элементов</span>
-            <b-icon icon="arrow-right" size="is-small" />
-          </span>
-        </button>
-
-        <p
-          v-if="filteredCollections.length === 0 && hasActiveFilters"
-          class="tr-catalog-empty"
-        >
-          По вашему запросу коллекции не найдены.
-        </p>
-
-        <button
-          class="tr-card tr-card--interactive tr-entity-card tr-entity-card--interactive tr-entity-card--create"
-          type="button"
-          @click="openCreateModal"
-        >
-          <span class="tr-icon-tile tr-icon-tile--plain tr-entity-card__create-icon">
-            <b-icon icon="plus" size="is-medium" />
-          </span>
-          <strong>Создать новую коллекцию</strong>
-          <span>Добавьте файлы, ссылки или Markdown-документы.</span>
-        </button>
-      </div>
-    </section>
-
-    <article v-if="selectedCollection" class="tr-knowledge__details">
-      <header class="tr-knowledge__details-header">
-        <b-button
-          icon-left="arrow-left"
-          aria-label="К коллекциям"
-          title="К коллекциям"
-          @click="showCollectionCatalog"
-        />
-        <span class="tr-icon-tile">
-          <b-icon
-            :icon="getCollectionType(selectedCollection.type).icon"
-            size="is-small"
-          />
-        </span>
-        <div>
-          <h2>{{ selectedCollection.name }}</h2>
-          <p>{{ selectedCollection.description }}</p>
-        </div>
-        <b-tag>{{ getCollectionType(selectedCollection.type).label }}</b-tag>
-      </header>
-
-      <div class="tr-knowledge__items-header">
-        <span>
-          {{ selectedCollection.items.length }} элементов
-        </span>
-        <b-button icon-left="plus" size="is-small">
-          Добавить элемент
-        </b-button>
-      </div>
-
-      <div
-        v-if="selectedCollection.items.length"
-        class="tr-knowledge__items"
+    <template v-else>
+      <Toolbar
+        v-model:search="query"
+        class="tr-workbench-page__header"
+        search-placeholder="Поиск коллекций"
+        :filters-active="Boolean(typeFilter)"
       >
-        <b-table :data="selectedCollection.items" hoverable mobile-cards>
-          <b-table-column field="name" label="Название" v-slot="{ row }">
-            <strong>{{ row.name }}</strong>
-            <br />
-            <small class="tr-muted">{{ row.source }}</small>
-          </b-table-column>
-
-          <b-table-column field="type" label="Тип" v-slot="{ row }">
-            <b-tag size="is-small">{{ getItemType(row.type).label }}</b-tag>
-          </b-table-column>
-
-          <b-table-column field="updated" label="Обновлено" v-slot="{ row }">
-            {{ row.updated }}
-          </b-table-column>
-
-          <b-table-column v-slot="{ row }" width="56">
-            <b-dropdown position="is-bottom-left" aria-role="list" append-to-body>
-              <template #trigger>
-                <b-button
-                  type="is-text"
-                  icon-left="dots-horizontal"
-                  size="is-small"
-                  :aria-label="`Действия с элементом «${row.name}»`"
-                />
-              </template>
-              <b-dropdown-item aria-role="listitem">
-                Переименовать {{ row.name }}
-              </b-dropdown-item>
-              <b-dropdown-item separator />
-              <b-dropdown-item aria-role="listitem" @click="removeItem(row)">
-                Удалить
-              </b-dropdown-item>
-            </b-dropdown>
-          </b-table-column>
-        </b-table>
-      </div>
-
-      <AsyncState
-        v-else
-        variant="empty"
-        icon="file-plus-outline"
-        title="В коллекции пока нет элементов"
-        message="Добавьте файл, ссылку или Markdown-документ."
-      />
-    </article>
-  </section>
-
-  <b-modal
-    :model-value="modalStore.isOpen('knowledge-create')"
-    has-modal-card
-    @update:model-value="(value) => (value ? modalStore.open('knowledge-create') : modalStore.close('knowledge-create'))"
-  >
-    <form class="modal-card" @submit.prevent="createCollection">
-      <header class="modal-card-head">
-        <p class="modal-card-title">Новая коллекция</p>
-        <button
-          class="delete"
-          type="button"
-          aria-label="Закрыть"
-          @click="modalStore.close('knowledge-create')"
-        />
-      </header>
-
-      <section class="modal-card-body">
-        <b-field label="Название">
-          <b-input
-            v-model="newCollectionName"
-            placeholder="Например, Документация продукта"
-            required
+        <template #filters>
+          <ToolbarDropdown
+            v-model="typeFilterProxy"
+            class="tr-page-toolbar__filter"
+            aria-label="Фильтр коллекций по типу"
+            all-label="Все типы"
+            :options="collectionTypeOptions"
           />
-        </b-field>
+        </template>
+      </Toolbar>
 
-        <b-field label="Тип коллекции">
-          <b-select v-model="newCollectionType" expanded>
-            <option
-              v-for="type in collectionTypes"
-              :key="type.value"
-              :value="type.value"
-            >
-              {{ type.label }}
-            </option>
-          </b-select>
-        </b-field>
+      <section class="tr-catalog" aria-label="Коллекции знаний">
+        <div class="tr-catalog-grid">
+          <RouterLink
+            v-for="collection in filteredCollections"
+            :key="collection.id"
+            :to="{ name: 'knowledge-collection', params: { id: collection.id } }"
+            class="tr-card tr-card--interactive tr-entity-card tr-entity-card--interactive"
+          >
+            <span class="tr-entity-card__header">
+              <span class="tr-icon-tile tr-icon-tile--plain tr-entity-card__icon">
+                <b-icon
+                  :icon="getCollectionType(collection.type).icon"
+                  size="is-medium"
+                />
+              </span>
+              <b-tag size="is-small">
+                {{ getCollectionType(collection.type).label }}
+              </b-tag>
+            </span>
 
-        <div class="tr-knowledge__type-hint">
-          <b-icon :icon="selectedTypeInfo.icon" />
-          <span>
-            <strong>{{ selectedTypeInfo.label }}</strong>
-            <small>{{ selectedTypeInfo.description }}</small>
-          </span>
+            <strong class="tr-entity-card__title">
+              {{ collection.name }}
+            </strong>
+            <span class="tr-entity-card__description">
+              {{ collection.description }}
+            </span>
+
+            <span class="tr-entity-card__footer">
+              <span>{{ collection.objects.length }} элементов</span>
+              <b-icon icon="arrow-right" size="is-small" />
+            </span>
+          </RouterLink>
+
+          <p
+            v-if="filteredCollections.length === 0 && hasActiveFilters"
+            class="tr-catalog-empty"
+          >
+            По вашему запросу коллекции не найдены.
+          </p>
+
+          <button
+            class="tr-card tr-card--interactive tr-entity-card tr-entity-card--interactive tr-entity-card--create"
+            type="button"
+            @click="openCreateModal"
+          >
+            <span class="tr-icon-tile tr-icon-tile--plain tr-entity-card__create-icon">
+              <b-icon icon="plus" size="is-medium" />
+            </span>
+            <strong>Создать новую коллекцию</strong>
+            <span>Добавьте файлы, ссылки или Markdown-документы.</span>
+          </button>
         </div>
       </section>
+    </template>
 
-      <footer class="modal-card-foot">
-        <b-button @click="modalStore.close('knowledge-create')">
-          Отмена
-        </b-button>
-        <b-button native-type="submit" type="is-primary">
-          Создать
-        </b-button>
-      </footer>
-    </form>
-  </b-modal>
+    <CollectionFormModal />
+  </section>
 </template>
 
 <script setup>
 import { storeToRefs } from "pinia";
 import { computed, ref, watch } from "vue";
+import { RouterLink } from "vue-router";
 
 import { useSimulatedLoading } from "../composables/useSimulatedLoading";
+import { COLLECTION_TYPES, useKnowledgeStore } from "../stores/knowledge";
 import { useModalStore } from "../stores/modal";
 import { useWorkspaceStore } from "../stores/workspace";
-import AsyncState from "./common/AsyncState.vue";
 import Loader from "./common/Loader.vue";
 import Toolbar from "./common/Toolbar.vue";
 import ToolbarDropdown from "./common/ToolbarDropdown.vue";
+import CollectionFormModal from "./knowledge/CollectionFormModal.vue";
 
+// Каталог коллекций (Task A5.6) — теперь только каталог: детали коллекции
+// живут за собственными маршрутами `/knowledge/:id(...)`, обслуживаемыми
+// route-driven shell'ом `knowledge/CollectionDetail.vue` (тот же приём, что
+// `Agents.vue` + `agents/AgentDetail.vue` в Task A5.4), а не внутренним
+// `selectedId`, как было до этой задачи.
 const { isLoading } = useSimulatedLoading();
 const modalStore = useModalStore();
+const knowledgeStore = useKnowledgeStore();
 
-/**
- * @typedef {"mixed" | "website" | "files" | "links" | "markdown" | "faq"} CollectionType
- */
-/** @typedef {"file" | "link" | "markdown"} KnowledgeItemType */
+/** @typedef {import("../stores/knowledge").CollectionType} CollectionType */
 
-/**
- * @typedef {Object} KnowledgeItem
- * @property {number} id
- * @property {string} name
- * @property {KnowledgeItemType} type
- * @property {string} source
- * @property {string} updated
- */
-
-/**
- * @typedef {Object} KnowledgeCollection
- * @property {number} id
- * @property {string} name
- * @property {string} description
- * @property {CollectionType} type
- * @property {KnowledgeItem[]} items
- */
-
-const collectionTypes = [
-  {
-    value: "mixed",
-    label: "Универсальная",
-    icon: "folder-multiple-outline",
-    description: "Файлы, ссылки и Markdown-документы в одной коллекции.",
-  },
-  {
-    value: "website",
-    label: "Сайт",
-    icon: "web",
-    description: "Страницы сайта, автоматически полученные при обходе.",
-  },
-  {
-    value: "files",
-    label: "Файлы",
-    icon: "file-multiple-outline",
-    description: "PDF, DOCX, таблицы, презентации и другие документы.",
-  },
-  {
-    value: "links",
-    label: "Ссылки",
-    icon: "link-variant",
-    description: "Отдельные веб-страницы и внешние материалы.",
-  },
-  {
-    value: "markdown",
-    label: "Markdown",
-    icon: "language-markdown-outline",
-    description: "Текстовые документы, которые редактируются прямо в системе.",
-  },
-  {
-    value: "faq",
-    label: "FAQ",
-    icon: "frequently-asked-questions",
-    description: "Структурированные пары вопросов и ответов.",
-  },
-];
-
-/** @type {Record<KnowledgeItemType, { label: string, icon: string }>} */
-const itemTypes = {
-  file: { label: "Файл", icon: "file-outline" },
-  link: { label: "Ссылка", icon: "link-variant" },
-  markdown: { label: "Markdown", icon: "language-markdown-outline" },
-};
-
-/** @type {import("vue").Ref<Record<string, KnowledgeCollection[]>>} */
-const collectionsByWorkspace = ref({
-  demo: [
-    {
-      id: 1,
-      name: "Документация продукта",
-      description: "Публичная документация и инструкции для пользователей.",
-      type: "website",
-      items: [
-        {
-          id: 1,
-          name: "Начало работы",
-          type: "link",
-          source: "docs.example.com/getting-started",
-          updated: "10 мин",
-        },
-        {
-          id: 2,
-          name: "Настройка интеграций",
-          type: "link",
-          source: "docs.example.com/integrations",
-          updated: "10 мин",
-        },
-      ],
-    },
-    {
-      id: 2,
-      name: "Материалы отдела продаж",
-      description: "Презентации, тарифы и заметки для Sales Assistant.",
-      type: "mixed",
-      items: [
-        {
-          id: 3,
-          name: "Презентация продукта.pdf",
-          type: "file",
-          source: "PDF · 4,8 MB",
-          updated: "Вчера",
-        },
-        {
-          id: 4,
-          name: "Актуальные тарифы",
-          type: "link",
-          source: "example.com/pricing",
-          updated: "Вчера",
-        },
-        {
-          id: 5,
-          name: "Аргументы для переговоров",
-          type: "markdown",
-          source: "Внутренний документ",
-          updated: "3 дня",
-        },
-      ],
-    },
-    {
-      id: 3,
-      name: "Регламенты поддержки",
-      description: "Внутренние инструкции службы поддержки.",
-      type: "files",
-      items: [
-        {
-          id: 6,
-          name: "Регламент первой линии.docx",
-          type: "file",
-          source: "DOCX · 820 KB",
-          updated: "5 дней",
-        },
-      ],
-    },
-    {
-      id: 4,
-      name: "Частые вопросы",
-      description: "Проверенные ответы на типовые вопросы клиентов.",
-      type: "faq",
-      items: [],
-    },
-  ],
-  trickster: [
-    {
-      id: 1,
-      name: "Trickster Docs",
-      description: "Документация команды Trickster.",
-      type: "website",
-      items: [
-        {
-          id: 1,
-          name: "Рабочие пространства",
-          type: "link",
-          source: "docs.3xtr.im/workspaces",
-          updated: "Сегодня",
-        },
-      ],
-    },
-  ],
-  empty: [],
-});
+const collectionTypes = COLLECTION_TYPES;
 
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId } = storeToRefs(workspaceStore);
@@ -413,19 +120,9 @@ const typeFilterProxy = computed({
 const collectionTypeOptions = computed(
   () => collectionTypes.map((type) => ({ value: type.value, label: type.label })),
 );
-const selectedId = ref(/** @type {number | null} */ (null));
-const newCollectionName = ref("");
-/** @type {import("vue").Ref<CollectionType>} */
-const newCollectionType = ref("mixed");
 
 const collections = computed(
-  () => collectionsByWorkspace.value[activeWorkspaceId.value] ?? [],
-);
-const selectedCollection = computed(
-  () => collections.value.find((collection) => collection.id === selectedId.value),
-);
-const selectedTypeInfo = computed(
-  () => getCollectionType(newCollectionType.value),
+  () => knowledgeStore.listByWorkspace(activeWorkspaceId.value),
 );
 const hasActiveFilters = computed(
   () => Boolean(query.value.trim() || typeFilter.value),
@@ -448,61 +145,11 @@ const filteredCollections = computed(() => {
  * @param {CollectionType} type
  */
 function getCollectionType(type) {
-  return collectionTypes.find((item) => item.value === type)
-    ?? collectionTypes[0];
-}
-
-/**
- * @param {KnowledgeItemType} type
- */
-function getItemType(type) {
-  return itemTypes[type];
-}
-
-function showCollectionCatalog() {
-  selectedId.value = null;
-}
-
-/**
- * @param {KnowledgeItem} item
- */
-function removeItem(item) {
-  const collection = selectedCollection.value;
-
-  if (!collection) {
-    return;
-  }
-
-  collection.items = collection.items.filter(({ id }) => id !== item.id);
+  return knowledgeStore.getCollectionType(type);
 }
 
 function openCreateModal() {
-  newCollectionName.value = "";
-  newCollectionType.value = "mixed";
-  modalStore.open("knowledge-create");
-}
-
-function createCollection() {
-  const name = newCollectionName.value.trim();
-
-  if (!name) {
-    return;
-  }
-
-  const workspaceId = activeWorkspaceId.value;
-  const workspaceCollections = collectionsByWorkspace.value[workspaceId]
-    ?? (collectionsByWorkspace.value[workspaceId] = []);
-  const id = Date.now();
-
-  workspaceCollections.push({
-    id,
-    name,
-    type: newCollectionType.value,
-    description: getCollectionType(newCollectionType.value).description,
-    items: [],
-  });
-  selectedId.value = id;
-  modalStore.close("knowledge-create");
+  modalStore.open("knowledge-collection-form");
 }
 
 watch(
@@ -510,7 +157,6 @@ watch(
   () => {
     query.value = "";
     typeFilter.value = "";
-    selectedId.value = null;
   },
   { flush: "sync" },
 );

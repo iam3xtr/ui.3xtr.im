@@ -3,32 +3,46 @@
     class="tr-app"
     :class="{ 'tr-app--fluid': isFluidContent }"
   >
-    <Navbar
-      v-model:workspace="workspace"
-      v-model:is-dark="isDark"
-      :workspaces="workspaces"
-      :user="user"
-      @create-workspace="workspaceStore.createWorkspace"
-    >
-      <template #menu>
-        <div ref="navbarMenuTarget" class="tr-topbar__menu" />
-      </template>
-    </Navbar>
+    <template v-if="isAuthRoute">
+      <Navbar
+        minimal
+        v-model:workspace="workspace"
+        v-model:is-dark="isDark"
+        :workspaces="workspaces"
+        :user="user"
+      />
 
-    <div class="tr-app-shell">
-      <Sidebar />
+      <RouterView />
+    </template>
 
-      <div class="tr-main">
-        <main class="tr-page">
-          <div
-            class="tr-page__content"
-            :class="{ 'tr-page__content--fluid': isFluidContent }"
-          >
-            <RouterView />
-          </div>
-        </main>
+    <template v-else>
+      <Navbar
+        v-model:workspace="workspace"
+        v-model:is-dark="isDark"
+        :workspaces="workspaces"
+        :user="user"
+        @create-workspace="workspaceStore.createWorkspace"
+      >
+        <template #menu>
+          <div ref="navbarMenuTarget" class="tr-topbar__menu" />
+        </template>
+      </Navbar>
+
+      <div class="tr-app-shell">
+        <Sidebar />
+
+        <div class="tr-main">
+          <main class="tr-page">
+            <div
+              class="tr-page__content"
+              :class="{ 'tr-page__content--fluid': isFluidContent }"
+            >
+              <RouterView />
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
@@ -66,6 +80,12 @@ provide(navbarMenuKey, navbarMenuTarget);
 const isFluidContent = computed(
   () => route.meta.contentMode === "fluid",
 );
+
+// Same check as get.3xtr.im's App.vue (`route.path.startsWith('/auth/')`):
+// auth screens get a bare Navbar and no Sidebar/`.tr-app-shell`, matching
+// the cabinet instead of the full product shell (see docs/design-system.md,
+// "Application shell").
+const isAuthRoute = computed(() => route.path.startsWith("/auth/"));
 
 /**
  * @param {Theme} theme

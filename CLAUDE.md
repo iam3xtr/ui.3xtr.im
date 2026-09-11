@@ -92,13 +92,26 @@ component or ad hoc spinners.
 
 ```
 src/
-  router.js            # Routes for every kit screen (hash history when VITE_ROUTER_MODE=hash)
+  router.js              # Routes mirror the cabinet's real paths (hash history when
+                         #   VITE_ROUTER_MODE=hash): /, /agents/**, /conversations/**,
+                         #   /knowledge/**, /workspace/**, /profile/**, /auth/**, /kit, /404
   navigation.js         # Nav item registry consumed by Sidebar/Navbar
-  components/           # One component per cabinet screen (Dashboard, Agents, Conversations,
-                         #   Knowledge, Channels, WorkspaceSettings, Workspace, WorkspacePlans, UiKit, ...)
-  components/common/    # Shared primitives: Icon.vue, Loader.vue
+  components/           # Catalog/top-level screens (Dashboard, Agents, Conversations,
+                         #   Knowledge, Workspace, WorkspaceSettings, WorkspacePlans, UiKit,
+                         #   NotFound, ...) — each catalog's detail lives in its own
+                         #   domain subdirectory below, route-driven off the catalog
+  components/agents/    # Agent detail: route-driven shell + its Navbar-tab screens (Task A5.4)
+  components/channels/  # Channel catalog nested under agent detail (`/agents/:id/channels`, Task A5.5)
+  components/knowledge/ # Collection detail: route-driven shell + files/settings/statistics tabs (Task A5.6)
+  components/conversations/ # Conversation detail: route-driven shell + history/settings tabs (Task A5.7)
+  components/workspace/ # Workspace tabs beyond Settings/Plans: usage, members, billing (Task A5.8)
+  components/profile/   # Profile shell + settings/security tabs (Task A5.9)
+  components/auth/      # Auth container + login/signup/forgot/verify/invite screens (Task A5.10)
+  components/common/    # Shared primitives: Icon.vue, Loader.vue, Toolbar/NavbarMenu/AsyncState/...
   composables/          # Shared composition functions
-  stores/                # Pinia stores backing kit-only demo state (no real API)
+  stores/                # Pinia stores backing kit-only demo state (no real API): one file per
+                         #   domain (agents, channels, knowledge, conversations, workspace,
+                         #   members, profile, auth) plus modal/toaster (Buefy overlay adapters)
   styles/                # The two managed stylesheets — see "Styling rule" above
   assets/icons/          # Custom SVGs — see "Icons" above
 docs/design-system.md            # The design contract (canonical)

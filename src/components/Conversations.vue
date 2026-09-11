@@ -8,10 +8,18 @@
       class="tr-workbench-page__header"
       v-model:search="query"
       search-placeholder="Поиск по диалогам"
-      :filters-active="Boolean(statusFilter || channelFilter)"
-      @shortcut="viewMode = 'list'"
+      :filters-active="Boolean(statusFilter || channelFilter || agentFilter)"
     >
       <template #filters>
+        <ToolbarDropdown
+          v-if="agentOptions.length > 0"
+          v-model="agentFilter"
+          class="tr-page-toolbar__filter"
+          aria-label="Фильтр диалогов по агенту"
+          all-label="Все агенты"
+          :options="agentOptions"
+        />
+
         <ToolbarDropdown
           v-model="statusFilter"
           class="tr-page-toolbar__filter"
@@ -39,188 +47,46 @@
       />
     </section>
 
-    <section
-      v-else
-      class="tr-conversations"
-      :class="[
-        `is-${viewMode}-view`,
-        { 'is-properties-open': isPropertiesVisible },
-      ]"
-    >
-    <aside class="tr-conversation-panel tr-conversations-list">
-      <nav class="tr-conversations-list__items" aria-label="Список диалогов">
-        <button
-          v-for="conversation in filteredConversations"
-          :key="conversation.id"
-          class="tr-conversation-item"
-          :class="{ 'is-active': conversation.id === selectedId }"
-          type="button"
-          :aria-pressed="conversation.id === selectedId"
-          @click="selectConversation(conversation.id)"
-        >
-          <span class="tr-conversation-avatar">
-            {{ conversation.initials }}
-          </span>
-          <span class="tr-conversation-item__content">
-            <span class="tr-conversation-item__heading">
-              <strong>{{ conversation.contact }}</strong>
-              <small>{{ conversation.updated }}</small>
+    <section v-else class="tr-conversations">
+      <aside class="tr-conversation-panel tr-conversations-list">
+        <nav class="tr-conversations-list__items" aria-label="Список диалогов">
+          <button
+            v-for="conversation in filteredConversations"
+            :key="conversation.id"
+            class="tr-conversation-item"
+            type="button"
+            @click="openConversation(conversation)"
+          >
+            <span class="tr-conversation-avatar">
+              {{ conversation.initials }}
             </span>
-            <span class="tr-conversation-item__preview">
-              {{ conversation.preview }}
+            <span class="tr-conversation-item__content">
+              <span class="tr-conversation-item__heading">
+                <strong>{{ conversation.contact }}</strong>
+                <small>{{ conversation.updated }}</small>
+              </span>
+              <span class="tr-conversation-item__preview">
+                {{ conversation.preview }}
+              </span>
+              <span class="tr-conversation-item__channel">
+                {{ conversation.channel }} · {{ conversation.agent }}
+              </span>
             </span>
-            <span class="tr-conversation-item__channel">
-              {{ conversation.channel }} · {{ conversation.agent }}
-            </span>
-          </span>
-        </button>
+          </button>
 
-        <AsyncState
-          v-if="filteredConversations.length === 0"
-          variant="no-results"
-          message="Диалоги не найдены."
-        />
-      </nav>
-    </aside>
-
-    <article
-      v-if="!selectedConversation"
-      class="tr-conversations-placeholder"
-    >
-      <b-icon icon="message-text-outline" size="is-large" />
-      <strong>Выберите диалог</strong>
-      <span>Сообщения и свойства диалога появятся здесь.</span>
-    </article>
-
-    <article
-      v-if="selectedConversation"
-      class="tr-conversation-panel tr-conversation-chat"
-    >
-      <header class="tr-conversation-header">
-        <b-button
-          class="tr-conversation-list-action tr-conversation-icon-action"
-          icon-left="arrow-left"
-          aria-label="К диалогам"
-          title="К диалогам"
-          @click="viewMode = 'list'"
-        />
-
-        <div class="tr-conversation-identity">
-          <span class="tr-conversation-avatar">
-            {{ selectedConversation.initials }}
-          </span>
-          <span>
-            <strong>{{ selectedConversation.contact }}</strong>
-            <small>{{ selectedConversation.status }}</small>
-          </span>
-        </div>
-
-        <b-button
-          v-if="!isPropertiesVisible"
-          class="tr-conversation-settings-action tr-conversation-icon-action"
-          icon-left="cog-outline"
-          aria-label="Открыть свойства диалога"
-          title="Открыть свойства диалога"
-          @click="openProperties"
-        />
-      </header>
-
-      <div class="tr-conversation-messages" aria-live="polite">
-        <div
-          v-for="message in selectedConversation.messages"
-          :key="message.id"
-          class="tr-chat-message"
-          :class="{ 'is-outgoing': message.outgoing }"
-        >
-          <p>{{ message.text }}</p>
-          <small>{{ message.time }}</small>
-        </div>
-      </div>
-
-      <footer class="tr-conversation-composer">
-        <b-input
-          v-model="draft"
-          class="tr-conversation-composer-input"
-          placeholder="Напишите сообщение"
-          @keyup.enter="sendMessage"
-        />
-        <b-button
-          type="is-primary"
-          icon-left="send"
-          aria-label="Отправить"
-          @click="sendMessage"
-        />
-      </footer>
-    </article>
-
-    <aside
-      v-if="selectedConversation"
-      class="tr-conversation-panel tr-conversation-properties"
-    >
-      <header class="tr-conversation-header">
-        <b-button
-          class="tr-conversation-properties-action tr-conversation-icon-action"
-          icon-left="arrow-left"
-          aria-label="К диалогу"
-          title="К диалогу"
-          @click="viewMode = 'chat'"
-        />
-        <h2 class="tr-conversation-title">Свойства</h2>
-        <b-button
-          class="tr-conversation-properties-close tr-conversation-icon-action"
-          icon-left="close"
-          aria-label="Закрыть свойства диалога"
-          title="Закрыть свойства диалога"
-          @click="closeProperties"
-        />
-      </header>
-
-      <div class="tr-conversation-properties-body">
-        <div class="tr-conversation-profile">
-          <img
-            v-if="selectedConversation.avatarUrl"
-            class="tr-conversation-profile-image"
-            :src="selectedConversation.avatarUrl"
-            :alt="selectedConversation.contact"
+          <AsyncState
+            v-if="filteredConversations.length === 0"
+            variant="no-results"
+            message="Диалоги не найдены."
           />
-          <strong>{{ selectedConversation.contact }}</strong>
-          <span class="tr-muted">{{ selectedConversation.email }}</span>
-        </div>
+        </nav>
+      </aside>
 
-        <div class="tr-divider" />
-
-        <b-field label="Агент">
-          <b-select v-model="selectedConversation.agent" expanded>
-            <option>Консультант</option>
-            <option>Sales Assistant</option>
-            <option>Support Bot</option>
-          </b-select>
-        </b-field>
-
-        <dl class="tr-conversation-details">
-          <div>
-            <dt>Статус</dt>
-            <dd>
-              <b-tag
-                :type="selectedConversation.status === 'Активен'
-                  ? 'is-primary'
-                  : undefined"
-              >
-                {{ selectedConversation.status }}
-              </b-tag>
-            </dd>
-          </div>
-          <div>
-            <dt>Канал</dt>
-            <dd>{{ selectedConversation.channel }}</dd>
-          </div>
-          <div>
-            <dt>Создан</dt>
-            <dd>{{ selectedConversation.created }}</dd>
-          </div>
-        </dl>
-      </div>
-    </aside>
+      <article class="tr-conversations-placeholder">
+        <b-icon icon="message-text-outline" size="is-large" />
+        <strong>Выберите диалог</strong>
+        <span>Сообщения и свойства диалога откроются на отдельной странице.</span>
+      </article>
     </section>
     </template>
   </section>
@@ -228,198 +94,72 @@
 
 <script setup>
 import { storeToRefs } from "pinia";
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
 
 import { useSimulatedLoading } from "../composables/useSimulatedLoading";
+import { useAgentsStore } from "../stores/agents";
+import {
+  CONVERSATION_CHANNELS,
+  CONVERSATION_STATUSES,
+  useConversationsStore,
+} from "../stores/conversations";
 import { useWorkspaceStore } from "../stores/workspace";
 import AsyncState from "./common/AsyncState.vue";
 import Loader from "./common/Loader.vue";
 import Toolbar from "./common/Toolbar.vue";
 import ToolbarDropdown from "./common/ToolbarDropdown.vue";
 
+// List screen (Task A5.7), routed at `/conversations` and, agent-scoped, at
+// `/conversations/:agentId` — picking a dialog now navigates to the fully
+// separate `conversation`/`conversation-settings` routes
+// (`components/conversations/ConversationDetail.vue`) instead of switching
+// an internal `viewMode` the way this component used to. The list therefore
+// always renders the same two-column `.tr-conversations` layout (list +
+// "pick a dialog" placeholder); there is no way back to reflect which
+// dialog is currently open in the list's own selection state any more
+// (that would be exactly the internal view-mode state Task A5.7 removes),
+// so list items never carry an `is-active` state.
+const route = useRoute();
+const router = useRouter();
 const { isLoading } = useSimulatedLoading();
+const conversationsStore = useConversationsStore();
+const agentsStore = useAgentsStore();
+const workspaceStore = useWorkspaceStore();
+const { activeWorkspaceId } = storeToRefs(workspaceStore);
 
-/** @typedef {"list" | "chat" | "properties"} ViewMode */
-
-/**
- * @typedef {Object} ChatMessage
- * @property {number} id
- * @property {string} text
- * @property {string} time
- * @property {boolean} outgoing
- */
-
-/**
- * @typedef {Object} Conversation
- * @property {number} id
- * @property {string} contact
- * @property {string} initials
- * @property {string} [avatarUrl]
- * @property {string} email
- * @property {string} channel
- * @property {string} agent
- * @property {string} status
- * @property {string} updated
- * @property {string} created
- * @property {string} preview
- * @property {ChatMessage[]} messages
- */
+/** @typedef {import("../stores/conversations").Conversation} Conversation */
 
 const query = ref("");
 const statusFilter = ref("");
 const channelFilter = ref("");
-const draft = ref("");
-const selectedId = ref(/** @type {number | null} */ (null));
-/** @type {import("vue").Ref<ViewMode>} */
-const viewMode = ref("list");
-const propertiesOpen = ref(true);
-const isWideLayout = ref(false);
-/** @type {MediaQueryList | null} */
-let wideLayoutQuery = null;
-const workspaceStore = useWorkspaceStore();
-const { activeWorkspaceId } = storeToRefs(workspaceStore);
 
-const conversationStatuses = ["Активен", "Завершён"];
-const conversationChannels = ["Telegram", "Виджет", "Email"];
+const conversationStatuses = CONVERSATION_STATUSES;
+const conversationChannels = CONVERSATION_CHANNELS;
 
-/** @type {Conversation[]} */
-const demoConversations = [
-  {
-    id: 1,
-    contact: "Анна Смирнова",
-    initials: "АС",
-    email: "anna@example.com",
-    channel: "Telegram",
-    agent: "Консультант",
-    status: "Активен",
-    updated: "5 мин",
-    created: "Сегодня, 10:24",
-    preview: "Спасибо! Тогда оформляем доставку.",
-    messages: [
-      {
-        id: 1,
-        text: "Здравствуйте! Подскажите, есть ли доставка по Москве?",
-        time: "10:24",
-        outgoing: false,
-      },
-      {
-        id: 2,
-        text: "Здравствуйте! Да, доставляем курьером в течение двух дней.",
-        time: "10:25",
-        outgoing: true,
-      },
-      {
-        id: 3,
-        text: "Спасибо! Тогда оформляем доставку.",
-        time: "10:27",
-        outgoing: false,
-      },
-    ],
-  },
-  {
-    id: 2,
-    contact: "Михаил Орлов",
-    initials: "МО",
-    email: "m.orlov@example.com",
-    channel: "Виджет",
-    agent: "Sales Assistant",
-    status: "Завершён",
-    updated: "42 мин",
-    created: "Сегодня, 09:41",
-    preview: "Получил презентацию, вернусь с ответом.",
-    messages: [
-      {
-        id: 1,
-        text: "Можно получить презентацию продукта?",
-        time: "09:41",
-        outgoing: false,
-      },
-      {
-        id: 2,
-        text: "Конечно. Отправил ссылку на указанную почту.",
-        time: "09:43",
-        outgoing: true,
-      },
-    ],
-  },
-  {
-    id: 3,
-    contact: "support@example.com",
-    initials: "SE",
-    email: "support@example.com",
-    channel: "Email",
-    agent: "Support Bot",
-    status: "Завершён",
-    updated: "Вчера",
-    created: "Вчера, 18:12",
-    preview: "Проблема решена, благодарю за помощь.",
-    messages: [
-      {
-        id: 1,
-        text: "Не получается войти в личный кабинет.",
-        time: "18:12",
-        outgoing: false,
-      },
-      {
-        id: 2,
-        text: "Сбросил активные сессии. Попробуйте войти ещё раз.",
-        time: "18:15",
-        outgoing: true,
-      },
-    ],
-  },
-];
+const agentOptions = computed(
+  () => agentsStore.listByWorkspace(activeWorkspaceId.value)
+    .map((agent) => ({ value: String(agent.id), label: agent.name })),
+);
 
-/** @type {import("vue").Ref<Record<string, Conversation[]>>} */
-const conversationsByWorkspace = ref({
-  demo: demoConversations,
-  trickster: [
-    {
-      id: 1,
-      contact: "Мария Волкова",
-      initials: "МВ",
-      email: "maria@trickster.team",
-      channel: "Виджет",
-      agent: "Trickster Concierge",
-      status: "Активен",
-      updated: "12 мин",
-      created: "Сегодня, 11:08",
-      preview: "Подскажите, как подключить новый канал?",
-      messages: [
-        {
-          id: 1,
-          text: "Подскажите, как подключить новый канал?",
-          time: "11:08",
-          outgoing: false,
-        },
-        {
-          id: 2,
-          text: "Откройте раздел «Интеграции» и выберите нужный сервис.",
-          time: "11:09",
-          outgoing: true,
-        },
-      ],
-    },
-  ],
-  empty: [],
+// The agent filter scopes to a different route (`conversations-agent`)
+// rather than narrowing the current list client-side — same
+// route-is-the-filter convention as get.3xtr.im's own agent filter — so it
+// proxies through router.push instead of a plain ref.
+const agentFilter = computed({
+  get: () => (route.params.agentId ? String(route.params.agentId) : ""),
+  set: (value) => {
+    router.push(value
+      ? { name: "conversations-agent", params: { agentId: value } }
+      : { name: "conversations" });
+  },
 });
 
-const conversations = computed(
-  () => conversationsByWorkspace.value[activeWorkspaceId.value] ?? [],
-);
-
-const selectedConversation = computed(
-  () => conversations.value.find((item) => item.id === selectedId.value),
-);
-
-const isPropertiesVisible = computed(
-  () => Boolean(selectedConversation.value)
-    && (
-      isWideLayout.value
-        ? propertiesOpen.value
-        : viewMode.value === "properties"
-    ),
-);
+const conversations = computed(() => (
+  route.params.agentId
+    ? conversationsStore.listByAgent(activeWorkspaceId.value, route.params.agentId)
+    : conversationsStore.listByWorkspace(activeWorkspaceId.value)
+));
 
 const filteredConversations = computed(() => {
   const search = query.value.trim().toLocaleLowerCase();
@@ -441,77 +181,12 @@ const filteredConversations = computed(() => {
 });
 
 /**
- * @param {number} id
+ * @param {Conversation} conversation
  */
-function selectConversation(id) {
-  selectedId.value = id;
-  viewMode.value = "chat";
-}
-
-watch(activeWorkspaceId, () => {
-  selectedId.value = null;
-  query.value = "";
-  statusFilter.value = "";
-  channelFilter.value = "";
-  draft.value = "";
-  viewMode.value = "list";
-  propertiesOpen.value = true;
-});
-
-function openProperties() {
-  if (isWideLayout.value) {
-    propertiesOpen.value = true;
-    return;
-  }
-
-  viewMode.value = "properties";
-}
-
-function closeProperties() {
-  if (isWideLayout.value) {
-    propertiesOpen.value = false;
-    return;
-  }
-
-  viewMode.value = "chat";
-}
-
-/**
- * @param {MediaQueryListEvent | MediaQueryList} event
- */
-function syncWideLayout(event) {
-  isWideLayout.value = event.matches;
-}
-
-function sendMessage() {
-  const text = draft.value.trim();
-  const conversation = selectedConversation.value;
-
-  if (!text || !conversation) {
-    return;
-  }
-
-  conversation.messages.push({
-    id: Date.now(),
-    text,
-    time: new Intl.DateTimeFormat("ru", {
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(new Date()),
-    outgoing: true,
+function openConversation(conversation) {
+  router.push({
+    name: "conversation",
+    params: { agentId: conversation.agentId, conversationId: conversation.id },
   });
-  conversation.preview = text;
-  conversation.updated = "Сейчас";
-  draft.value = "";
 }
-
-onMounted(() => {
-  wideLayoutQuery = window.matchMedia("(min-width: 1280px)");
-  syncWideLayout(wideLayoutQuery);
-  wideLayoutQuery.addEventListener("change", syncWideLayout);
-});
-
-onBeforeUnmount(() => {
-  wideLayoutQuery?.removeEventListener("change", syncWideLayout);
-});
 </script>

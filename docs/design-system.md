@@ -224,7 +224,19 @@ currentColor`, а не захардкоженный `--tr-text`, поэтому 
 - Desktop shell использует grid `200px minmax(0, 1fr)`.
 - Ниже `1024px` grid становится одноколоночным, а Sidebar — выдвижной панелью.
 - Topbar находится в нормальном потоке и закрепляется через `position: sticky`.
-- Auth-маршруты используют отдельную компоновку без Sidebar.
+- Auth-маршруты используют отдельную компоновку без Sidebar, как в кабинете
+  (`get.3xtr.im/src/App.vue` не рендерит `.tr-app-shell` под `/auth/*`, но
+  сохраняет упрощённый `<Navbar />` без пропсов). `App.vue` кита определяет
+  auth-маршруты той же проверкой (`route.path.startsWith("/auth/")`) и для
+  них рендерит `Navbar` в режиме `minimal` (без переключателя пространства,
+  resource-меню, уведомлений и меню пользователя — только логотип) и не
+  разворачивает `.tr-app-shell`/`Sidebar`; `RouterView` идёт сразу за
+  `Navbar`. `workspaces`/`user` остаются обязательными пропсами и в этом
+  режиме (в ките нет отдельного «logged out» состояния — фикстуры загружены
+  всегда), `minimal` только прячет разметку, которая их использует.
+  `AuthPage.vue`'s `.tr-auth` уже расчитан на ровно один topbar сверху
+  (`min-height: calc(100vh - $topbar-height - $space-12)`), поэтому голый
+  `Navbar` обязателен, а не просто убран.
 - Загрузчик приложения, ошибка сервиса, переключатель пространства, модальные
   окна и тосты остаются отдельными корневыми состояниями.
 
@@ -395,7 +407,7 @@ Sidebar использует Buefy `b-menu` и общий реестр нави�
 | `Icon` | Рендер SVG из реестра с корректной ARIA-семантикой | реализован (`src/components/common/Icon.vue`) |
 | `Loader` | Анимированный логотип, размеры `inline`/`section`/`screen` | реализован (`src/components/common/Loader.vue`) |
 | `CopyPre` | Форматированный текст с копированием и ограниченной высотой | реализован (`src/components/common/CopyPre.vue`) |
-| `TariffSummaryCard` | Карточка тарифа/лимитов в сайдбаре, ссылка на `workspace-plan` | реализован (`src/components/common/TariffSummaryCard.vue`) — принимает готовый `tariff` (демо-данные Pinia-стора), в отличие от кабинетных `workspace`/`usage`-props |
+| `TariffSummaryCard` | Карточка тарифа/лимитов в сайдбаре, ссылка на `workspace-plans` | реализован (`src/components/common/TariffSummaryCard.vue`) — принимает готовый `tariff` (демо-данные Pinia-стора), в отличие от кабинетных `workspace`/`usage`-props |
 
 `AsyncState` и его обёртка не выполняют запросов и не принимают
 permission-решений. Вариант `error` использует `role="alert"` и assertive live
@@ -507,6 +519,40 @@ Label, подсказка, сообщение об ошибке и состоя�
 - disabled и loading заметны визуально и программно;
 - опасные действия отделяются от обычного submit;
 - футер переносится на узких экранах без overflow.
+
+## Auth
+
+`/auth/{login,signup,forgot,verify,invite}` (Task A5.10) — фикстурные формы
+без бэкенда, общий контейнер `AuthPage.vue`
+(`src/components/auth/AuthPage.vue`):
+
+```text
+.tr-auth
+└── .tr-auth__card (.tr-card)
+    ├── <slot /> — форма конкретного экрана, тот же контракт `.tr-form`
+    └── .tr-auth__legal — статичный текст согласия с офертой
+```
+
+- `tr-auth`/`tr-auth__card` заменяют мёртвые кабинетные `auth-page`/
+  `auth-form-container` (`get.3xtr.im/src/modules/auth/components/
+  AuthPage.vue`, `<style scoped>`) — оба класса в ките отсутствуют.
+- Пароль раскрывается штатным `b-input password-reveal` (см. «Формы» выше) —
+  отдельный компонент `PasswordInput` кит не заводит, ChannelFormModal.vue
+  (Task A5.5) уже показывает тот же выбор для секретного поля.
+- `GoogleButton.vue` — визуальная заглушка (`disabled`, без сетевого
+  запроса): кабинетная кнопка встраивает живой Google-скрипт, что кит не
+  делает (см. AGENTS.md/CLAUDE.md, «Backend changes»).
+- `WorkspaceSelector.vue` — оверлей выбора пространства поверх фикстур
+  `stores/workspace.js`; в ките это демонстрационный шаг `LoginView.vue`
+  после успешного входа, а не гейт `App.vue` по флагу сессии, как в
+  кабинете (кит не моделирует сессию).
+- Единственная «успешная» пара логин/пароль — `demo@3xtr.im` /
+  `trickster123` (`stores/auth.js`); всё остальное показывает
+  `b-notification type="is-danger"` с текстом ошибки.
+- `/auth/verify`, `/auth/invite` читают опциональный `:token` один раз при
+  монтировании и сразу вычищают его из адресной строки через
+  `router.replace` — тот же принцип «токен живёт только в памяти», что и в
+  кабинете, без реального запроса на подтверждение.
 
 ## Состояния и доступность
 
@@ -655,14 +701,34 @@ context (`.copy-pre`) — это не отдельный слой шкалы, а
 
 1. **`// Stage A5 temporary contract`** — селектор, заранее нужный Stage A5.
    Не считается мёртвым до закрытия Stage A5, после чего пометка и сам класс,
-   если он так и не понадобился, снимаются. На 2026-09-11 под этой пометкой
-   стоит `.tr-form`/`.tr-destructive-zone*` (`trickster-buefy.scss`,
-   WorkspaceSettings full-page-form foundation) — раскладка полностраничной
-   формы настроек, которую Stage A4 сознательно не переносит в кит (текущие
-   формы кита — модальные), и которая понадобится компоненту
-   `WorkspaceSettings` в Stage A5. `tr-tariff-selector__card--current`, ранее
-   числившийся кандидатом на исключение, уже используется
-   `TariffSelector.vue` (кит и приложение) и под эту пометку не подпадает.
+   если он так и не понадобился, снимаются. На 2026-09-11 `.tr-form` уже
+   применяется `AgentSettings.vue` (Task A5.4), `.tr-form__footer` —
+   `knowledge/Settings.vue` (Task A5.6) и `WorkspaceSettings.vue` (Task A5.8),
+   а `.tr-destructive-zone*` — `WorkspaceSettings.vue` (Task A5.8, удаление
+   пространства); пометка «full-page-form foundation» с этих трёх снята, все
+   они имеют явного потребителя. Task A5.8 тем же изменением увела
+   `WorkspaceSettings.vue` от прежнего паттерна «список опций с
+   переключателями» на реальный домен пространства; Task A5.9 закрыла
+   образовавшееся ожидание — `src/components/profile/Settings.vue`
+   (`/profile`) рендерит панель переключателей уведомлений над
+   `stores/profile.js`'s `notificationPreferences`, поэтому
+   `.tr-settings__panel-header`/`.tr-settings__option*` больше не под
+   пометкой `// Stage A5 temporary contract` — у них есть кит-потребитель.
+   `.tr-settings__header`/`.tr-settings__panel-footer` так и не нашли
+   потребителя (эта панель не рисует отдельный page-level `<h1>` и не
+   копит изменения под одну кнопку сохранения — каждый `b-switch`
+   применяется сразу) и удалены из `trickster-buefy.scss` задачей A5.11,
+   закрывающей Stage A5 — сама эта задача и есть тот «будущий таск», на
+   который ссылалась предыдущая пометка. Транзакционный save-ряд на панели
+   настроек, если понадобится позже, переиспользует `.tr-form__footer`, а не
+   восстанавливает `.tr-settings__panel-footer`. `.tr-settings`/
+   `.tr-settings__panel` потребителя не теряют — их использует и
+   `WorkspaceSettings.vue`, и
+   `AgentSettings.vue`/`knowledge/Settings.vue`/
+   `profile/{Settings,Security}.vue`.
+   `tr-tariff-selector__card--current`, ранее числившийся кандидатом на
+   исключение, уже используется `TariffSelector.vue` (кит и приложение) и под
+   эту пометку не подпадает.
 2. **`<Компонент>.vue foundation (get.3xtr.im component, no kit equivalent)`**
    — CSS для компонента `get.3xtr.im`, который Stage A4 сознательно не
    переносит в кит (`PaginationControls`, `SkeletonLoader`, `ProgressBar`):
@@ -719,7 +785,16 @@ context (`.copy-pre`) — это не отдельный слой шкалы, а
 ширинах `360`, `768`, `1024`, `1280` и `1440px` пройдена вручную без
 визуальных регрессий.
 
-Evidence Task A3.9 (2026-09-10): `npm run lint:style` и `npm run build`
+Historical evidence Task A3.9 (2026-09-10) — описывает состав кита **на дату
+закрытия A3.9**, не текущий. Маршруты `/channels`, `/ui-kit`, `/workspace/
+plan/` и компонент `SectionPlaceholder.vue`, упомянутые ниже, были удалены
+или переименованы в Stage A5 (`/channels` → `/agents/:id/channels`,
+Task A5.5; `/ui-kit` → `/kit`, Task A5.3; `/workspace/plan/` →
+`/workspace/plans`, Task A5.1/A5.8; `SectionPlaceholder.vue` удалён,
+Task A5.11) — актуальный список маршрутов и экранов см. в evidence
+Task A5.1–A5.11 ниже и в `.plan`/`.todo`.
+
+`npm run lint:style` и `npm run build`
 прошли без ошибок; `git diff --check` — без конфликтов пробелов. Проверены
 все 8 маршрутов кита (`/`, `/conversations`, `/agents`, `/knowledge`,
 `/channels`, `/workspace/settings/`, `/workspace/plan/`, `/ui-kit`, плюс

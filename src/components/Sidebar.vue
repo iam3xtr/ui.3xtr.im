@@ -46,11 +46,14 @@ const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceTariff } = storeToRefs(workspaceStore);
 
 /**
+ * Prefix-aware match: every main navigation item is the root of a route
+ * family (catalog + its detail/settings/channels/statistics children), so a
+ * nested route (e.g. "agent-settings" under "/agents/:id/settings") must
+ * still keep the "agents" item active. See docs/design-system.md,
+ * "Навигация".
  * @param {string} routeName
  */
 function isNavigationItemActive(routeName) {
-  return routeName === "workspace"
-    ? route.path.startsWith("/workspace")
-    : route.name === routeName;
+  return route.path.startsWith(`/${routeName}`);
 }
 </script>

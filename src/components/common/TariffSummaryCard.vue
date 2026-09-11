@@ -1,6 +1,6 @@
 <template>
   <RouterLink
-    :to="{ name: 'workspace-plan' }"
+    :to="{ name: 'workspace-plans' }"
     class="tr-card tr-card--interactive tr-sidebar-tariff"
   >
     <div class="tr-sidebar-tariff__heading">

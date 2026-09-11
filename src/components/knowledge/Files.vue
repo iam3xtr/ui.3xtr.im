@@ -1,0 +1,224 @@
+<template>
+  <section class="tr-knowledge-files">
+    <Toolbar v-model:search="query" search-placeholder="Поиск файлов">
+      <template #actions>
+        <b-dropdown position="is-bottom-left" aria-role="list">
+          <template #trigger>
+            <b-button icon-left="plus" size="is-small" type="is-primary">
+              Добавить
+            </b-button>
+          </template>
+          <b-dropdown-item aria-role="listitem" @click="openObjectForm('text')">
+            Добавить текст
+          </b-dropdown-item>
+          <b-dropdown-item aria-role="listitem" @click="openObjectForm('url')">
+            Добавить ссылку
+          </b-dropdown-item>
+        </b-dropdown>
+      </template>
+    </Toolbar>
+
+    <b-upload
+      v-model="pickedFiles"
+      drag-drop
+      multiple
+      expanded
+      class="tr-knowledge-files__upload"
+    >
+      <div class="has-text-centered tr-upload-dropzone__hint">
+        <p><b-icon icon="upload" size="is-medium" /></p>
+        <p>Перетащите файлы сюда или нажмите для выбора</p>
+      </div>
+    </b-upload>
+
+    <Loader v-if="isLoading" size="section" />
+
+    <ListAsyncState
+      v-else
+      :empty="objects.length === 0"
+      empty-icon="file-plus-outline"
+      empty-title="В коллекции пока нет файлов"
+      empty-message="Добавьте файл, ссылку или текстовый документ."
+    >
+      <div class="tr-knowledge__items-header">
+        <span>{{ objects.length }} {{ objectsLabel }}</span>
+        <span class="tr-muted">{{ formatBytes(totalSize) }}</span>
+      </div>
+
+      <div class="tr-card">
+        <b-table :data="filteredObjects" hoverable mobile-cards>
+          <b-table-column field="name" label="Название" v-slot="{ row }">
+            <span class="tr-row">
+              <b-icon :icon="getObjectKind(row.kind).icon" size="is-small" />
+              <span>
+                <strong>{{ row.name }}</strong>
+                <br v-if="row.sourceLabel" />
+                <small v-if="row.sourceLabel" class="tr-muted">{{ row.sourceLabel }}</small>
+              </span>
+            </span>
+          </b-table-column>
+
+          <b-table-column field="status" label="Статус" v-slot="{ row }">
+            <b-tag size="is-small" :type="getObjectStatus(row.status).tagType">
+              {{ getObjectStatus(row.status).label }}
+            </b-tag>
+          </b-table-column>
+
+          <b-table-column field="size" label="Размер" v-slot="{ row }">
+            {{ formatBytes(row.size) }}
+          </b-table-column>
+
+          <b-table-column field="updatedLabel" label="Обновлено" v-slot="{ row }">
+            {{ row.updatedLabel }}
+          </b-table-column>
+
+          <b-table-column v-slot="{ row }" width="56">
+            <b-dropdown position="is-bottom-left" aria-role="list" append-to-body>
+              <template #trigger>
+                <b-button
+                  type="is-text"
+                  icon-left="dots-horizontal"
+                  size="is-small"
+                  :aria-label="`Действия с файлом «${row.name}»`"
+                />
+              </template>
+              <b-dropdown-item aria-role="listitem" @click="removeObject(row)">
+                Удалить
+              </b-dropdown-item>
+            </b-dropdown>
+          </b-table-column>
+        </b-table>
+      </div>
+
+      <p v-if="filteredObjects.length === 0 && objects.length > 0" class="tr-catalog-empty">
+        По вашему запросу файлы не найдены.
+      </p>
+    </ListAsyncState>
+
+    <KnowledgeFileFormModal :collection-id="route.params.id" :initial-tab="objectFormTab" />
+  </section>
+</template>
+
+<script setup>
+import { storeToRefs } from "pinia";
+import {
+  computed, ref, watch,
+} from "vue";
+import { useRoute } from "vue-router";
+
+import { useSimulatedLoading } from "../../composables/useSimulatedLoading";
+import { useKnowledgeStore } from "../../stores/knowledge";
+import { useModalStore } from "../../stores/modal";
+import { useWorkspaceStore } from "../../stores/workspace";
+import Loader from "../common/Loader.vue";
+import ListAsyncState from "../common/ListAsyncState.vue";
+import Toolbar from "../common/Toolbar.vue";
+import KnowledgeFileFormModal from "./KnowledgeFileFormModal.vue";
+
+// Files tab (Task A5.6), routed at `/knowledge/:id`. Adding a source is
+// b-upload's own drag-drop zone for files (no custom dropzone/uploader
+// component — the .plan's "зона перетаскивания" is exactly what `drag-drop`
+// already gives `b-upload`) plus a Buefy modal with tabs
+// (`KnowledgeFileFormModal.vue`) for pasted text/links, matching
+// get.3xtr.im's `Files.vue` + `KnowledgeFileForm.vue` split. A freshly added
+// object starts in `indexing` and settles to `indexed`/`error` on a fire-
+// and-forget timer — the same convention as `KnowledgeFileFormModal.vue`'s
+// `addObject` — so switching tabs before it fires can't leave the object
+// stuck in `indexing` forever.
+const route = useRoute();
+const { isLoading } = useSimulatedLoading();
+const knowledgeStore = useKnowledgeStore();
+const modalStore = useModalStore();
+const workspaceStore = useWorkspaceStore();
+const { activeWorkspaceId } = storeToRefs(workspaceStore);
+
+const query = ref("");
+const pickedFiles = ref([]);
+const objectFormTab = ref("text");
+
+const collection = computed(
+  () => knowledgeStore.getCollection(activeWorkspaceId.value, route.params.id),
+);
+const objects = computed(() => collection.value?.objects ?? []);
+const objectsLabel = computed(() => pluralizeObjects(objects.value.length));
+const totalSize = computed(
+  () => objects.value.reduce((sum, object) => sum + object.size, 0),
+);
+const filteredObjects = computed(() => {
+  const search = query.value.trim().toLocaleLowerCase();
+
+  if (!search) {
+    return objects.value;
+  }
+
+  return objects.value.filter((object) => object.name.toLocaleLowerCase().includes(search));
+});
+
+function getObjectKind(kind) {
+  return knowledgeStore.getObjectKind(kind);
+}
+
+function getObjectStatus(status) {
+  return knowledgeStore.getObjectStatus(status);
+}
+
+function pluralizeObjects(count) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+
+  if (mod10 === 1 && mod100 !== 11) return "объект";
+  if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return "объекта";
+  return "объектов";
+}
+
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 Б";
+  const units = ["Б", "КБ", "МБ", "ГБ"];
+  let value = bytes;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  const precision = unitIndex > 0 && value < 10 ? 1 : 0;
+  return `${value.toFixed(precision)} ${units[unitIndex]}`;
+}
+
+function scheduleSettle(objectId, outcome) {
+  setTimeout(() => {
+    knowledgeStore.setObjectStatus(activeWorkspaceId.value, route.params.id, objectId, outcome);
+  }, 1500);
+}
+
+watch(pickedFiles, (files) => {
+  if (!files.length) {
+    return;
+  }
+
+  files.forEach((file, index) => {
+    const object = knowledgeStore.addObject(activeWorkspaceId.value, route.params.id, {
+      name: file.name,
+      kind: "file",
+      size: file.size,
+      sourceLabel: (file.name.split(".").pop() || "").toUpperCase(),
+    });
+
+    if (object) {
+      // Every third upload lands on `error` — just enough to keep the status
+      // badge and its variants visible without a real failure to trigger it.
+      scheduleSettle(object.id, (objects.value.length + index) % 3 === 2 ? "error" : "indexed");
+    }
+  });
+
+  pickedFiles.value = [];
+});
+
+function openObjectForm(tab) {
+  objectFormTab.value = tab;
+  modalStore.open("knowledge-object-form");
+}
+
+function removeObject(object) {
+  knowledgeStore.removeObject(activeWorkspaceId.value, route.params.id, object.id);
+}
+</script>

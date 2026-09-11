@@ -137,10 +137,44 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     activeWorkspaceId.value = id;
   }
 
+  /**
+   * Переименование пространства (Task A5.8, `WorkspaceSettings.vue`) —
+   * in-memory, без запроса к серверу.
+   * @param {string} id
+   * @param {{ name: string }} input
+   */
+  function updateWorkspace(id, { name }) {
+    const workspace = workspaces.value.find((item) => item.id === id);
+
+    if (workspace && name) {
+      workspace.name = name;
+    }
+  }
+
+  /**
+   * Удаление пространства (Task A5.8, `WorkspaceSettings.vue`
+   * `.tr-destructive-zone`). Нельзя удалить последнее оставшееся
+   * пространство — переключать активное после удаления не на что.
+   * @param {string} id
+   */
+  function removeWorkspace(id) {
+    if (workspaces.value.length <= 1) {
+      return;
+    }
+
+    workspaces.value = workspaces.value.filter((item) => item.id !== id);
+
+    if (activeWorkspaceId.value === id) {
+      activeWorkspaceId.value = workspaces.value[0].id;
+    }
+  }
+
   return {
     workspaces,
     activeWorkspaceId,
     activeWorkspaceTariff,
     createWorkspace,
+    updateWorkspace,
+    removeWorkspace,
   };
 });

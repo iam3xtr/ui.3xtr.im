@@ -990,8 +990,8 @@ Closing evidence (2026-09-11): `useFocusTrap` больше не перехват
 
 ### [P1] Stage A5. Экраны кита до состава кабинета
 
-Статус: active — разблокирован закрытием Stage A4 и декомпозирован в `.todo`
-2026-09-11.
+Статус: done — задачи A5.1–A5.11 закрыты 2026-09-11 после stage-review;
+P1 auth shell и P2 по устаревшему evidence устранены до закрытия.
 
 Источник: маршруты кабинета (`src/modules/*/routes.js`), экраны
 `agents/{Agents,Agent,Playground,Settings,Requests}`,
@@ -1071,11 +1071,51 @@ Closing evidence (2026-09-11): `useFocusTrap` больше не перехват
 - Каждый экран проверен в light/dark на пяти брейкпоинтах.
 - Сборка, `lint:style` и guard проходят.
 
+Evidence (2026-09-11, Task A5.11, промежуточный — этап ещё не закрыт, см.
+«Статус» выше): сверка A5.1–A5.10 с фактическим `src/router.js`/
+`src/navigation.js` подтвердила соответствие заявленному в задачах составу:
+все согласованные маршруты (`/`, `/agents/**`, `/conversations/**`,
+`/knowledge/**`, `/workspace/**`, `/profile/**`, `/auth/**`, `/kit`, `/404`) с
+верным `meta.contentMode` на месте; `/integrations`, `/settings`, старый
+`/ui-kit` и `SectionPlaceholder.vue` в коде отсутствуют; `Agents.vue` без
+list-level `viewMode`. Из демо-сущностей, перечисленных в критерии
+приёмки, оставался неудалённым `stores/siteSettings.js` — `.todo`-evidence
+Task A5.2/A5.8 намеренно откладывали его до миграции последнего потребителя
+(`Navbar.vue`'s переключатели видимости search/resource-menu/notifications),
+которая ни одной задачей Stage A5 явно не была назначена; эта задача её
+закрывает — `Navbar.vue` рендерит все три блока безусловно (как в кабинете),
+`stores/siteSettings.js` удалён. `docs/design-system.md` («Допустимые
+исключения из «нет tr-* без потребителя»») и `trickster-buefy.scss`
+приведены в соответствие: `.tr-settings__header`/`.tr-settings__panel-footer`
+так и не нашли кит-потребителя за Stage A5 и удалены (правило самого
+документа — снимать пометку и класс при закрытии этапа, если потребителя не
+нашлось); `docs/agent-migration-guide.md` (раздел 8) обновлён — пример
+footer-ряда переиспользует `.tr-form__footer` вместо удалённого класса.
+`README.md` («Состав») и `CLAUDE.md` («Structure») переписаны под фактическую
+структуру `src/components/{agents,channels,knowledge,conversations,
+workspace,profile,auth}/**` и `src/stores/*.js` — до этой задачи оба
+документа ещё описывали дособранное на Stage A4 состояние (`Channels.vue`
+как единый компонент, `/ui-kit`, без доменных подкаталогов). Прогнаны
+`npm.cmd run lint:style` (включает guard:no-component-styles),
+`npm.cmd run build`, `git diff --check` — все чисты; `grep -rnE
+"axios|fetch\(" src` — пусто (кроме поясняющего комментария в
+`stores/auth.js`). Ручная визуальная матрица не проводилась и не считается
+блокирующим условием приёмки (см. «Политика верификации» CLAUDE.md).
+
+Closing evidence (2026-09-11): P1 stage-review устранён в `App.vue` и
+`Navbar.vue`: `/auth/*` рендерит bare `Navbar` в режиме `minimal` без
+`.tr-app-shell`/`Sidebar`, как в кабинете. P2 устранён в
+`docs/design-system.md`: evidence A3.9 помечено historical и содержит
+явную ссылку на актуальные A5 routes. Повторно прошли `npm.cmd run
+lint:style`, `npm.cmd run guard:no-component-styles` и `git diff --check`;
+сборка успешно проходила в evidence Task A5.11.
+
 ---
 
 ### [P1] Stage A6. Выбор модели и BYOK
 
-Статус: todo
+Статус: active — разблокирован закрытием Stage A5 2026-09-11; требуется
+декомпозиция в новый `.todo`.
 
 Источник: `get.3xtr.im/src/modules/agents/components/ModelSelect.vue` (218
 строк), `AgentForm.vue`, `agents/__tests__/AgentForm.byok.test.js`,

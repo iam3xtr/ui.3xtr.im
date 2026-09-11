@@ -1,6 +1,7 @@
 <template>
   <header class="tr-topbar">
     <b-dropdown
+      v-if="!minimal"
       ref="mobileNavDropdown"
       class="tr-dropdown tr-mobile-nav"
       position="is-bottom-right"
@@ -96,9 +97,9 @@
         </span>
       </b-dropdown-item>
 
-      <b-dropdown-item v-if="showNotifications" separator />
+      <b-dropdown-item separator />
 
-      <b-dropdown-item v-if="showNotifications" aria-role="menuitem">
+      <b-dropdown-item aria-role="menuitem">
         <span class="tr-dropdown-item-row">
           <span class="tr-dropdown-action">
             <b-icon icon="bell-outline" size="is-small" />
@@ -111,23 +112,18 @@
 
     <Logo />
 
-    <slot name="menu" />
+    <template v-if="!minimal">
+      <slot name="menu" />
 
-    <ToolbarSearch
-      v-if="showSearch"
-      class="tr-search-field--navbar"
-      priority="navbar"
-      placeholder="Поиск"
-      aria-label="Поиск"
-      v-model="searchQuery"
-    />
+      <ToolbarSearch
+        class="tr-search-field--navbar"
+        priority="navbar"
+        placeholder="Поиск"
+        aria-label="Поиск"
+        v-model="searchQuery"
+      />
 
-    <nav
-      class="tr-topbar__links"
-      aria-label="Дополнительная навигация"
-      :aria-hidden="!showResourceMenu"
-    >
-      <template v-if="showResourceMenu">
+      <nav class="tr-topbar__links" aria-label="Дополнительная навигация">
         <a
           v-for="item in resourceLinks"
           :key="item.label"
@@ -136,10 +132,10 @@
         >
           {{ item.label }}
         </a>
-      </template>
-    </nav>
+      </nav>
+    </template>
 
-    <div class="tr-topbar__actions">
+    <div v-if="!minimal" class="tr-topbar__actions">
       <b-dropdown
         v-model="workspace"
         class="tr-dropdown tr-workspace-dropdown"
@@ -215,7 +211,6 @@
       </b-dropdown>
 
       <b-dropdown
-        v-if="showNotifications"
         class="tr-dropdown tr-notifications-dropdown"
         position="is-bottom-left"
         aria-role="menu"
@@ -381,27 +376,24 @@
           </span>
         </b-dropdown-item>
 
-        <template v-if="showResourceMenu">
-          <b-dropdown-item
-            class="tr-user-resource-separator"
-            separator
-          />
+        <b-dropdown-item
+          class="tr-user-resource-separator"
+          separator
+        />
 
-          <b-dropdown-item
-            v-for="item in resourceLinks"
-            :key="item.label"
-            class="tr-user-resource"
-          >
-            {{ item.label }}
-          </b-dropdown-item>
-        </template>
+        <b-dropdown-item
+          v-for="item in resourceLinks"
+          :key="item.label"
+          class="tr-user-resource"
+        >
+          {{ item.label }}
+        </b-dropdown-item>
       </b-dropdown>
     </div>
   </header>
 </template>
 
 <script setup>
-import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
@@ -410,7 +402,6 @@ import {
   mainNavigationItems,
 } from "../navigation";
 import { useFocusTrap } from "../composables/useFocusTrap";
-import { useSiteSettingsStore } from "../stores/siteSettings";
 import Logo from "./Logo.vue";
 import ToolbarSearch from "./common/ToolbarSearch.vue";
 
@@ -453,6 +444,16 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  // Bare topbar for `/auth/*` (Logo only, no workspace switcher/resource
+  // menu/notifications/user menu) — mirrors get.3xtr.im's App.vue, which
+  // renders a prop-less `<Navbar />` on auth routes. `workspaces`/`user`
+  // stay required props here regardless (the kit has no distinct
+  // "logged out" state — fixtures are always loaded), this only hides the
+  // markup that reads them.
+  minimal: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(["create-workspace", "logout"]);
@@ -465,12 +466,6 @@ const mobileNavDropdown = ref(null);
 const userDropdown = ref(null);
 const route = useRoute();
 const router = useRouter();
-const siteSettings = useSiteSettingsStore();
-const {
-  showSearch,
-  showResourceMenu,
-  showNotifications,
-} = storeToRefs(siteSettings);
 
 // Buefy's `mobile-modal` dropdowns already trap Tab (`trap-focus` directive)
 // and close on Escape themselves (`Dropdown.vue`'s own `keyup` listener);
@@ -550,12 +545,15 @@ function closeUserMenu() {
 }
 
 /**
+ * Prefix-aware match: every main navigation item is the root of a route
+ * family (catalog + its detail/settings/channels/statistics children), so a
+ * nested route (e.g. "agent-settings" under "/agents/:id/settings") must
+ * still keep the "agents" item active. See docs/design-system.md,
+ * "Навигация".
  * @param {string} routeName
  */
 function isNavigationItemActive(routeName) {
-  return routeName === "workspace"
-    ? route.path.startsWith("/workspace")
-    : route.name === routeName;
+  return route.path.startsWith(`/${routeName}`);
 }
 
 </script>

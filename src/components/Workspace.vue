@@ -24,6 +24,7 @@ const workspaceTabs = [
   { label: "Обзор", to: { name: "workspace" } },
   { label: "Настройки", to: { name: "workspace-settings" } },
   { label: "Участники", to: { name: "workspace-members" } },
-  { label: "Тариф", to: { name: "workspace-plan" } },
+  { label: "Тариф", to: { name: "workspace-plans" } },
+  { label: "Биллинг", to: { name: "workspace-billing" } },
 ];
 </script>

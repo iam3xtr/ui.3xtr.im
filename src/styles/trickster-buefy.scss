@@ -37,7 +37,7 @@
 //  10. Overlays            — dropdown content, modal, tooltip
 //  11. Tariffs             — sidebar tariff summary, tariff selector
 //  12. Conversations       — workbench layout, conversation list/chat/properties
-//  13. Utilities           — layout helpers, settings screen, theme toggle
+//  13. Utilities           — layout helpers, settings screen, theme toggle, auth
 //  14. Responsive          — breakpoint overrides for the sections above
 //  15. Deprecated aliases  — transitional `@deprecated` selectors, see below
 // -----------------------------------------------------------------------------
@@ -984,6 +984,10 @@ a:hover {
 // is owned exclusively by .tr-page-toolbar (search/filters/action-group);
 // this row has neither and is not that contract. Not present in get.3xtr.im
 // markup at time of rename, so no transitional alias is required (rule R8).
+// Consumed by `components/knowledge/Files.vue`'s "N объектов" header row
+// (Task A5.6) — the split-pane `.tr-knowledge__details*` rules that used to
+// sit next to this one were removed in that task along with the master-
+// detail layout on `Knowledge.vue` (collection detail is now its own route).
 .tr-knowledge__items-header {
   min-height: 56px;
   display: flex;
@@ -1332,18 +1336,19 @@ a:hover {
   color: var(--tr-text);
 }
 
-// WorkspaceSettings.vue full-page-form foundation (Stage A5 temporary
-// contract): layout, destructive zone and save/cancel footer for a
-// full-screen settings/danger-zone form. Label, help text, validation
-// error/type and secret-field reveal are b-field/b-input's own job (label,
-// message, type="is-danger", password-reveal) — this stylesheet does not
-// re-implement them. Structural rules only — validation/submit logic stays
-// in each form component; nothing here fetches data or gates permissions.
-// No consumer in src/components/** yet — the kit's current forms are all
-// modal-card forms (Agents.vue, Knowledge.vue, Channels.vue), which don't
-// need this layout; it lands with the Stage A5 settings page (see
-// docs/design-system.md, «Допустимые исключения из «нет tr-* без
-// потребителя»», п.1).
+// Full-page-form foundation: layout, destructive zone and save/cancel
+// footer for a full-screen settings/danger-zone form. Label, help text,
+// validation error/type and secret-field reveal are b-field/b-input's own
+// job (label, message, type="is-danger", password-reveal) — this stylesheet
+// does not re-implement them. Structural rules only — validation/submit
+// logic stays in each form component; nothing here fetches data or gates
+// permissions. First real consumer: AgentSettings (Task A5.4, `.tr-form`
+// only — no destructive zone/footer, the fixture has nothing irreversible to
+// gate). `.tr-form__footer` also has `knowledge/Settings.vue`'s save/cancel
+// row (Task A5.6). `.tr-destructive-zone*` is consumed by
+// `WorkspaceSettings.vue` (Task A5.8, "delete workspace") — the Stage A5
+// temporary-contract marker that used to guard it as a not-yet-dead class is
+// removed now that it has a real consumer.
 
 .tr-form {
   display: flex;
@@ -1379,6 +1384,17 @@ a:hover {
   justify-content: flex-start;
   gap: tr.$space-4;
   margin-top: auto;
+}
+
+// b-upload's drag-drop zone (Task A5.6, `knowledge/Files.vue`): Buefy ships
+// the border/hover states for `.upload.is-drag-drop` itself, this only adds
+// the spacing this screen needs around and inside it.
+.tr-knowledge-files__upload {
+  margin: tr.$space-4 0;
+}
+
+.tr-upload-dropzone__hint {
+  padding: tr.$space-6;
 }
 
 // =============================================================================
@@ -1642,61 +1658,6 @@ a:hover {
   height: 40px;
 }
 
-.tr-knowledge__details-header h2 {
-  margin: 0;
-  color: var(--tr-text-strong);
-  font-weight: tr.$font-weight-semibold;
-}
-
-.tr-knowledge__details-header p {
-  margin: tr.$space-1 0 0;
-  color: var(--tr-text-muted);
-}
-
-.tr-knowledge__details {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  background: var(--tr-surface-1);
-  border: 1px solid var(--tr-border);
-  border-radius: tr.$radius-large;
-  box-shadow: var(--tr-shadow);
-}
-
-.tr-knowledge > .tr-knowledge__details {
-  flex: 1;
-}
-
-.tr-knowledge__details-header {
-  min-height: 80px;
-  display: flex;
-  align-items: center;
-  gap: tr.$space-3;
-  padding: tr.$space-4 tr.$space-5;
-  border-bottom: 1px solid var(--tr-divider);
-}
-
-.tr-knowledge__details-header > div {
-  min-width: 0;
-  flex: 1;
-}
-
-.tr-knowledge__details-header h2,
-.tr-knowledge__details-header p {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tr-knowledge__items {
-  min-height: 0;
-  flex: 1;
-  overflow-y: auto;
-  padding: tr.$space-2;
-}
-
 .tr-knowledge__type-hint {
   display: flex;
   align-items: flex-start;
@@ -1721,6 +1682,55 @@ a:hover {
 
 .tr-knowledge__type-hint small {
   color: var(--tr-text-muted);
+}
+
+// Statistics tab stat tiles (`knowledge/Statistics.vue`, Task A5.6) — same
+// label-over-big-value shape as `.tr-dashboard-link__metric`, kept as its own
+// class because that one's name and section are Dashboard-specific.
+.tr-knowledge-stats__value {
+  display: block;
+  margin-top: tr.$space-1;
+  color: var(--tr-text-strong);
+  font-size: tr.$font-size-xl;
+  font-weight: tr.$font-weight-semibold;
+}
+
+// Channels (agent-scoped catalog nested under `/agents/:id/channels`,
+// Task A5.5): identity suffix (`@bot_username`) next to the card title, a
+// footer variant for the channel card's variable action count (activate/
+// deactivate/edit/delete/retake/replace-token/open-bot, unlike the shared
+// two-item `.tr-entity-card__footer` default), and the inline limits panel
+// nested in every card.
+.tr-entity-card__identity {
+  margin-left: tr.$space-2;
+  color: var(--tr-text-muted);
+  font-size: 0.75rem;
+  font-weight: tr.$font-weight-normal;
+}
+
+.tr-entity-card__footer--wrap {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.tr-channel-limits {
+  margin-top: tr.$space-3;
+  padding-top: tr.$space-3;
+  border-top: 1px solid var(--tr-divider);
+}
+
+.tr-channel-limits__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: tr.$space-2;
+}
+
+.tr-channel-limits__title {
+  margin: 0;
+  color: var(--tr-text-strong);
+  font-size: 0.8125rem;
+  font-weight: tr.$font-weight-medium;
 }
 
 // =============================================================================
@@ -2461,6 +2471,16 @@ button.dropdown-item:hover {
   flex: 1;
 }
 
+// `.tr-conversations`' 3-column list/chat/properties grid and its
+// `is-properties-open` toggle are kept exactly as before this task: the
+// kit's own `Conversations.vue` list page never sets that class, so it
+// always renders in the collapsed 2-column state below (list + placeholder)
+// without needing a rule of its own — but get.3xtr.im's still-unported
+// conversation view (`conversations/views/Conversations.vue`) does still
+// toggle a live 3-column list/chat/properties layout through this exact
+// class on the synced stylesheet, so the mechanism stays in place until
+// that view is ported to the kit's routed-tab pattern (Task A5.7 only
+// changes the kit's own components; see "Downstream sync" in CLAUDE.md).
 .tr-conversations {
   --tr-conversation-main-column: 66.6667%;
 
@@ -2593,6 +2613,13 @@ button.dropdown-item:hover {
   background: var(--tr-surface-hover);
 }
 
+// The kit's own `Conversations.vue` list (Task A5.7) never sets `is-active`
+// any more — selecting a dialog navigates to a fully separate route instead
+// of persisting a "currently open" selection inside the list's own state
+// (see the component's top-of-file comment) — but get.3xtr.im's
+// still-unported conversation list view does still toggle this exact class
+// on the synced stylesheet, so the rule stays in place until that view is
+// ported.
 .tr-conversation-item.is-active {
   color: var(--tr-primary);
   background: var(--tr-primary-soft);
@@ -2727,6 +2754,34 @@ button.dropdown-item:hover {
   text-align: end;
 }
 
+// Delivery-status badge (Task A5.7, conversations/MessageDeliveryStatus.vue)
+// sits inside a message's `<small>` timestamp line, right next to it.
+.tr-message-delivery {
+  display: inline-flex;
+  align-items: center;
+  gap: tr.$space-1;
+  margin-inline-start: tr.$space-1;
+  vertical-align: middle;
+}
+
+.tr-message-delivery.is-failed {
+  color: var(--tr-danger);
+}
+
+.tr-message-delivery.is-read {
+  color: var(--tr-primary);
+}
+
+.tr-message-delivery__retry {
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  font-size: tr.$font-size-xs;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .tr-conversation-composer {
   display: flex;
   align-items: center;
@@ -2741,6 +2796,16 @@ button.dropdown-item:hover {
   flex: 1;
 }
 
+// The kit's own conversation detail (Task A5.7, conversations/Settings.vue)
+// moved the properties aside's content into a routed settings tab built on
+// the `.tr-settings__panel`/`.tr-form` contract instead, so nothing in
+// `src/**/*.vue` renders these three any more. They stay defined solely as
+// `@extend` targets for get.3xtr.im's still-unported BEM aliases
+// (`.tr-conversations__properties-body`/`__profile`/`__profile-image`,
+// Section 15 "Deprecated aliases") — get.3xtr.im's own conversation view
+// still renders a properties aside under those old class names, and this
+// repo's synced stylesheet must keep it styled until that view is ported to
+// the new tabbed pattern (a coordinated follow-up, not this task).
 .tr-conversation-properties-body {
   display: flex;
   flex-direction: column;
@@ -2766,20 +2831,49 @@ button.dropdown-item:hover {
   border-radius: tr.$radius-large;
 }
 
+.tr-conversation-profile strong {
+  color: var(--tr-text-strong);
+  font-weight: tr.$font-weight-semibold;
+}
+
 .tr-agents .tr-conversation-avatar .icon {
   color: inherit;
 }
 
-.tr-agents__workbench {
-  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
-}
-
-.tr-agents__workbench:not(.is-properties-open) {
+// Agent sandbox (Task A5.4, AgentPlayground.vue) is chat-only — there is no
+// properties aside to share the grid with any more (settings moved to its
+// own routed tab) — so this always collapses `.tr-conversations`' 3-column
+// list/chat/properties grid down to one full-width column. The compound
+// selector (vs. a bare `.tr-agents__workbench`) keeps specificity above the
+// `.tr-conversations` narrow-viewport override in Responsive below, which
+// would otherwise win by source order at the same specificity.
+.tr-conversations.tr-agents__workbench {
   grid-template-columns: minmax(0, 1fr);
 }
 
 .tr-agents__workbench .tr-conversation-list-action {
   display: inline-flex;
+}
+
+// Conversation detail (Task A5.7, conversations/History.vue): picking a
+// dialog from `Conversations.vue`'s list navigates to a fully separate route
+// rather than swapping a panel inside a persistent list+chat grid, so the
+// detail page never shares its grid with a list column either — same
+// full-width collapse as `.tr-agents__workbench` above, under its own class
+// since the two screens are unrelated route trees.
+.tr-conversations.tr-conversation-standalone {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.tr-conversation-standalone .tr-conversation-list-action {
+  display: inline-flex;
+}
+
+.tr-conversation-channel-context {
+  display: flex;
+  align-items: center;
+  gap: tr.$space-2;
+  margin-top: tr.$space-1;
 }
 
 .tr-agents__sandbox-note {
@@ -2794,11 +2888,6 @@ button.dropdown-item:hover {
   border: 1px solid var(--tr-border-soft);
   border-radius: tr.$radius-rounded;
   font-size: tr.$font-size-xs;
-}
-
-.tr-conversation-profile strong {
-  color: var(--tr-text-strong);
-  font-weight: tr.$font-weight-semibold;
 }
 
 .tr-conversation-details {
@@ -2825,11 +2914,30 @@ button.dropdown-item:hover {
   text-align: end;
 }
 
+// Hidden by default — a routed detail page always shows the list-action
+// button instead (see `.tr-agents__workbench`/`.tr-conversation-standalone`
+// above), since there is no persistent list column at that width to click
+// "back" into; the properties-action button stays default-hidden for
+// get.3xtr.im's still-unported properties-aside toggle (Responsive below).
 .tr-conversation-list-action,
 .tr-conversation-properties-action {
   display: none;
 }
 
+// Settings tab (Task A5.7, conversations/Settings.vue) reuses the `.tr-form`/
+// `.tr-settings__panel` contract shared with `AgentSettings.vue`/
+// `knowledge/Settings.vue`, but its route is `contentMode: fluid` (unlike
+// those two, which are `contained`) — this caps the panel's own width so a
+// short field stack doesn't stretch edge-to-edge on wide viewports.
+.tr-conversation-settings {
+  max-width: 640px;
+}
+
+// The kit's own History.vue reaches settings through `NavbarTabs` now (no
+// inline cog button), so nothing in `src/**/*.vue` sets either class below —
+// kept for get.3xtr.im's still-unported properties aside, whose close
+// button and settings-action toggle rely on these, same as the
+// properties-aside rules above.
 .tr-conversation-settings-action,
 .tr-conversation-properties-close {
   display: inline-flex;
@@ -2951,22 +3059,20 @@ button.dropdown-item:hover {
   width: 100%;
 }
 
-.tr-settings__header {
-  margin-bottom: tr.$space-5;
-}
-
-.tr-settings__header h1,
-.tr-settings__panel-header h2 {
-  margin: 0;
-  color: var(--tr-text-strong);
-  font-weight: tr.$font-weight-semibold;
-}
-
-.tr-settings__header h1 {
-  font-size: tr.$font-size-xl;
-}
-
-.tr-settings__header p,
+// `.tr-settings__panel-header`/`.tr-settings__option*` — the "list of options
+// with switches" panel, see docs/agent-migration-guide.md, section 8. Task
+// A5.8 moved `WorkspaceSettings.vue` off this pattern onto real
+// workspace-domain content (`.tr-form` + `.tr-destructive-zone`, both still
+// inside `.tr-settings__panel`, which stays in use); Task A5.9's
+// `src/components/profile/Settings.vue` (notification preferences) is now
+// the kit consumer of `.tr-settings__panel-header`/`.tr-settings__option*`.
+// `.tr-settings__header`/`.tr-settings__panel-footer` never found one (the
+// panel there has no page-level `<h1>` header of its own, and each switch
+// applies immediately, without a save footer) and are removed as of Task
+// A5.11, which closes Stage A5 — see docs/design-system.md, "Допустимые
+// исключения из «нет tr-* без потребителя»". A transactional save row on a
+// settings panel should reuse `.tr-form__footer` instead of reintroducing
+// `.tr-settings__panel-footer`.
 .tr-settings__panel-header p {
   margin: tr.$space-1 0 0;
   color: var(--tr-text-muted);
@@ -2982,7 +3088,10 @@ button.dropdown-item:hover {
 
 .tr-settings__panel-header,
 .tr-settings__option,
-.tr-settings__panel-footer {
+// AgentSettings.vue (Task A5.4): a `.tr-form` field stack dropped straight
+// into the panel, without the option-row chrome below — same padding as the
+// other panel sections it can share a panel with.
+.tr-settings__panel > .tr-form {
   padding: tr.$space-5 tr.$space-6;
 }
 
@@ -2991,6 +3100,9 @@ button.dropdown-item:hover {
 }
 
 .tr-settings__panel-header h2 {
+  margin: 0;
+  color: var(--tr-text-strong);
+  font-weight: tr.$font-weight-semibold;
   font-size: tr.$font-size-md;
 }
 
@@ -3023,11 +3135,6 @@ button.dropdown-item:hover {
 .tr-settings__option .switch {
   flex: 0 0 auto;
   margin: 0;
-}
-
-.tr-settings__panel-footer {
-  display: flex;
-  justify-content: flex-end;
 }
 
 .tr-theme-toggle {
@@ -3083,6 +3190,148 @@ button.dropdown-item:hover {
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+// Auth (Task A5.10): `AuthPage.vue` container and its `LoginView`/
+// `SignupView`/`ForgotView`/`VerifyView`/`InviteView` consumers
+// (`src/components/auth/**`). Replaces the cabinet's dead `auth-page`/
+// `auth-form-container` classes (get.3xtr.im/src/modules/auth/components/
+// AuthPage.vue, `<style scoped>`) with tr-namespaced rules living in this
+// single stylesheet, per the "Styling rule" in CLAUDE.md. `.tr-auth__card`
+// composes with `.tr-card` for the surface/border/shadow — it only adds
+// centering-card sizing on top.
+.tr-auth {
+  display: flex;
+  min-height: calc(100vh - #{tr.$topbar-height} - #{tr.$space-12});
+  align-items: center;
+  justify-content: center;
+  padding: tr.$space-6;
+}
+
+.tr-auth__card {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: tr.$space-2;
+}
+
+.tr-auth__legal {
+  margin: tr.$space-4 0 0;
+  color: var(--tr-text-muted);
+  font-size: tr.$font-size-xs;
+  text-align: center;
+}
+
+.tr-auth__link {
+  color: var(--tr-primary);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+}
+
+.tr-auth__link:hover {
+  color: var(--tr-primary-hover);
+}
+
+.tr-auth__footer {
+  display: flex;
+  justify-content: center;
+  gap: tr.$space-2;
+  margin: 0;
+  color: var(--tr-text-muted);
+  font-size: tr.$font-size-sm;
+}
+
+// "или" divider between the credentials form and GoogleButton.vue.
+.tr-auth__divider {
+  display: flex;
+  align-items: center;
+  gap: tr.$space-3;
+  color: var(--tr-text-muted);
+  font-size: tr.$font-size-sm;
+}
+
+.tr-auth__divider::before,
+.tr-auth__divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--tr-divider);
+}
+
+// GoogleButton.vue: disabled decorative button, icon + label centered.
+.tr-auth__google {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: tr.$space-2;
+}
+
+// WorkspaceSelector.vue: full-screen picker overlay shown by `LoginView.vue`
+// after a fixture login — same overlay contract (`--tr-overlay`,
+// `--tr-z-modal`) as `b-modal`, kept as plain markup here because the
+// cabinet's own `WorkspaceSelector.vue` is not a Buefy `b-modal` either.
+.tr-workspace-picker {
+  position: fixed;
+  inset: 0;
+  z-index: var(--tr-z-modal);
+  display: grid;
+  place-items: center;
+  padding: tr.$space-6;
+  background: var(--tr-overlay);
+}
+
+.tr-workspace-picker__card {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: tr.$space-4;
+}
+
+.tr-workspace-picker__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: tr.$space-2;
+  text-align: center;
+}
+
+.tr-workspace-picker__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: tr.$space-2;
+}
+
+.tr-workspace-picker__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: tr.$space-3;
+  padding: tr.$space-3 tr.$space-4;
+  color: var(--tr-text);
+  background: var(--tr-surface-2);
+  border: 1px solid var(--tr-border);
+  border-radius: tr.$radius;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.tr-workspace-picker__item:hover {
+  border-color: var(--tr-primary);
+  color: var(--tr-primary);
+}
+
+.tr-workspace-picker__item-role {
+  color: var(--tr-text-muted);
+  font-size: tr.$font-size-sm;
 }
 
 // =============================================================================
@@ -3390,14 +3639,6 @@ button.dropdown-item:hover {
 
   .tr-search-field__shortcut {
     display: none;
-  }
-
-  .tr-knowledge {
-    height: auto;
-  }
-
-  .tr-knowledge > .tr-knowledge__details {
-    min-height: 560px;
   }
 
   .tr-page-toolbar__search {

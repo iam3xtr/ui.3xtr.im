@@ -104,12 +104,19 @@ import { computed } from "vue";
 import { RouterLink } from "vue-router";
 
 import { useSimulatedLoading } from "../composables/useSimulatedLoading";
+import { useProfileStore } from "../stores/profile";
 import { useWorkspaceStore } from "../stores/workspace";
 
 import Loader from "./common/Loader.vue";
 
 const { isLoading } = useSimulatedLoading();
 
+// Tile set and order mirror get.3xtr.im's Dashboard.vue tiles (Task A5.3):
+// conversations, agents, knowledge, workspace settings/plan, then the
+// account tile. The former "Интеграции" tile pointed at `/agents/` — a
+// leftover from before Task A5.1 dropped the standalone `/integrations`
+// route — so it's replaced with the account tile the cabinet actually
+// shows, backed by the shared profile fixture (see `profileTile` below).
 const dashboardSections = [
   {
     routeName: "conversations",
@@ -124,12 +131,6 @@ const dashboardSections = [
     icon: "robot-outline",
   },
   {
-    routeName: "channels",
-    dataKey: "channels",
-    label: "Интеграции",
-    icon: "puzzle-outline",
-  },
-  {
     routeName: "knowledge",
     dataKey: "knowledge",
     label: "Знания",
@@ -142,10 +143,16 @@ const dashboardSections = [
     icon: "office-building-cog-outline",
   },
   {
-    routeName: "workspace-plan",
+    routeName: "workspace-plans",
     dataKey: "plan",
     label: "Тариф",
     icon: "credit-card-outline",
+  },
+  {
+    routeName: "profile",
+    dataKey: "profile",
+    label: "Профиль",
+    icon: "account-outline",
   },
 ];
 
@@ -174,14 +181,6 @@ const emptyDashboard = {
       secondaryLabel: "Использовано",
       secondaryValue: "0%",
       progress: 0,
-    },
-    channels: {
-      value: "0",
-      caption: "подключено",
-      delta: "",
-      secondaryLabel: "Статус",
-      secondaryValue: "Нет интеграций",
-      progress: null,
     },
     settings: {
       value: "Новое пространство",
@@ -233,14 +232,6 @@ const dashboards = {
         secondaryLabel: "Использовано",
         secondaryValue: "51%",
         progress: 51,
-      },
-      channels: {
-        value: "3",
-        caption: "подключено",
-        delta: "",
-        secondaryLabel: "Статус",
-        secondaryValue: "Все работают",
-        progress: null,
       },
       settings: {
         value: "Демо-пространство",
@@ -295,14 +286,6 @@ const dashboards = {
         secondaryValue: "8%",
         progress: 8,
       },
-      channels: {
-        value: "1",
-        caption: "подключён",
-        delta: "",
-        secondaryLabel: "Статус",
-        secondaryValue: "Работает",
-        progress: null,
-      },
       settings: {
         value: "Trickster Team",
         caption: "",
@@ -339,10 +322,28 @@ const { activeWorkspaceId } = storeToRefs(workspaceStore);
 const dashboard = computed(
   () => dashboards[activeWorkspaceId.value] ?? emptyDashboard,
 );
+
+// Account tile: the profile fixture is a personal record, not scoped to a
+// workspace (mirrors auth.user in get.3xtr.im's Dashboard.vue), so it's read
+// from the shared profile store instead of the per-workspace `dashboards`
+// fixtures above.
+const profileStore = useProfileStore();
+const { profile } = storeToRefs(profileStore);
+const profileTile = computed(() => ({
+  value: profile.value.name,
+  caption: "",
+  delta: "",
+  secondaryLabel: "Email",
+  secondaryValue: profile.value.emailVerified ? "Подтверждён" : "Не подтверждён",
+  progress: null,
+}));
+
 const dashboardNavigationItems = computed(() =>
   dashboardSections.map((section) => ({
     ...section,
-    ...dashboard.value.sections[section.dataKey],
+    ...(section.dataKey === "profile"
+      ? profileTile.value
+      : dashboard.value.sections[section.dataKey]),
   })),
 );
 const agents = computed(() => dashboard.value.agents);

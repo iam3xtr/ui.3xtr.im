@@ -19,15 +19,18 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { storeToRefs } from "pinia";
+import { ref, watch } from "vue";
 
 import { useSimulatedLoading } from "../composables/useSimulatedLoading";
+import { useWorkspaceStore } from "../stores/workspace";
 import Loader from "./common/Loader.vue";
 import TariffSelector from "./TariffSelector.vue";
 
 const { isLoading } = useSimulatedLoading();
+const workspaceStore = useWorkspaceStore();
+const { activeWorkspaceId, activeWorkspaceTariff } = storeToRefs(workspaceStore);
 
-const selectedTariffId = ref("free");
 /** @type {import("vue").Ref<"monthly" | "yearly">} */
 const billingPeriod = ref("monthly");
 
@@ -80,4 +83,21 @@ const tariffOptions = [
     ],
   },
 ];
+
+// Активный workspace берётся из store (Task A5.8 requirement): the selector
+// opens on whichever tariff matches the current workspace's
+// `activeWorkspaceTariff.displayName`, and re-syncs on workspace switch.
+// Picking a different tariff below stays local/in-memory — it does not
+// rewrite `stores/workspace.js`'s per-workspace tariff fixture, matching the
+// cabinet's own `WorkspacePlans.vue`, which renders `TariffSelector`
+// `readonly` (no client-side plan change without a checkout flow).
+function resolveTariffId(tariff) {
+  return tariffOptions.find((option) => option.displayName === tariff.displayName)?.id ?? "free";
+}
+
+const selectedTariffId = ref(resolveTariffId(activeWorkspaceTariff.value));
+
+watch(activeWorkspaceId, () => {
+  selectedTariffId.value = resolveTariffId(activeWorkspaceTariff.value);
+});
 </script>
