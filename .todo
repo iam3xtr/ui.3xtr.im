@@ -1,733 +1,150 @@
-# TODO: Stage A5 — Экраны кита до состава кабинета
+# TODO: Stage A6 — Выбор модели и BYOK
 
 Дата актуализации: 2026-09-11
 
-Статус: Stage A5 из `.plan` — done 2026-09-11 после stage-review и
-устранения P1/P2 по auth shell и historical evidence.
+Статус: декомпозиция активного Stage A6 из `.plan`; Stage A5 закрыт.
 
 ## Назначение
 
-Этот файл декомпозирует только Stage A5: реальные маршруты кабинета, доменные
-экраны и локальные фикстуры `trickster-ui-kit`. Вне scope — BYOK (A6),
-миграция `get.3xtr.im` (B2–B4) и релизный артефакт (Issue #1, Stage A8).
+Этот файл декомпозирует только Stage A6: локальный каталог моделей,
+Buefy-first селектор и BYOK-состояние в настройках агента. Вне scope —
+серверный контракт и перенос свободного идентификатора в `get.3xtr.im`
+(подпункт Stage B2), API-вызовы и этапы A7–B4.
 
-Проверка GitHub Issues через REST 2026-09-11 недоступна (`gh api` вернул 404).
-Новых отложенных работ Stage A5 не выявлено; Issue #1 остаётся вне этапа и
-требует повторной проверки перед A8.
+Issue [api.3xtr.im#112](https://github.com/iam3xtr/api.3xtr.im/issues/112)
+задаёт контракт произвольного OpenRouter `provider_model_id` для
+workspace-пользователя. Перенос свободного ввода в кабинет ждёт его реализации.
 
-## Application foundation
+## Agent domain
 
-### Routes and fixtures
+### Model fixtures
 
-### [P0] Task A5.1. Перестроить router и navigation под охват кабинета
+### [P0] Task A6.1. Ввести каталог моделей и fixture-контракт агента
 
 Статус: done
 
-Evidence (2026-09-11): `src/router.js` переписан на маршруты кабинета
-(`src/modules/*/routes.js` в `get.3xtr.im`) — dashboard; agents catalog +
-`:id`/`:id/settings`/`:id/channels`; conversations list + `:agentId` +
-`:agentId/:conversationId` + его `settings`; knowledge catalog + `:id` +
-`:id/settings` + `:id/statistics`; workspace с пятью детьми (добавлена
-отсутствовавшая вкладка billing, `plan` переименован в `plans` вслед за
-кабинетом); `/profile` и `/profile/security`; `/auth/{login,signup,forgot,
-verify,invite}`; `/404` с fallback-редиректом неизвестного URL на него вместо
-dashboard. `meta.contentMode` расставлен по образцу кабинетных routes.js
-(включая точки, где кабинет сам оставляет его закомментированным — на
-`/agents/`). `/integrations`, `/settings`, старый `/ui-kit` удалены;
-витрина контрактов доступна на `/kit`. `navigation.js` не содержит пункта
-«Интеграции» (каналы теперь только под агентом) и ссылается на `/kit` по
-имени маршрута `kit`.
-Экраны, которые в кабинете уже выделены в отдельные view (agent detail/
-settings, conversation detail/settings, коллекция знаний, workspace usage/
-members/billing, profile, auth), рендерят `SectionPlaceholder` — их
-реализация относится к задачам A5.4–A5.10 и явно вне scope этой задачи.
-Точечно обновлены неизбежные последствия переименования маршрутов, чтобы не
-оставлять висячих ссылок: `Workspace.vue`/`TariffSummaryCard.vue`
-(`workspace-plan` → `workspace-plans`, добавлена вкладка «Биллинг»),
-`Dashboard.vue` (ссылка бывшего пункта «Интеграции» на удалённый маршрут
-`channels` переведена на `agents`; `workspace-plan` → `workspace-plans`) —
-полная адаптация Dashboard остаётся в Task A5.3.
-Проверки: `npm.cmd run lint:style` (включает guard:no-component-styles),
-`npm.cmd run build`, `git diff --check` — все чисты. `grep -rn "axios|fetch("
-src` — пусто.
+Источник: Stage A6 `.plan`; контракт `recommended`, `api_key_provider_id`,
+`api_key_cleared`, `has_api_key`, `provider_model_id`.
 
-Источник: Stage A5 `.plan`; `src/modules/*/routes.js` кабинета.
-
-Описание: Kit должен открыть согласованные URL кабинета с точным
-`meta.contentMode`, `/404` и навигацией без demo-маршрутов.
+Описание: Настройки агента должны получать локальный каталог моделей и
+состояние BYOK, чтобы селектор и сохранение воспроизводили контракт без сети.
 
 Уточнённые требования:
 
-- Есть dashboard; agents/detail/settings/channels; conversations/detail/settings; knowledge/detail/settings/statistics; пять workspace-детей; profile/security; auth и `/404`.
-- `/integrations`, `/settings`, текущий `/ui-kit` и redirect неизвестного URL на dashboard не остаются активными; витрина доступна как `/kit`.
-- `navigation.js` содержит только актуальные пункты, `meta.contentMode` совпадает с кабинетом.
+- Каталог содержит рекомендуемые и обычные модели нескольких вендоров,
+  включая `openrouter`, длинное имя и запись без иконки.
+- Агент хранит каталожную модель и, только для BYOK, опциональный
+  `provider_model_id`; свободный идентификатор не подменяет UID модели.
+- Все изменения — синхронные Pinia fixture-операции без `fetch`/`axios` и
+  persistence.
 
 План реализации:
 
-1. Составить карту path/name/meta из routes кабинета.
-2. Добавить именованные маршруты и компоненты экранов задач A5.
-3. Обновить Sidebar/Navbar и fallback.
+1. Добавить `src/stores/models.js` с нормализованными fixture-моделями и
+   провайдерами.
+2. Дополнить `src/stores/agents.js` полями BYOK и action сохранения, который
+   моделирует `api_key_cleared`.
+3. Добавить узкие unit-тесты store для OpenRouter и сброса идентификатора.
 
 Область:
 
-- `src/{router.js,navigation.js}`
-- `src/components/{Navbar,Sidebar,Workspace}.vue`
+- `src/stores/models.js`
+- `src/stores/agents.js`
+- `tests/unit/stores/**`
 
 Критерии приёмки:
 
-- Каждый согласованный URL разрешается в ожидаемый маршрут и content mode.
-- Неизвестный URL показывает `/404`; demo-маршруты не являются product routes.
-- `npm.cmd run build` проходит.
+- Fixture-каталог покрывает состояния Stage A6.
+- Store не выполняет сетевых вызовов и отражает `api_key_cleared`.
+- Узкие тесты, `npm run lint:style`, `npm run guard:no-component-styles` и
+  `npm run build` проходят.
 
-### [P0] Task A5.2. Нормализовать Pinia-фикстуры и удалить demo-зависимости
+### Accessible model picker
 
-Статус: done
-
-Evidence (2026-09-11): Инлайновые demo-фикстуры вынесены из
-`Agents.vue`/`Channels.vue`/`Conversations.vue`/`Knowledge.vue` в отдельные
-доменные Pinia-стора: `src/stores/{agents,channels,conversations,
-knowledge}.js` — каждый хранит `*ByWorkspace`-фикстуры (ключи `demo`/
-`trickster`/`empty`, согласованные с `workspace.js`), геттер
-`listByWorkspace(workspaceId)` и мутирующие actions (`createAgent`/
-`sendMessage`, `connect`, `createCollection`/`removeItem`, `sendMessage`),
-перенесённые из компонентов без изменения поведения. Компоненты обращаются к
-стору через `computed(() => store.listByWorkspace(activeWorkspaceId.value))`
-вместо локального `ref`; шаблоны и класс-контракты не менялись. Добавлены
-фикстуры участников/инвайтов (`src/stores/members.js`) и profile/sessions/
-notifications (`src/stores/profile.js`) — заготовка для ещё не собранных
-экранов A5.8/A5.9 (пока без потребителей, как и предполагает `.plan`:
-экраны собираются позже). Тарифы/лимиты фикстуры уже существовали в
-`workspace.js`/`WorkspacePlans.vue` — не дублировались.
-Во все demo-наборы (`demo`) добавлены записи с длинными строками (название/
-описание агента, документ knowledge, email участника, диалог с длинным
-превью, устройство сессии) для проверки переноса текста; workspace `empty`
-остаётся источником пустых состояний. Отдельного error-state fixture не
-добавлялось: `AsyncState`/`ListAsyncState` variant="error" уже
-демонстрируется статичными props в `UiKit.vue` и не завязан на doman-стор.
-`siteSettings.js`, `SectionPlaceholder.vue` и list-level `Agents.viewMode`
-намеренно не тронуты — оба ещё используются (`Navbar.vue`/
-`WorkspaceSettings.vue` и route-placeholder'ы соответственно) и по
-уточнённым требованиям задачи удаляются только после миграции потребителей
-(Task A5.4 и позднее).
-Проверки: `npm.cmd run lint:style` (включает guard:no-component-styles),
-`npm.cmd run build`, `git diff --check` — все чисты.
-`grep -rnE "axios|fetch\(" src` — пусто. `localStorage` встречается только в
-уже одобренных местах (`App.vue` — тема, вне scope этой задачи;
-`siteSettings.js` — не тронут).
-
-Источник: Stage A5 `.plan`; текущие `src/stores/{workspace,siteSettings}.js`.
-
-Описание: Все экранные данные должны идти из локальных domain fixtures, а
-прежние demo-only состояния не должны определять продуктовые экраны.
-
-Уточнённые требования:
-
-- Фикстуры покрывают агентов, каналы, knowledge, диалоги, участников/инвайты, тарифы/лимиты, profile/sessions/notifications, длинные строки, пустые и error states.
-- Нет `axios`, `fetch`, persistence или backend-кода.
-- `siteSettings`, `SectionPlaceholder`, list-level `Agents.viewMode` удаляются лишь после миграции потребителей.
-
-План реализации:
-
-1. Определить минимальные store API и перенести fixture data.
-2. Подключить screen actions к in-memory state.
-3. Удалить неиспользуемые stores/components/imports.
-
-Область:
-
-- `src/stores/**`
-- `src/components/{Agents,Channels,Conversations,Knowledge,SectionPlaceholder,UiKit}.vue`
-
-Критерии приёмки:
-
-- Экраны A5 работают на локальных fixtures.
-- Поиск `axios|fetch` в `src/` пуст; удалённые demo-сущности не импортируются.
-
-## Common views
-
-### Dashboard, kit and fallback
-
-### [P1] Task A5.3. Адаптировать dashboard, `/kit` и `/404`
+### [P0] Task A6.2. Реализовать `ModelSelect` на `b-autocomplete`
 
 Статус: done
 
-Evidence (2026-09-11): `/404` and the router's catch-all fallback now render
-a dedicated `src/components/NotFound.vue` instead of the generic
-`SectionPlaceholder` — it reuses the existing `.tr-async-state` contract
-(`variant="empty"`, Task A3.7) with a `RouterLink` back to `dashboard`,
-giving a real way home instead of a silent redirect; the fallback route
-itself still resolves to the named `not-found` route, not to `dashboard`.
-`Dashboard.vue`'s tile set now mirrors get.3xtr.im's `Dashboard.vue`
-(conversations/agents/knowledge/workspace-settings/workspace-plans/profile):
-the stale "Интеграции" tile — pointing at `/agents/` from before Task A5.1
-removed the standalone `/integrations` route — is replaced by an account
-tile backed by the shared `src/stores/profile.js` fixture. `UiKit.vue`'s
-`PageHeader` subtitle now frames the page as the design-system contract
-reference it already functions as (per `docs/design-system.md` and
-`docs/agent-migration-guide.md`, which cite it as the эталон for buttons,
-tables, tabs, async states, etc.) rather than "Buefy demo".
+Источник: Stage A6 `.plan`; `get.3xtr.im/src/modules/agents/components/ModelSelect.vue`.
 
-Проверки: `npm.cmd run lint:style` (включает guard:no-component-styles),
-`npm.cmd run build`, `git diff --check` — все чисты.
-
-Источник: Stage A5 `.plan`; `common/views/{Dashboard,NotFound}` кабинета.
-
-Описание: Dashboard, справочник контрактов и fallback должны быть заполненными
-экранами, а не скрывать ошибки маршрутизации.
+Описание: Пользователь выбирает модель через доступный поиск с рекомендациями,
+иконкой провайдера и BYOK-ограничением вместо ручного dropdown.
 
 Уточнённые требования:
 
-- Dashboard использует fixtures и shared contracts; `UiKit.vue` доступен как `/kit` и описывает контракты, а не набор Buefy demo.
-- NotFound даёт полезный возврат без redirect на dashboard.
+- Без поиска выводится группа «Рекомендуемые»; ввод ищет по имени, вендору и
+  идентификатору по всему каталогу в группе «Все модели».
+- BYOK ограничивает список OpenRouter и явно сообщает это пользователю.
+- При пустом поиске с BYOK доступен пункт `vendor/model`: только непустая
+  строка без пробелов, максимум 255 символов. Без BYOK этого пункта нет.
+- Иконка разрешается цепочкой `provider.icon → provider.protocol →
+  provider.id → brain`; прямых DOM-обращений нет.
 
 План реализации:
 
-1. Сверить dashboard/fallback с кабинетными аналогами.
-2. Обновить компоненты и route assumptions.
-3. Скорректировать screen-примеры в migration guide.
+1. Создать `src/components/agents/ModelSelect.vue` вокруг `b-autocomplete` с
+   группированием, фильтрацией и slot-разметкой результата.
+2. Реализовать выбор каталожной модели и валидацию/отображение свободного
+   BYOK-идентификатора.
+3. Добавить необходимые модификаторы autocomplete в общий stylesheet.
 
 Область:
 
-- `src/components/{Dashboard,UiKit,NotFound}.vue`
-- `src/router.js`
-- `docs/agent-migration-guide.md`
-
-Критерии приёмки:
-
-- `/`, `/kit`, `/404` показывают соответствующий экран; fallback не redirect.
-- `npm.cmd run lint:style` и `npm.cmd run build` проходят.
-
-## Agents and channels
-
-### Agent detail
-
-### [P1] Task A5.4. Разделить Agents на каталог и детальные вкладки
-
-Статус: done
-
-Evidence (2026-09-11): `Agents.vue` — только каталог (Toolbar, фильтры,
-async-state через `Loader`, Buefy modal-form создания); список-level
-`viewMode`/`selectedId`/wide-layout-toggle и inline sandbox/properties
-разметка удалены, карточка агента теперь ведёт на `/agents/:id` через
-`router.push`. Новый `src/components/agents/**` (первый доменный подкаталог
-в ките, см. `CLAUDE.md`): `AgentDetail.vue` — route-driven shell на
-`/agents/:id`, резолвит агента по `:id` через новый `agentsStore.getAgent`,
-монтирует вкладки `Песочница`/`Настройки` в navbar через `NavbarMenu`/
-`NavbarTabs` и гейтит их `ListAsyncState` (`loading` — `useSimulatedLoading`,
-`error` — агент не найден: сообщение + кнопка `К списку агентов`, тот же
-путь для смены пространства без агента, что и для битого `:id`);
-`AgentPlayground.vue` — вкладка `/agents/:id` (chat-only sandbox,
-`.tr-conversation-chat` без properties-aside); `AgentSettings.vue` — вкладка
-`/agents/:id/settings` (`PageHeader` + `.tr-settings__panel` + `.tr-form`,
-первый реальный потребитель `.tr-form`, поля биндятся на fixture напрямую,
-без draft/save — как `WorkspaceSettings.vue`). `router.js`: `/agents/:id`
-стал родительским маршрутом с детьми `agent`(`""`, fluid)/`agent-settings`
-(`settings`, contained) вместо двух `SectionPlaceholder`; `/agents/:id/
-channels` не тронут (Task A5.5). `stores/agents.js`: добавлен
-`getAgent(workspaceId, id)` (строковое сравнение id, т.к. route param —
-строка). `trickster-buefy.scss`: `.tr-agents__workbench` упрощён до
-постоянной 1-колоночной раскладки через составной селектор
-`.tr-conversations.tr-agents__workbench` (нужна специфичность выше
-media-запроса `.tr-conversations` на <1280px); в `.tr-settings__panel`
-добавлен паддинг для `.tr-form`-потребителя. `docs/design-system.md` и
-комментарий в `trickster-buefy.scss` у `.tr-form` обновлены: `.tr-form` у
-`.tr-destructive-zone*`/`.tr-form__footer` — единственные, кто ещё ждёт
-потребителя под пометкой «Stage A5 temporary contract».
-Проверки: `npm.cmd run lint:style` (включает guard:no-component-styles),
-`npm.cmd run build`, `git diff --check` — все чисты.
-`grep -rnE "axios|fetch\(" src` — пусто.
-
-Источник: Stage A5 `.plan`; `agents/{Agents,Agent,Playground,Settings}` кабинета.
-
-Описание: Список агентов больше не содержит demo `viewMode`; playground и
-settings открываются в route-driven detail shell с Navbar-вкладками.
-
-Уточнённые требования:
-
-- Каталог сохраняет Toolbar, фильтры, async-state и Buefy modal-form.
-- Детальные URL получают agent по route param, используют `NavbarMenu`/`NavbarTabs`; `Requests` вне scope.
-
-План реализации:
-
-1. Вынести каталог, detail shell, playground и settings в domain components.
-2. Связать routes, tabs и fixture actions.
-3. Удалить list-level `viewMode` и legacy controls.
-
-Область:
-
-- `src/components/agents/**`
-- `src/components/Agents.vue`
-- `src/{router.js,stores/**}`
-
-Критерии приёмки:
-
-- `/agents/`, `/agents/:id/`, `/agents/:id/settings` работают с fixture agent.
-- В `Agents` нет list-level `viewMode`; build и guard проходят.
-
-### Agent channels
-
-### [P1] Task A5.5. Перенести channels внутрь агента
-
-Статус: done
-
-Реализация: `src/components/channels/{ChannelsView,ChannelCard,
-ChannelFormModal,ChannelLimits,TakeoverModal}.vue` заменяют прежний
-воркспейс-каталог `src/components/Channels.vue` (удалён). Маршрут
-`/agents/:id/channels` (`agent-channels`) вложен третьим ребёнком в
-`AgentDetail.vue` рядом с `agent`/`agent-settings`; таб «Каналы» добавлен в
-`AgentDetail.vue`'s `NavbarTabs`. `stores/channels.js` переписан: вместо
-`INTEGRATION_CATALOG`/`connectedByWorkspace` — `channelsByWorkspaceAndAgent`
-(канал принадлежит агенту, MVP только Telegram, как в кабинете) с
-`listByAgent`/`createChannel`/`updateChannel`/`deleteChannel`/
-`activateChannel`/`confirmTakeover`/`deactivateChannel`/`updateLimits`.
-`activateChannel` на канале в состоянии `displaced` возвращает конфликт
-вместо активации — `ChannelsView.vue` открывает `TakeoverModal` тем же
-`useModalStore`-контрактом, что и создание агента в `Agents.vue`; своих
-overlay-примитивов не заведено. `navigation.js` уже не содержал отдельного
-пункта «Интеграции» (снят раньше, до этой задачи). `trickster-buefy.scss`:
-добавлены `.tr-entity-card__identity`, `.tr-entity-card__footer--wrap`,
-`.tr-channel-limits*` в секцию 8 «Cards and catalogs». `docs/agent-migration-guide.md`
-обновлён: ссылки на `Channels.vue` заменены на `channels/{ChannelsView,
-ChannelCard}.vue`, таблица алиасов и абзац под ней поправлены — `/integrations`
-в ките больше не существует ни маршрутом, ни `redirect`.
-Проверки: `npm.cmd run lint:style` (включает guard:no-component-styles),
-`npm.cmd run build`, `git diff --check` — все чисты.
-`grep -rnE "axios|fetch\(" src` — пусто.
-
-Источник: Stage A5 `.plan`; `channels/{ChannelsView,ChannelCard,ChannelFormModal,ChannelLimits,TakeoverModal}` кабинета.
-
-Описание: Каналы становятся каталогом на `/agents/:id/channels`; отдельные
-«Интеграции» исчезают из маршрутов и навигации.
-
-Уточнённые требования:
-
-- Каталог связан с agent route param и fixtures; actions используют Buefy overlays/state contracts.
-- Создание/редактирование, limits и takeover не создают собственных overlay primitives.
-
-План реализации:
-
-1. Выделить channels components из текущего экрана.
-2. Подключить fixture actions к agent tab.
-3. Удалить standalone channels/integrations routes и nav item.
-
-Область:
-
-- `src/components/channels/**`
-- `src/components/Channels.vue`
-- `src/{router.js,navigation.js,stores/**}`
-
-Критерии приёмки:
-
-- `/agents/:id/channels` показывает каналы агента и demo-actions.
-- Product navigation не содержит standalone channels/integrations; lint и build проходят.
-
-## Knowledge
-
-### Catalog and collection tabs
-
-### [P1] Task A5.6. Собрать knowledge catalog, файлы и вкладки коллекции
-
-Статус: done
-
-Источник: Stage A5 `.plan`; `knowledge/{Knowledge,Collection,Files,CollectionForm,KnowledgeFileForm,Settings}` кабинета.
-
-Описание: Knowledge получает каталог, table файлов, b-upload/forms, settings
-и statistics как отдельные route-driven вкладки коллекции.
-
-Уточнённые требования:
-
-- `/knowledge/` использует catalog/Toolbar/AsyncState; `/knowledge/:id` — `b-table`, b-upload и Buefy modal forms.
-- `/knowledge/:id/settings` и `/knowledge/:id/statistics` используют NavbarMenu/NavbarTabs, b-field и существующие card/table/progress contracts.
-- Неизвестная коллекция не вызывает API и даёт согласованное state/NotFound.
-
-План реализации:
-
-1. Разделить catalog, collection shell, files/settings/statistics views.
-2. Подключить fixtures и in-memory forms/upload actions.
-3. Проверить tabs, route params и empty/error states.
-
-Область:
-
-- `src/components/knowledge/**`
-- `src/components/Knowledge.vue`
-- `src/{router.js,stores/**}`
-
-Критерии приёмки:
-
-- Четыре knowledge URL показывают согласованную fixture collection.
-- Загрузка/forms не используют сеть или самописный upload; guard и build проходят.
-
-Evidence (2026-09-11): `Knowledge.vue` — только каталог (Toolbar, тип-фильтр,
-async-state через `Loader`, Buefy modal-form создания); внутренний
-master-detail (`selectedId`, split-pane `.tr-knowledge__details*`) удалён —
-карточка коллекции теперь ведёт на `/knowledge/:id` через `RouterLink`. Новый
-`src/components/knowledge/**` (по образцу `agents/AgentDetail.vue`,
-Task A5.4): `CollectionDetail.vue` — route-driven shell на `/knowledge/:id`,
-резолвит коллекцию по `:id` через новый `knowledgeStore.getCollection`
-(строковое сравнение id, без сетевого вызова на неизвестный `:id`), монтирует
-вкладки `Файлы`/`Настройки`/`Статистика` через `NavbarMenu`/`NavbarTabs` и
-гейтит их `ListAsyncState` (`error` — коллекция не найдена, тот же путь для
-смены пространства без коллекции, что и для битого `:id`); `Files.vue` —
-вкладка `/knowledge/:id` (`Toolbar` + `b-upload` `drag-drop` для файлов,
-`b-table`+`mobile-cards` со статусами/размером/действием "Удалить",
-`KnowledgeFileFormModal.vue` — `b-tabs` «Текст»/«Ссылка» для остальных двух
-источников); `Settings.vue` — вкладка `/knowledge/:id/settings`
-(`.tr-settings__panel`+`.tr-form`, первый реальный потребитель
-`.tr-form__footer`; отдельная `.tr-card` с историей переиндексации —
-`b-table` + `b-progress`); `Statistics.vue` — вкладка
-`/knowledge/:id/statistics` (`.tr-grid--3` статы + `b-progress` по статусам
-объектов, кит-эквивалент отсутствующего в ките `llms/Summary.vue` кабинета);
-`CollectionFormModal.vue` — создание коллекции (было частью `Knowledge.vue`).
-Новый статус/timer-based simulation объекта (`indexing` → `indexed`/`error`)
-и запуска переиндексации живёт в компонентах, не в сторе — тот же приём, что
-`UiKit.vue`'s upload-демо. `router.js`: `/knowledge/:id` стал родительским
-маршрутом с детьми `knowledge-collection`(`""`, fluid)/`-settings`
-(`settings`, contained)/`-statistics` (`statistics`, fluid) вместо трёх
-`SectionPlaceholder`. `stores/knowledge.js`: объекты коллекции переведены с
-`items`/`type`/`source` на `objects`/`kind`/`status`/`size`/`sourceLabel`,
-добавлены `getCollection`/`getObjectKind`/`getObjectStatus`/
-`getReindexRunStatus`/`addObject`/`setObjectStatus`/`removeObject`/
-`startReindexRun`/`settleReindexRun`, фикстуры включают статусы `indexed`/
-`indexing`/`error` и историю переиндексации. `trickster-buefy.scss`: удалены
-осиротевшие `.tr-knowledge`/`.tr-knowledge__details*` (split-pane больше не
-существует), `.tr-knowledge__items-header` осталась с новым потребителем
-(`Files.vue`), добавлены `.tr-knowledge-stats__value`,
-`.tr-knowledge-files__upload`, `.tr-upload-dropzone__hint`. `docs/
-design-system.md`: обновлена пометка «Stage A5 temporary contract» —
-`.tr-form__footer` больше не ждёт потребителя. Проверено: `npm run
-lint:style`, `npm run guard:no-component-styles`, `npm run build`, `git diff
---check` — без ошибок; `grep` по `axios`/`fetch` в `src/components/knowledge`
-и `src/stores/knowledge.js` пуст. Ручной light/dark×breakpoint прогон не
-проводился — не блокирует приёмку («Политика верификации», `.plan`).
-
-## Conversations
-
-### Detail conversation
-
-### [P1] Task A5.7. Собрать маршрутизируемые список, detail и settings диалога
-
-Статус: done
-
-Источник: Stage A5 `.plan`; `conversations/{Conversations,Conversation,ConversationHeader,History,MessageDeliveryStatus,Settings}` кабинета.
-
-Описание: Диалог становится отдельным route-driven экраном истории, свойств,
-composer и delivery status вместо внутреннего режима списка.
-
-Уточнённые требования:
-
-- `/conversations`, detail и settings имеют `meta.contentMode: fluid` и fixture state.
-- Composer меняет только in-memory messages; settings — отдельная navbar tab.
-
-План реализации:
-
-1. Разделить list, conversation detail и settings components.
-2. Связать selection/route params/message actions со store.
-3. Подключить navbar tabs и responsive panels на существующих styles.
-
-Область:
-
-- `src/components/conversations/**`
-- `src/components/Conversations.vue`
-- `src/{router.js,stores/**}`
-
-Критерии приёмки:
-
-- List/detail/settings URL показывают согласованный fixture dialog.
-- Composer не выполняет network calls; guard и build проходят.
-
-Evidence (2026-09-11): `Conversations.vue` сведён к списку — внутренний
-`viewMode`/master-detail state удалён, выбор агента ведёт на
-`/conversations/:agentId`. Диалог вынесен в `src/components/conversations/`:
-`ConversationDetail.vue` — route-driven shell на `/conversations/:agentId/
-:conversationId` (`NavbarMenu`/`NavbarTabs` «Диалог»/«Настройки», тот же
-`ListAsyncState`-контракт not-found, что у `AgentDetail.vue`/
-`CollectionDetail.vue`); `History.vue` — история сообщений, composer и
-retry доставки; `ConversationHeader.vue` — контекст канала/статуса;
-`MessageDeliveryStatus.vue` — бейдж доставки с retry-действием;
-`Settings.vue` — свойства диалога на отдельной вкладке
-(`.tr-settings__panel`/`.tr-form`). `router.js`: `conversation`/
-`conversation-settings` — реальные вложенные маршруты вместо
-`SectionPlaceholder`, оба с `meta.contentMode: fluid`. `stores/
-conversations.js`: фикстуры дополнены `agentId`, добавлены `getConversation`/
-`listByAgent`, у сообщений появился статус доставки и `retryMessageDelivery`
-— всё синхронно, без сети. Проверено: `npm run lint:style` (включает
-`guard:no-component-styles`), `npm run build`, `git diff --check` — без
-ошибок; `grep` по `axios`/`fetch` в `src/components/conversations` и
-`src/stores/conversations.js` пуст. Ручной light/dark×breakpoint прогон не
-проводился — не блокирует приёмку («Политика верификации», `.plan`).
-
-## Workspace and profile
-
-### Workspace views
-
-### [P1] Task A5.8. Собрать пять дочерних экранов workspace
-
-Статус: done
-
-Evidence (2026-09-11): Все пять вкладок `/workspace/*` теперь рендерят
-fixture-контент. Новые файлы под `src/components/workspace/`: `Usage.vue`
-(обзор — идентификатор/роль/тариф из `activeWorkspaceTariff`, лимиты
-`b-progress`), `Members.vue` (две `b-table` — участники с inline-редактированием
-роли start/save/cancel и приглашения — плюс кнопка «Пригласить»),
-`InviteMemberForm.vue` (модалка через `useModalStore`, пишет в
-`stores/members.js`), `WorkspaceBilling.vue` (документированный `AsyncState`
-variant="empty"). `WorkspaceSettings.vue` переписан с демо-переключателей
-`siteSettings` (навбар) на реальный домен: форма переименования пространства
-(`tr-form`) и `.tr-destructive-zone` с удалением пространства через
-`modalStore.confirm()` — первый реальный потребитель этого класса (снят
-маркер "Stage A5 temporary contract" в `trickster-buefy.scss` и
-`docs/design-system.md`); `siteSettings.js`/`Navbar.vue` не тронуты — это их
-единственный оставшийся потребитель. `stores/workspace.js` получил
-`updateWorkspace`/`removeWorkspace` (нельзя удалить последнее пространство),
-`stores/members.js` — `updateMemberRole`. `WorkspacePlans.vue` теперь
-синхронизирует выбранный тариф с `activeWorkspaceTariff` активного
-пространства при переключении (было: статичный `"free"` вне зависимости от
-store). `router.js` подключает все пять компонентов вместо
-`SectionPlaceholder`; profile/auth placeholders (Task A5.9–A5.10) не
-трогались. `.tr-settings__option*`/`.tr-settings__panel-header`/
-`.tr-settings__panel-footer` остались без кит-потребителя после переезда
-`WorkspaceSettings.vue` — помечены "Stage A5 temporary contract" с ожидаемым
-потребителем Task A5.9 (`/profile`, переключатели уведомлений), а не удалены,
-как и `docs/agent-migration-guide.md` (раздел 8, "Эталон") — уточнено, что
-текущего кит-примера нет.
-Проверки: `npm.cmd run lint:style` (включает guard:no-component-styles),
-`npm.cmd run build`, `git diff --check` — все чисты. `grep -rnE
-"axios|fetch\(" src` — пусто; новые/изменённые файлы не используют
-`localStorage`.
-
-Источник: Stage A5 `.plan`; `workspace/{Workspace,Usage,WorkspaceSettings,Members,WorkspacePlans,WorkspaceBilling,InviteMemberForm}` кабинета.
-
-Описание: Workspace должен содержать overview, settings, members, plans и
-billing вместо placeholders.
-
-Уточнённые требования:
-
-- Members отображает две `b-table` и invite flow; settings — destructive zone; plans — TariffSelector; billing — documented empty state.
-- Активный workspace берётся из store и не persists на сервер.
-
-План реализации:
-
-1. Выделить workspace child views и tab shell.
-2. Подключить usage/tariff/member fixtures и Buefy controls.
-3. Заменить placeholders и проверить workspace switching.
-
-Область:
-
-- `src/components/workspace/**`
-- `src/components/{Workspace,WorkspacePlans,WorkspaceSettings}.vue`
-- `src/{router.js,stores/workspace.js}`
-
-Критерии приёмки:
-
-- Пять workspace URL содержат fixture content без placeholders.
-- `lint:style`, guard и build проходят.
-
-### Account settings
-
-### [P1] Task A5.9. Реализовать profile и security
-
-Статус: done
-
-Evidence (2026-09-11): Новый `src/components/profile/**` (по образцу
-`workspace/**`, Task A5.8): `ProfileShell.vue` — route-driven shell на
-`/profile` (мирroring `Workspace.vue`), монтирует вкладки
-`Профиль`/`Безопасность` через `NavbarMenu`/`NavbarTabs`; `Settings.vue` —
-вкладка `/profile` (`profile`), `.tr-form` с draft/save/cancel (имя,
-таймзона, язык — email read-only, как `id` в `WorkspaceSettings.vue`) плюс
-панель переключателей уведомлений — первый реальный потребитель
-`.tr-settings__panel-header`/`.tr-settings__option*` (см.
-`docs/design-system.md`/`docs/agent-migration-guide.md`, раздел 8);
-`Security.vue` — вкладка `/profile/security` (`security`), список активных
-сеансов (`b-table`+`mobile-cards`, `useSimulatedLoading`/`Loader`/
-`ListAsyncState`, как `workspace/Members.vue`) с завершением отдельного
-сеанса и `.tr-destructive-zone` для завершения всех остальных —
-оба действия подтверждаются через `modalStore.confirm()`. Пароль и API-ключи
-кабинетного `Security.vue` не перенесены: оба обращаются к бэкенду
-(`api.authPassword`/`api.authKeys*`), под который в ките нет ни фикстур, ни
-стора — вне уточнённых требований задачи ("sessions/security actions").
-`stores/profile.js`: добавлены `notificationPreferences` (фикстура,
-отдельная от ленты событий `notifications` — потребитель `Navbar.vue`'s bell
-dropdown), `PROFILE_TIMEZONES`/`PROFILE_LANGUAGES` и
-`toggleNotificationPreference`. `router.js`: `/profile` стал родительским
-маршрутом с детьми `profile`(`""`)/`security`(`security`) вместо двух
-`SectionPlaceholder`, оба наследуют `meta.contentMode: "contained"` с
-родителя — как у `Workspace.vue`. `Navbar.vue` не менялся: `goToProfile`/
-`goToSecurity` уже вели на именованные маршруты `profile`/`security`,
-которые продолжают резолвиться при вложенной структуре. `trickster-buefy.scss`
-и оба contract-документа обновлены: пометка «Stage A5 temporary contract» с
-`.tr-settings__panel-header`/`.tr-settings__option*` снята (реальный
-потребитель); `.tr-settings__header`/`.tr-settings__panel-footer` остаются
-без потребителя и помечены кандидатами на удаление, если так и не
-понадобятся — маркер задачи Stage A5 с них снят, поскольку сама Stage A5
-закрывается этой и следующей (A5.10/A5.11) задачами.
-Проверки: `npm.cmd run lint:style` (включает guard:no-component-styles),
-`npm.cmd run build`, `git diff --check` — все чисты.
-`grep -rnE "axios|fetch\(" src` — пусто.
-
-Источник: Stage A5 `.plan`; `profile/{Profile,Settings,Security}` кабинета.
-
-Описание: Profile/security становятся fixture-формами вместо placeholders.
-
-Уточнённые требования:
-
-- `/profile` содержит settings, `/profile/security` — sessions/security actions.
-- Используются b-field/b-input, Buefy overlays и stores A4; изменения остаются in-memory.
-
-План реализации:
-
-1. Создать profile/settings/security views.
-2. Подключить profile/session fixtures и Buefy actions.
-3. Удалить placeholder usage и обновить Navbar links.
-
-Область:
-
-- `src/components/profile/**`
-- `src/{router.js,stores/**}`
-- `src/components/Navbar.vue`
-
-Критерии приёмки:
-
-- Profile/security URL заполнены fixtures и доступны с клавиатуры.
-- Нет ручных controls/overlays; guard и build проходят.
-
-## Authentication
-
-### Auth flows
-
-### [P1] Task A5.10. Собрать AuthPage и auth-маршруты
-
-Статус: done
-
-Evidence (2026-09-11): `src/components/auth/` собран целиком —
-`AuthPage.vue` (общий контейнер, `.tr-auth`/`.tr-auth__card` вместо мёртвых
-кабинетных `auth-page`/`auth-form-container`), `LoginView.vue`,
-`SignupView.vue`, `ForgotView.vue`, `VerifyView.vue`, `InviteView.vue`,
-`GoogleButton.vue`, `WorkspaceSelector.vue`. `router.js`: все пять
-`/auth/*` маршрутов переведены с `SectionPlaceholder` на эти компоненты;
-`SectionPlaceholder.vue` удалён — после переноса auth-экранов у него не
-осталось потребителей (единственный импорт был в `router.js`). Кит без
-бэкенда, поэтому формы не делают сетевых запросов: новый
-`stores/auth.js` — фикстурный `login`/`signup` на `window.setTimeout`
-(`demo@3xtr.im` / `trickster123` — единственная «успешная» пара, всё
-остальное — `b-notification type="is-danger"`) и упрощённый in-memory
-`pendingInvite` (аналог кабинетной continuation, без localStorage/cookie).
-Пароль везде — штатный `b-input type="password" password-reveal` (как в
-`ChannelFormModal.vue`, Task A5.5), отдельный `PasswordInput.vue` не
-заводился — уточнённое требование говорит об "доступных Buefy/common
-primitives", а не о повторной реализации toggle. `GoogleButton.vue` —
-`disabled`-заглушка с уже зарегистрированной иконкой `google`
-(`docs/design-system.md#иконки`), без внедрения живого
-`accounts.google.com`-скрипта. `WorkspaceSelector.vue` переиспользует
-фикстуры `stores/workspace.js` (Task A5.8) и показывается `LoginView.vue`
-как демонстрационный шаг после фикстурного входа — не как гейт `App.vue`
-по флагу сессии, которого в ките нет; `App.vue` этой задачей не менялся
-(вне её "Область"), поэтому `/auth/*` пока рендерятся внутри общего
-`.tr-app-shell` с видимыми Sidebar/Navbar — расхождение с кабинетной
-раскладкой "без Sidebar" зафиксировано как открытый пункт в
-`docs/design-system.md` ("Application shell"), а не скрыто. `/auth/verify`
-и `/auth/invite` читают опциональный `:token` один раз при монтировании и
-сразу вычищают его `router.replace`, сохраняя кабинетный принцип «токен
-только в памяти» без реального запроса на подтверждение.
-`trickster-buefy.scss`: новые классы (`tr-auth*`, `tr-workspace-picker*`)
-добавлены в раздел 13 «Utilities» с банер-комментарием, без новых
-`!important` и без дублей селекторов. `docs/design-system.md` (новый
-раздел «Auth» после «Формы» + уточнение в «Application shell») и
-`docs/agent-migration-guide.md` (новый раздел 18 «Auth-экраны») обновлены.
-Проверки: `npm.cmd run lint:style` (включает guard:no-component-styles),
-`npm.cmd run build`, `git diff --check` — все чисты. `grep -rnE
-"axios|fetch\(" src` — пусто (кроме поясняющих комментариев); новые файлы
-не используют `localStorage`.
-
-Источник: Stage A5 `.plan`; `auth/{AuthPage,LoginView,SignupView,ForgotView,VerifyView,InviteView,PasswordInput,GoogleButton,WorkspaceSelector}` кабинета.
-
-Описание: Kit демонстрирует согласованные auth формы без реальной авторизации.
-
-Уточнённые требования:
-
-- Есть `/auth/login`, signup, forgot, verify, invite с common AuthPage.
-- `auth-page` и `auth-form-container` не используются; все project classes имеют `tr-` namespace.
-- Password reveal, Google button и workspace selector используют доступные Buefy/common primitives и fixtures.
-
-План реализации:
-
-1. Добавить auth components, route config и fixture transitions.
-2. Добавить разрешённые stylesheet rules и contract docs.
-3. Проверить keyboard flow и отсутствие backend code.
-
-Область:
-
-- `src/components/auth/**`
-- `src/{router.js,stores/**,styles/trickster-buefy.scss}`
+- `src/components/agents/ModelSelect.vue`
+- `src/styles/trickster-buefy.scss`
 - `docs/{design-system,agent-migration-guide}.md`
 
 Критерии приёмки:
 
-- Каждый auth URL рендерит форму без API calls.
-- Нет old auth classes или component `<style>`; lint, guard и build проходят.
+- Выбор управляется клавиатурой средствами Buefy; прямых DOM-обращений нет.
+- Рекомендации, поиск, OpenRouter-фильтр, placeholder и свободный
+  идентификатор соответствуют требованиям.
+- Нет `<style>` в компоненте; `lint:style`, guard и build проходят.
 
-## Documentation and verification
+### BYOK save flow
 
-### Contract evidence
-
-### [P1] Task A5.11. Зафиксировать маршрутный и экранный контракт Stage A5
+### [P1] Task A6.3. Встроить выбор модели и подтверждение BYOK в настройки агента
 
 Статус: done
 
-Evidence (2026-09-11): Сверил A5.1–A5.10 с фактическим `src/router.js`/
-`src/navigation.js`/`src/components/**`/`src/stores/**`. Маршруты, `meta.
-contentMode`, отсутствие demo-маршрутов (`/integrations`, `/settings`, старый
-`/ui-kit`) и `SectionPlaceholder.vue`, отсутствие list-level `Agents.viewMode`
-— всё подтвердилось соответствующим evidence A5.1–A5.10. Один пункт критерия
-приёмки Stage A5 («демо-сущности... `siteSettings`... отсутствуют в коде»)
-оставался не выполнен: `stores/siteSettings.js` продолжал жить как
-единственный оставшийся демо-переключатель видимости `Navbar.vue`'s
-search/resource-menu/notifications — ни одна задача A5.1–A5.10 явно не
-принимала его миграцию в свою «Область» (A5.2 и A5.8 явно откладывали её).
-Закрыл этим: `Navbar.vue` рендерит поиск, resource-menu и notifications
-безусловно (как в кабинете, где эквивалентного демо-тумблера нет),
-`stores/siteSettings.js` удалён. Побочный эффект — `.tr-settings__header`/
-`.tr-settings__panel-footer` (`trickster-buefy.scss`) так и не нашли
-кит-потребителя за Stage A5; сняты по собственному правилу
-`docs/design-system.md` («Допустимые исключения из «нет tr-* без
-потребителя»» — пометка и класс снимаются при закрытии этапа, если
-потребитель не появился). `docs/agent-migration-guide.md` (раздел 8) и
-`docs/design-system.md` обновлены синхронно. `README.md` («Состав») и
-`CLAUDE.md` («Structure») переписаны под фактическую структуру — до этой
-задачи оба ещё описывали середину Stage A4 (`Channels.vue` единым
-компонентом, `/ui-kit`, без доменных подкаталогов `agents/channels/knowledge/
-conversations/workspace/profile/auth`, без списка новых доменных сторов).
-`.plan` дополнен evidence по Stage A5 (промежуточным, этап ещё не закрыт —
-закрытие требует отдельного stage-review).
-Проверки: `npm.cmd run lint:style` (включает guard:no-component-styles),
-`npm.cmd run build`, `git diff --check` — все чисты.
-`grep -rnE "axios|fetch\(" src` — пусто (кроме комментария в `stores/auth.js`).
-Ручная визуальная матрица не проводилась и не блокирует приёмку («Политика
-верификации», CLAUDE.md).
+Источник: Stage A6 `.plan`; `AgentForm.vue` и тесты BYOK кабинета.
 
-Источник: Stage A5 `.plan`; AGENTS.md; CLAUDE.md.
-
-Описание: Документация и evidence должны отражать фактические routes, fixtures
-и исключения, чтобы A6/B2 не опирались на demo-модель.
+Описание: Настройки агента должны показывать состояние собственного ключа,
+предупреждать о последствиях и подтверждать очистку до fixture-сохранения.
 
 Уточнённые требования:
 
-- Contract docs описывают только реализованные screens/routes/classes и fixture limitations; README меняется только при изменении состава или инструкций.
-- Ручная визуальная матрица не gate; обязательны lint, guard, build, diff-check и audit `axios|fetch`.
+- Ключ использует `b-input type="password" password-reveal`; собственный
+  переключатель видимости и `tr-field__secret-toggle` не используются.
+- Изменение BYOK сразу показывает `b-message` о фильтрации, сбросе модели и
+  вероятном удалении ключа.
+- Очистка ключа или смена провайдера вызывает `b-dialog` до mutation: отмена
+  ничего не меняет, подтверждение сохраняет и отражает `api_key_cleared`.
+- Выключение BYOK очищает `provider_model_id`; код ссылается на Issue #112,
+  не утверждая существование API-контракта.
 
 План реализации:
 
-1. Сверить A5.1–A5.10 с router, styles и docs.
-2. Обновить docs/README только по фактическим изменениям.
-3. Запустить проверки и записать evidence в `.plan`.
+1. Заменить `b-select` в `AgentSettings.vue` на `ModelSelect`, добавить
+   BYOK-control и Buefy-поле ключа.
+2. Вести draft отдельно от fixture, подключить inline warning и pre-save
+   `b-dialog` через доступный overlay adapter.
+3. Добавить component-тесты сохранения и обновить контрактную документацию
+   по фактическому поведению.
 
 Область:
 
-- `docs/{design-system,agent-migration-guide}.md`
-- `README.md`
-- `.plan`
-- `src/{router.js,navigation.js,components/**,stores/**}`
+- `src/components/agents/AgentSettings.vue`
+- `src/components/agents/ModelSelect.vue`
+- `src/stores/agents.js`
+- `tests/unit/agents/**`
+- `docs/design-system.md`
 
 Критерии приёмки:
 
-- Документация не заявляет несуществующих экранов/routes/API.
-- Поиск `axios|fetch` в `src/` пуст; demo-only сущности удалены.
-- `npm.cmd run lint:style`, `npm.cmd run guard:no-component-styles`, `npm.cmd run build` и `git diff --check` проходят.
+- Экран собирает состояния без ключа, BYOK, пустого поиска, свободного
+  идентификатора, ошибок валидации и открытого подтверждения.
+- Отмена не меняет сохранённого агента; подтверждение применяет mutation и
+  показывает очистку ключа.
+- `npm run lint:style`, `npm run guard:no-component-styles`, `npm run build`
+  и `git diff --check` проходят.

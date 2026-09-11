@@ -54,7 +54,7 @@
           </span>
 
           <span class="tr-entity-card__footer">
-            <span>{{ agent.model }}</span>
+            <span>{{ agentModelLabel(agent) }}</span>
             <span>Обновлён {{ agent.updated }}</span>
           </span>
         </button>
@@ -125,8 +125,9 @@ import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import { useSimulatedLoading } from "../composables/useSimulatedLoading";
-import { AGENT_MODELS, AGENT_STATUSES, useAgentsStore } from "../stores/agents";
+import { AGENT_STATUSES, getAgentModelId, useAgentsStore } from "../stores/agents";
 import { useModalStore } from "../stores/modal";
+import { useModelsStore } from "../stores/models";
 import { useWorkspaceStore } from "../stores/workspace";
 import Loader from "./common/Loader.vue";
 import Toolbar from "./common/Toolbar.vue";
@@ -135,6 +136,7 @@ import ToolbarDropdown from "./common/ToolbarDropdown.vue";
 const { isLoading } = useSimulatedLoading();
 const modalStore = useModalStore();
 const agentsStore = useAgentsStore();
+const modelsStore = useModelsStore();
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId } = storeToRefs(workspaceStore);
 const route = useRoute();
@@ -146,7 +148,12 @@ const modelFilter = ref("");
 const newAgentName = ref("");
 
 const agentStatuses = AGENT_STATUSES;
-const agentModels = AGENT_MODELS;
+// Фильтр строится из реального каталога моделей (`src/stores/models.js`,
+// Task A6.1), а не из устаревшего списка отображаемых имён — value остаётся
+// каталожным UID (сравнимым с `getAgentModelId`), label — читаемым именем.
+const agentModels = computed(
+  () => modelsStore.models.map((model) => ({ value: model.id, label: model.name })),
+);
 
 const agents = computed(
   () => agentsStore.listByWorkspace(activeWorkspaceId.value),
@@ -156,6 +163,24 @@ const hasActiveAgentFilters = computed(
   () => Boolean(query.value.trim() || statusFilter.value || modelFilter.value),
 );
 
+/**
+ * Читаемое имя эффективной модели агента (обычной или BYOK — см.
+ * `getAgentModelId`) для карточки каталога и полнотекстового поиска.
+ * Свободный BYOK-идентификатор (`vendor/model`) не резолвится каталогом —
+ * показывается как есть, а не как пустая строка/`undefined`.
+ *
+ * @param {import("../stores/agents").Agent} agent
+ * @returns {string}
+ */
+function agentModelLabel(agent) {
+  const modelId = getAgentModelId(agent);
+  if (!modelId) {
+    return "";
+  }
+
+  return modelsStore.getModel(modelId)?.name ?? modelId;
+}
+
 const filteredAgents = computed(() => {
   const search = query.value.trim().toLocaleLowerCase();
 
@@ -163,13 +188,13 @@ const filteredAgents = computed(() => {
     const matchesSearch = !search || [
       agent.name,
       agent.description,
-      agent.model,
+      agentModelLabel(agent),
       agent.status,
     ].some((value) => value.toLocaleLowerCase().includes(search));
     const matchesStatus = !statusFilter.value
       || agent.status === statusFilter.value;
     const matchesModel = !modelFilter.value
-      || agent.model === modelFilter.value;
+      || getAgentModelId(agent) === modelFilter.value;
 
     return matchesSearch && matchesStatus && matchesModel;
   });

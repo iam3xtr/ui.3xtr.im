@@ -13,11 +13,19 @@ npm run build                     # Production build
 npm run preview                   # Preview production build
 npm run lint:style                # Stylelint for src/**/*.{css,scss} + guard:no-component-styles
 npm run guard:no-component-styles # Fails if any src/**/*.vue still has a <style> block
+npm run test:unit                 # Vitest — tests/unit/**, no network
 ```
 
 Both `lint:style` checks require no network access and are what CI
 (`.github/workflows/deploy-pages.yml`) runs before building and deploying to GitHub Pages
 on push to `main` (post-merge gate, not a PR gate — there is no `pull_request` trigger).
+`test:unit` (Vitest, added Task A6.1) is not yet wired into that workflow; run it manually
+for any change under `src/stores/**` or `src/components/**`. Store tests run under Node;
+component tests (added Task A6.3, `@vue/test-utils` + `jsdom`, config in
+`vitest.config.js` — separate from `vite.config.js`, which the app build does not need a
+`test`/`jsdom` dependency for) mount the real `Buefy` plugin rather than stubbing
+individual components, and stub only the globally-registered `icon` component to avoid
+pulling in `vite-svg-loader`'s asset resolution.
 
 ## Verification policy
 
@@ -111,9 +119,18 @@ src/
   composables/          # Shared composition functions
   stores/                # Pinia stores backing kit-only demo state (no real API): one file per
                          #   domain (agents, channels, knowledge, conversations, workspace,
-                         #   members, profile, auth) plus modal/toaster (Buefy overlay adapters)
+                         #   members, profile, auth, models, apiKeys) plus modal/toaster (Buefy
+                         #   overlay adapters). `models.js` is the local model catalog fixture
+                         #   consumed by `agents.js`'s BYOK contract (Task A6.1); `apiKeys.js` is
+                         #   the per-workspace saved-OpenRouter-key fixture BYOK agents reference
+                         #   by id instead of storing key text (Stage A6 fix, post-review).
   styles/                # The two managed stylesheets — see "Styling rule" above
   assets/icons/          # Custom SVGs — see "Icons" above
+tests/unit/stores/               # Vitest unit tests for Pinia stores (Task A6.1); no network
+tests/unit/agents/                # Vitest component tests (Task A6.3, `@vue/test-utils`);
+                                  #   no network — `npm run test:unit`
+tests/unit/components/            # Vitest component tests for top-level catalog screens
+                                  #   (e.g. Agents.vue) — same runner/no-network rule
 docs/design-system.md            # The design contract (canonical)
 docs/agent-migration-guide.md    # Icon/content-pattern mapping for consuming apps
 ```

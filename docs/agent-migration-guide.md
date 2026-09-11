@@ -762,6 +762,44 @@ Deprecated aliases» `trickster-buefy.scss`, кроме переименован
   `b-checkbox`/`b-radio`, включая `indeterminate` для промежуточного
   состояния).
 
+### 14a. Выбор модели
+
+`get.3xtr.im/src/modules/agents/components/ModelSelect.vue` — ручной
+`.dropdown`, открываемый прямым `classList.toggle` по DOM-ссылке: без
+клавиатурного управления, без закрытия по клику вне, без `aria-expanded`.
+Кит заменяет его `src/components/agents/ModelSelect.vue` (Task A6.2) —
+`b-autocomplete` с группами «Рекомендуемые»/«Все модели», иконкой провайдера
+в строке результата и BYOK-ограничением до OpenRouter. При переносе в
+кабинет: тот же `b-autocomplete`-контракт, пропсы `modelValue`/
+`providerModelId` (оба v-model) вместо ручного `dropdown`-рефа и `onSelect`,
+собственный `password-reveal` вместо `apiKeyFieldType`/иконок `eye`/
+`eye-slash`. Свободный BYOK-идентификатор (`providerModelId`) в кабинете
+**не сохраняется**, пока не реализован серверный контракт
+[api.3xtr.im#112](https://github.com/iam3xtr/api.3xtr.im/issues/112) — кит
+реализует его полностью как спецификацию (см. `design-system.md`, «Выбор
+модели»).
+
+### 14b. Ключи API и BYOK-состояние
+
+Stage A6 fix (post-review, по решению пользователя 2026-09-11): в ките ключ
+собственного провайдера (OpenRouter) больше не вводится текстом на каждом
+агенте — он сохраняется один раз в профиле воркспейса
+(`src/stores/apiKeys.js`, fixture-хранилище) и выбирается через
+`src/components/agents/ApiKeySelect.vue` (список сохранённых ключей +
+«Добавить ключ…» → `b-modal`), а не через `b-input type="password"` в
+`AgentSettings.vue` напрямую. `AgentSettings.vue` теперь блокирует
+сохранение, пока `useOwnApiKey` включён, а ключ или модель не выбраны
+(`stores/agents.js#isByokSaveValid`) — до этого исправления форма позволяла
+сохранить агента с включённым BYOK, но без ключа и без модели.
+
+При переносе в кабинет: и хранилище сохранённых ключей воркспейса
+(`agent.api_key_id`, ссылка вместо текста), и `byok_model` — предложения к
+серверному контракту, а не отражение уже существующего API кабинета или
+`api.3xtr.im`; необходимость соответствующих полей задокументирована на
+[api.3xtr.im#112](https://github.com/iam3xtr/api.3xtr.im/issues/112). Пока
+контракт не реализован, перенос этой механики в кабинет блокирован тем же
+способом, что и перенос свободного BYOK-идентификатора (см. 14a выше).
+
 ## 15. Пагинация
 
 Эталон — раздел «Пагинация» в `UiKit.vue`.

@@ -1397,6 +1397,99 @@ a:hover {
   padding: tr.$space-6;
 }
 
+// `ModelSelect.vue` (Task A6.2): a `b-autocomplete` wrapper for the catalog
+// model picker. `.tr-model-select__option` lays out the provider icon and
+// name inside the default result slot; `.tr-model-select__freeform-*` is the
+// BYOK "use as identifier" fallback rendered in the `empty` slot. The
+// dropdown chrome itself (`.dropdown-content`, `.dropdown-item`) is already
+// covered by the autocomplete selectors in sections 7-8 and by
+// `.dropdown-item` in section 10 — these rules only add what is specific to
+// this field.
+.tr-model-select {
+  display: flex;
+  flex-direction: column;
+  gap: tr.$space-2;
+}
+
+.tr-model-select__option {
+  display: flex;
+  align-items: center;
+  gap: tr.$space-2;
+}
+
+.tr-model-select__option-name {
+  overflow-wrap: anywhere;
+}
+
+.tr-model-select__hint {
+  margin: 0;
+}
+
+.tr-model-select__empty {
+  margin: 0;
+  padding: 6px tr.$space-3;
+  color: var(--tr-text-muted);
+}
+
+.tr-model-select__freeform {
+  display: flex;
+  flex-direction: column;
+}
+
+.tr-model-select__freeform-action {
+  width: 100%;
+  text-align: left;
+  white-space: normal;
+  border: 0;
+  cursor: pointer;
+}
+
+.tr-model-select__freeform-action:disabled {
+  color: var(--tr-text-muted);
+  cursor: not-allowed;
+}
+
+.tr-model-select__freeform-hint {
+  margin: 0;
+  padding: 0 tr.$space-3;
+  color: var(--tr-text-muted);
+  font-size: tr.$font-size-sm;
+}
+
+// `ApiKeySelect.vue` (Stage A6 fix, post-review): a `b-dropdown` listing the
+// workspace's saved OpenRouter keys plus an "Добавить ключ…" item that opens
+// the add-key `b-modal`. The trigger mirrors `.tr-toolbar-dropdown__trigger`
+// (same button chrome) but lives in a form field, not a toolbar, hence its
+// own class instead of reusing that one.
+.tr-api-key-select__trigger.button {
+  width: 100%;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: tr.$space-2;
+  padding-inline: tr.$space-3;
+  font-size: tr.$font-size-base;
+  font-weight: tr.$font-weight-normal;
+}
+
+.tr-api-key-select__trigger-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tr-api-key-select__add {
+  display: flex;
+  align-items: center;
+  gap: tr.$space-2;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  cursor: pointer;
+  color: var(--tr-primary);
+}
+
 // =============================================================================
 // 8. Cards and catalogs
 // =============================================================================
