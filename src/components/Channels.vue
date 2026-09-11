@@ -1,51 +1,28 @@
 <template>
   <section class="tr-workbench-page tr-channels">
-    <header class="tr-page-toolbar">
-      <ToolbarSearch
-        v-model="query"
-        class="tr-page-toolbar__search"
-        placeholder="Поиск интеграций"
-      />
+    <Toolbar
+      v-model:search="query"
+      search-placeholder="Поиск интеграций"
+      :filters-active="Boolean(categoryFilter || statusFilter)"
+    >
+      <template #filters>
+        <ToolbarDropdown
+          v-model="categoryFilterProxy"
+          class="tr-page-toolbar__filter"
+          aria-label="Фильтр интеграций по категории"
+          all-label="Все категории"
+          :options="integrationCategories"
+        />
 
-      <ToolbarDropdown
-        v-model="categoryFilterProxy"
-        class="tr-page-toolbar__filter"
-        aria-label="Фильтр интеграций по категории"
-        all-label="Все категории"
-        :options="integrationCategories"
-      />
-
-      <ToolbarDropdown
-        v-model="statusFilterProxy"
-        class="tr-page-toolbar__filter"
-        aria-label="Фильтр интеграций по статусу"
-        all-label="Все статусы"
-        :options="integrationStatuses"
-      />
-
-      <MobileFilters :active="Boolean(categoryFilter || statusFilter)">
-        <b-field label="Категория">
-          <b-select v-model="categoryFilter" expanded>
-            <option value="">Все категории</option>
-            <option
-              v-for="category in integrationCategories"
-              :key="category"
-            >
-              {{ category }}
-            </option>
-          </b-select>
-        </b-field>
-
-        <b-field label="Статус">
-          <b-select v-model="statusFilter" expanded>
-            <option value="">Все статусы</option>
-            <option v-for="status in integrationStatuses" :key="status">
-              {{ status }}
-            </option>
-          </b-select>
-        </b-field>
-      </MobileFilters>
-    </header>
+        <ToolbarDropdown
+          v-model="statusFilterProxy"
+          class="tr-page-toolbar__filter"
+          aria-label="Фильтр интеграций по статусу"
+          all-label="Все статусы"
+          :options="integrationStatuses"
+        />
+      </template>
+    </Toolbar>
 
     <Loader v-if="isLoading" size="section" />
 
@@ -116,9 +93,8 @@ import { computed, ref, watch } from "vue";
 import { useSimulatedLoading } from "../composables/useSimulatedLoading";
 import { useWorkspaceStore } from "../stores/workspace";
 import Loader from "./common/Loader.vue";
-import MobileFilters from "./MobileFilters.vue";
-import ToolbarDropdown from "./ToolbarDropdown.vue";
-import ToolbarSearch from "./ToolbarSearch.vue";
+import Toolbar from "./common/Toolbar.vue";
+import ToolbarDropdown from "./common/ToolbarDropdown.vue";
 
 const { isLoading } = useSimulatedLoading();
 

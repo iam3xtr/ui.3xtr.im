@@ -1,360 +1,395 @@
-# TODO: Stage A3 — Единые контракты, Buefy-first и именование
+# TODO: Stage A5 — Экраны кита до состава кабинета
 
-Дата актуализации: 2026-09-10
+Дата актуализации: 2026-09-11
 
-Статус: Stage A3 из `.plan` — `done` 2026-09-10; Stage A2 завершён.
+Статус: Stage A5 из `.plan` — active, декомпозирован после закрытия Stage A4.
 
 ## Назначение
 
-Декомпозиция Stage A3: унифицировать существующие экраны Kit вокруг Buefy и
-общих CSS-контрактов. Вне scope — миграция `get.3xtr.im` (Stage B2/B3), новые
-экраны и shared-примитивы (A4/A5), BYOK (A6) и релизный артефакт (Issue #1).
+Этот файл декомпозирует только Stage A5: реальные маршруты кабинета, доменные
+экраны и локальные фикстуры `trickster-ui-kit`. Вне scope — BYOK (A6),
+миграция `get.3xtr.im` (B2–B4) и релизный артефакт (Issue #1, Stage A8).
 
-## Foundation
+Проверка GitHub Issues через REST 2026-09-11 недоступна (`gh api` вернул 404).
+Новых отложенных работ Stage A5 не выявлено; Issue #1 остаётся вне этапа и
+требует повторной проверки перед A8.
 
-### Buefy bootstrap
+## Application foundation
 
-### [P0] Task A3.1. Зафиксировать Buefy-first реестр и регистрацию
+### Routes and fixtures
 
-Статус: done
+### [P0] Task A5.1. Перестроить router и navigation под охват кабинета
 
-Источник: Stage A3 `.plan`; R4.
+Статус: todo
 
-Описание: штатные возможности Buefy должны быть доступны до миграции разметки, чтобы Kit не создавал ручные аналоги контролов.
+Источник: Stage A5 `.plan`; `src/modules/*/routes.js` кабинета.
+
+Описание: Kit должен открыть согласованные URL кабинета с точным
+`meta.contentMode`, `/404` и навигацией без demo-маршрутов.
 
 Уточнённые требования:
 
-- В `main.js` зарегистрированы Table, Field, Modal, Dialog, Toast, Loading, Pagination, Skeleton, Upload, Tabs, Message и Sidebar.
-- Справочник сопоставляет каждую UI-группу со штатным Buefy-компонентом; `NavbarTabs` — единственное обоснованное исключение.
-- Не меняются глобальные настройки Buefy и не добавляется сетевой код.
+- Есть dashboard; agents/detail/settings/channels; conversations/detail/settings; knowledge/detail/settings/statistics; пять workspace-детей; profile/security; auth и `/404`.
+- `/integrations`, `/settings`, текущий `/ui-kit` и redirect неизвестного URL на dashboard не остаются активными; витрина доступна как `/kit`.
+- `navigation.js` содержит только актуальные пункты, `meta.contentMode` совпадает с кабинетом.
 
 План реализации:
 
-1. Сверить текущую регистрацию и потребителей.
-2. Подключить недостающие компоненты и smoke-примеры, нужные A3.
-3. Задокументировать реестр и исключение.
+1. Составить карту path/name/meta из routes кабинета.
+2. Добавить именованные маршруты и компоненты экранов задач A5.
+3. Обновить Sidebar/Navbar и fallback.
 
 Область:
 
-- `src/main.js`
-- `src/components/UiKit.vue`
-- `docs/agent-migration-guide.md`
+- `src/{router.js,navigation.js}`
+- `src/components/{Navbar,Sidebar,Workspace}.vue`
 
 Критерии приёмки:
 
-- Каждый элемент реестра доступен в Kit.
-- Нет собственного дубля Buefy без документированного исключения.
-- `npm.cmd run lint:style` и `npm.cmd run build` проходят.
+- Каждый согласованный URL разрешается в ожидаемый маршрут и content mode.
+- Неизвестный URL показывает `/404`; demo-маршруты не являются product routes.
+- `npm.cmd run build` проходит.
 
-### CSS tokens and aliases
+### [P0] Task A5.2. Нормализовать Pinia-фикстуры и удалить demo-зависимости
 
-### [P0] Task A3.2. Ввести шкалу слоёв, currentColor и переходные алиасы
+Статус: todo
 
-Статус: done
+Источник: Stage A5 `.plan`; текущие `src/stores/{workspace,siteSettings}.js`.
 
-Источник: Stage A3 `.plan`; R2, R7, R8.
-
-Описание: новый контракт должен наследовать цвет иконок, использовать токенизированные слои и не ломать кабинет при переименовании.
+Описание: Все экранные данные должны идти из локальных domain fixtures, а
+прежние demo-only состояния не должны определять продуктовые экраны.
 
 Уточнённые требования:
 
-- Объявлены `--tr-z-*` для content, sticky header, sidebar, dropdown, overlay, modal, toast; произвольных `z-index` в Kit нет.
-- `Icon.vue` использует `currentColor`; `has-fill-*` в Kit отсутствует.
-- Каждый переименованный класс кабинета получает `@deprecated` алиас с удалением в B4.
+- Фикстуры покрывают агентов, каналы, knowledge, диалоги, участников/инвайты, тарифы/лимиты, profile/sessions/notifications, длинные строки, пустые и error states.
+- Нет `axios`, `fetch`, persistence или backend-кода.
+- `siteSettings`, `SectionPlaceholder`, list-level `Agents.viewMode` удаляются лишь после миграции потребителей.
 
 План реализации:
 
-1. Инвентаризировать layers, SVG fill и пересечение классов с кабинетом.
-2. Добавить токены и заменить затронутые правила.
-3. Создать изолированную секцию алиасов и реестр миграции.
+1. Определить минимальные store API и перенести fixture data.
+2. Подключить screen actions к in-memory state.
+3. Удалить неиспользуемые stores/components/imports.
 
 Область:
 
-- `src/styles/_trickster-tokens.scss`
-- `src/styles/trickster-buefy.scss`
-- `src/components/common/Icon.vue`
-- `docs/agent-migration-guide.md`
+- `src/stores/**`
+- `src/components/{Agents,Channels,Conversations,Knowledge,SectionPlaceholder,UiKit}.vue`
 
 Критерии приёмки:
 
-- SVG наследуют `has-text-*` в обеих темах.
-- Каждый требующий совместимости старый селектор имеет помеченный алиас.
-- `npm.cmd run lint:style`, `npm.cmd run build`, `git diff --check` проходят.
+- Экраны A5 работают на локальных fixtures.
+- Поиск `axios|fetch` в `src/` пуст; удалённые demo-сущности не импортируются.
 
-## Components and markup
+## Common views
 
-### Naming
+### Dashboard, kit and fallback
 
-### [P0] Task A3.3. Нормализовать имена компонентов и CSS-блоков
+### [P1] Task A5.3. Адаптировать dashboard, `/kit` и `/404`
 
-Статус: done
+Статус: todo
 
-Источник: Stage A3 `.plan`; R1–R3.
+Источник: Stage A5 `.plan`; `common/views/{Dashboard,NotFound}` кабинета.
 
-Описание: имена должны отражать роль, а BEM-элементы не могут называть самостоятельные компоненты.
+Описание: Dashboard, справочник контрактов и fallback должны быть заполненными
+экранами, а не скрывать ошибки маршрутизации.
 
 Уточнённые требования:
 
-- `ToolbarTabs` → `NavbarTabs`, `SearchField` → `ToolbarSearch`, `Integrations` → `Channels`, `WorkspacePlan` → `WorkspacePlans`.
-- `Settings.vue` и `History.vue` получают доменные имена; классы `tr-toolbar-tabs*`, `tr-topbar__search`, `tr-catalog__grid`, `tr-catalog__empty`, `tr-conversations__*` переименованы по принадлежности.
-- Все project CSS-классы начинаются с `tr-`; алиасы соответствуют A3.2.
+- Dashboard использует fixtures и shared contracts; `UiKit.vue` доступен как `/kit` и описывает контракты, а не набор Buefy demo.
+- NotFound даёт полезный возврат без redirect на dashboard.
 
 План реализации:
 
-1. Составить карту старое → новое и потребителей Kit/кабинета.
-2. Согласованно обновить файлы, импорты, router, navigation, markup и styles.
-3. Удалить старые внутренние обращения и обновить реестр миграции.
+1. Сверить dashboard/fallback с кабинетными аналогами.
+2. Обновить компоненты и route assumptions.
+3. Скорректировать screen-примеры в migration guide.
 
 Область:
 
-- `src/components/**`
+- `src/components/{Dashboard,UiKit,NotFound}.vue`
 - `src/router.js`
-- `src/navigation.js`
-- `src/styles/trickster-buefy.scss`
 - `docs/agent-migration-guide.md`
 
 Критерии приёмки:
 
-- Старые имена остаются только как разрешённые CSS-алиасы.
-- Существующие маршруты Kit открываются.
-- `npm.cmd run lint:style`, `npm.cmd run build`, `git diff --check` проходят.
-
-### Forms
-
-### [P0] Task A3.4. Перевести формы на b-field и штатные Buefy controls
-
-Статус: done
-
-Источник: Stage A3 `.plan`; 28 потребителей `tr-form`/`tr-field`.
-
-Описание: forms получают единый доступный контракт labels, errors, help и secret fields без ручных controls.
-
-Уточнённые требования:
-
-- Поля используют `b-field` с `b-input`, `b-select`, `b-checkbox` или `b-switch`; ошибки — `type="is-danger"`.
-- `.tr-form` оставлен только для layout, footer и destructive zone; `tr-field__secret-toggle` удалён.
-- Пароли используют `b-input type="password" password-reveal`; checkbox/radio не рисуются иконками.
-
-План реализации:
-
-1. Инвентаризировать ручные controls в Kit.
-2. Переписать формы, сохраняя demo-state и labels.
-3. Удалить лишние field-правила и проверить keyboard flow.
-
-Область:
-
-- `src/components/**`
-- `src/styles/trickster-buefy.scss`
-- `docs/agent-migration-guide.md`
-
-Критерии приёмки:
-
-- В формах Kit нет ручных `<input>`/`<select>` или icon-checkbox.
-- Forms сохраняют layout на mobile и desktop.
+- `/`, `/kit`, `/404` показывают соответствующий экран; fallback не redirect.
 - `npm.cmd run lint:style` и `npm.cmd run build` проходят.
 
-### Tables and pagination
+## Agents and channels
 
-### [P0] Task A3.5. Унифицировать таблицы и пагинацию на Buefy
+### Agent detail
 
-Статус: done
+### [P1] Task A5.4. Разделить Agents на каталог и детальные вкладки
 
-Источник: Stage A3 `.plan`; table и pagination contracts.
+Статус: todo
 
-Описание: однородные данные показываются одним table-контрактом с responsive-представлением и действиями строк.
+Источник: Stage A5 `.plan`; `agents/{Agents,Agent,Playground,Settings}` кабинета.
 
-Уточнённые требования:
-
-- Ручных `<table>` и `tr-table--stack` в Kit нет; списки используют `b-table` и `b-table-column`.
-- Mobile использует `mobile-cards`; базовое оформление одно на `.b-table`, допустимы `--compact` и `--breakdown`.
-- Постраничные списки используют только `b-pagination`.
-
-План реализации:
-
-1. Перевести Dashboard, Knowledge и UiKit на b-table с slot-колонками.
-2. Добавить единый table-style и mobile-cards.
-3. Заменить demo-pagination и обновить эталон документации.
-
-Область:
-
-- `src/components/Dashboard.vue`
-- `src/components/Knowledge.vue`
-- `src/components/UiKit.vue`
-- `src/styles/trickster-buefy.scss`
-- `docs/agent-migration-guide.md`
-
-Критерии приёмки:
-
-- В `src/components` нет ручных таблиц.
-- Строки, действия и mobile-cards корректны на narrow viewport.
-- `npm.cmd run lint:style` и `npm.cmd run build` проходят.
-
-### Tabs and toolbar
-
-### [P0] Task A3.6. Свести вкладки и toolbar к общим контрактам
-
-Статус: done
-
-Источник: Stage A3 `.plan`; три tab-системы и шесть toolbar-вариантов.
-
-Описание: навигация, переключение контента, поиск и фильтры должны выглядеть и работать одинаково на существующих экранах.
+Описание: Список агентов больше не содержит demo `viewMode`; playground и
+settings открываются в route-driven detail shell с Navbar-вкладками.
 
 Уточнённые требования:
 
-- Route tabs используют `NavbarTabs`/`.tr-navbar-tabs`; content tabs — `b-tabs`/`b-tab-item`; ручной Bulma `.tabs` отсутствует.
-- `.tr-page-toolbar` имеет только search, filters, mobile filters и action group.
-- Toolbar-пилюля — `ToolbarDropdown`; `b-select` допустим только как labeled control в `MobileFilters`.
+- Каталог сохраняет Toolbar, фильтры, async-state и Buefy modal-form.
+- Детальные URL получают agent по route param, используют `NavbarMenu`/`NavbarTabs`; `Requests` вне scope.
 
 План реализации:
 
-1. Перевести вкладки на соответствующие контракты.
-2. Переписать toolbar Agents, Knowledge, Channels и Conversations.
-3. Удалить feature-specific tab/toolbar classes и обновить примеры.
+1. Вынести каталог, detail shell, playground и settings в domain components.
+2. Связать routes, tabs и fixture actions.
+3. Удалить list-level `viewMode` и legacy controls.
 
 Область:
 
+- `src/components/agents/**`
 - `src/components/Agents.vue`
-- `src/components/Knowledge.vue`
-- `src/components/Channels.vue`
-- `src/components/Conversations.vue`
-- `src/components/MobileFilters.vue`
-- `src/components/NavbarTabs.vue`
-- `src/components/ToolbarDropdown.vue`
-- `src/styles/trickster-buefy.scss`
-- `docs/agent-migration-guide.md`
+- `src/{router.js,stores/**}`
 
 Критерии приёмки:
 
-- В Kit есть только два документированных tab-контракта.
-- Параллельные toolbar-классы отсутствуют; фильтры доступны keyboard.
-- `npm.cmd run lint:style` и `npm.cmd run build` проходят.
+- `/agents/`, `/agents/:id/`, `/agents/:id/settings` работают с fixture agent.
+- В `Agents` нет list-level `viewMode`; build и guard проходят.
 
-### Catalogs and async states
+### Agent channels
 
-### [P1] Task A3.7. Унифицировать каталоги, состояния и загрузку
+### [P1] Task A5.5. Перенести channels внутрь агента
 
-Статус: done
+Статус: todo
 
-Источник: Stage A3 `.plan`; R4, R6; существующие карточки и Loader.
+Источник: Stage A5 `.plan`; `channels/{ChannelsView,ChannelCard,ChannelFormModal,ChannelLimits,TakeoverModal}` кабинета.
 
-Описание: каталоги и data-states не должны дублировать card-классы, спиннеры или empty patterns.
+Описание: Каналы становятся каталогом на `/agents/:id/channels`; отдельные
+«Интеграции» исчезают из маршрутов и навигации.
 
 Уточнённые требования:
 
-- Каталоги используют `.tr-catalog`, `.tr-catalog-grid`, `.tr-entity-card*`, `.tr-catalog-empty`.
-- `.tr-async-state` ограничен `--loading`, `--empty`, `--no-results`, `--error`, `--permission-denied`.
-- Нет контента — `Loader`; overlay — `b-loading`; skeleton — `b-skeleton`; partial data — `b-message`.
+- Каталог связан с agent route param и fixtures; actions используют Buefy overlays/state contracts.
+- Создание/редактирование, limits и takeover не создают собственных overlay primitives.
 
 План реализации:
 
-1. Сверить Agents, Knowledge, Channels, Conversations и Dashboard.
-2. Перевести markup на единые contracts и Buefy states.
-3. Удалить feature-specific catalog-card, manual spinners и obsolete styles.
+1. Выделить channels components из текущего экрана.
+2. Подключить fixture actions к agent tab.
+3. Удалить standalone channels/integrations routes и nav item.
 
 Область:
 
-- `src/components/Agents.vue`
-- `src/components/Knowledge.vue`
+- `src/components/channels/**`
 - `src/components/Channels.vue`
-- `src/components/Conversations.vue`
-- `src/components/Dashboard.vue`
-- `src/components/common/Loader.vue`
-- `src/styles/trickster-buefy.scss`
-- `docs/agent-migration-guide.md`
+- `src/{router.js,navigation.js,stores/**}`
 
 Критерии приёмки:
 
-- Карточные каталоги и async-states используют только заданные контракты.
-- В Kit нет manual spinner и `.async-state__spinner`.
-- `npm.cmd run lint:style` и `npm.cmd run build` проходят.
+- `/agents/:id/channels` показывает каналы агента и demo-actions.
+- Product navigation не содержит standalone channels/integrations; lint и build проходят.
 
-### Overlays
+## Knowledge
 
-### [P1] Task A3.8. Перевести оверлеи на Buefy
+### Catalog and collection tabs
 
-Статус: done
+### [P1] Task A5.6. Собрать knowledge catalog, файлы и вкладки коллекции
 
-Источник: Stage A3 `.plan`; R4; overlay contract.
+Статус: todo
 
-Описание: modal, confirmation, side panel и notification должны сохранять штатные accessibility-механизмы Buefy.
+Источник: Stage A5 `.plan`; `knowledge/{Knowledge,Collection,Files,CollectionForm,KnowledgeFileForm,Settings}` кабинета.
+
+Описание: Knowledge получает каталог, table файлов, b-upload/forms, settings
+и statistics как отдельные route-driven вкладки коллекции.
 
 Уточнённые требования:
 
-- Обычная модалка — `b-modal`, подтверждение — `b-dialog`, панель — `b-sidebar`, уведомление — `b-toast`.
-- Допустима лишь тонкая API-обёртка без собственной overlay-разметки или styles.
-- Escape, backdrop и keyboard-flow остаются штатными.
+- `/knowledge/` использует catalog/Toolbar/AsyncState; `/knowledge/:id` — `b-table`, b-upload и Buefy modal forms.
+- `/knowledge/:id/settings` и `/knowledge/:id/statistics` используют NavbarMenu/NavbarTabs, b-field и существующие card/table/progress contracts.
+- Неизвестная коллекция не вызывает API и даёт согласованное state/NotFound.
 
 План реализации:
 
-1. Инвентаризировать overlay demo-flows Kit.
-2. Перевести их на Buefy API и общие style hooks.
-3. Удалить устаревшие contracts и обновить справочник.
+1. Разделить catalog, collection shell, files/settings/statistics views.
+2. Подключить fixtures и in-memory forms/upload actions.
+3. Проверить tabs, route params и empty/error states.
 
 Область:
 
-- `src/components/**`
-- `src/styles/trickster-buefy.scss`
-- `docs/agent-migration-guide.md`
+- `src/components/knowledge/**`
+- `src/components/Knowledge.vue`
+- `src/{router.js,stores/**}`
 
 Критерии приёмки:
 
-- Нет ручной markup-реализации modal/dialog/sidebar/toast.
-- Demo-scenarios работают с Escape и keyboard.
-- `npm.cmd run lint:style` и `npm.cmd run build` проходят.
+- Четыре knowledge URL показывают согласованную fixture collection.
+- Загрузка/forms не используют сеть или самописный upload; guard и build проходят.
+
+## Conversations
+
+### Detail conversation
+
+### [P1] Task A5.7. Собрать маршрутизируемые список, detail и settings диалога
+
+Статус: todo
+
+Источник: Stage A5 `.plan`; `conversations/{Conversations,Conversation,ConversationHeader,History,MessageDeliveryStatus,Settings}` кабинета.
+
+Описание: Диалог становится отдельным route-driven экраном истории, свойств,
+composer и delivery status вместо внутреннего режима списка.
+
+Уточнённые требования:
+
+- `/conversations`, detail и settings имеют `meta.contentMode: fluid` и fixture state.
+- Composer меняет только in-memory messages; settings — отдельная navbar tab.
+
+План реализации:
+
+1. Разделить list, conversation detail и settings components.
+2. Связать selection/route params/message actions со store.
+3. Подключить navbar tabs и responsive panels на существующих styles.
+
+Область:
+
+- `src/components/conversations/**`
+- `src/components/Conversations.vue`
+- `src/{router.js,stores/**}`
+
+Критерии приёмки:
+
+- List/detail/settings URL показывают согласованный fixture dialog.
+- Composer не выполняет network calls; guard и build проходят.
+
+## Workspace and profile
+
+### Workspace views
+
+### [P1] Task A5.8. Собрать пять дочерних экранов workspace
+
+Статус: todo
+
+Источник: Stage A5 `.plan`; `workspace/{Workspace,Usage,WorkspaceSettings,Members,WorkspacePlans,WorkspaceBilling,InviteMemberForm}` кабинета.
+
+Описание: Workspace должен содержать overview, settings, members, plans и
+billing вместо placeholders.
+
+Уточнённые требования:
+
+- Members отображает две `b-table` и invite flow; settings — destructive zone; plans — TariffSelector; billing — documented empty state.
+- Активный workspace берётся из store и не persists на сервер.
+
+План реализации:
+
+1. Выделить workspace child views и tab shell.
+2. Подключить usage/tariff/member fixtures и Buefy controls.
+3. Заменить placeholders и проверить workspace switching.
+
+Область:
+
+- `src/components/workspace/**`
+- `src/components/{Workspace,WorkspacePlans,WorkspaceSettings}.vue`
+- `src/{router.js,stores/workspace.js}`
+
+Критерии приёмки:
+
+- Пять workspace URL содержат fixture content без placeholders.
+- `lint:style`, guard и build проходят.
+
+### Account settings
+
+### [P1] Task A5.9. Реализовать profile и security
+
+Статус: todo
+
+Источник: Stage A5 `.plan`; `profile/{Profile,Settings,Security}` кабинета.
+
+Описание: Profile/security становятся fixture-формами вместо placeholders.
+
+Уточнённые требования:
+
+- `/profile` содержит settings, `/profile/security` — sessions/security actions.
+- Используются b-field/b-input, Buefy overlays и stores A4; изменения остаются in-memory.
+
+План реализации:
+
+1. Создать profile/settings/security views.
+2. Подключить profile/session fixtures и Buefy actions.
+3. Удалить placeholder usage и обновить Navbar links.
+
+Область:
+
+- `src/components/profile/**`
+- `src/{router.js,stores/**}`
+- `src/components/Navbar.vue`
+
+Критерии приёмки:
+
+- Profile/security URL заполнены fixtures и доступны с клавиатуры.
+- Нет ручных controls/overlays; guard и build проходят.
+
+## Authentication
+
+### Auth flows
+
+### [P1] Task A5.10. Собрать AuthPage и auth-маршруты
+
+Статус: todo
+
+Источник: Stage A5 `.plan`; `auth/{AuthPage,LoginView,SignupView,ForgotView,VerifyView,InviteView,PasswordInput,GoogleButton,WorkspaceSelector}` кабинета.
+
+Описание: Kit демонстрирует согласованные auth формы без реальной авторизации.
+
+Уточнённые требования:
+
+- Есть `/auth/login`, signup, forgot, verify, invite с common AuthPage.
+- `auth-page` и `auth-form-container` не используются; все project classes имеют `tr-` namespace.
+- Password reveal, Google button и workspace selector используют доступные Buefy/common primitives и fixtures.
+
+План реализации:
+
+1. Добавить auth components, route config и fixture transitions.
+2. Добавить разрешённые stylesheet rules и contract docs.
+3. Проверить keyboard flow и отсутствие backend code.
+
+Область:
+
+- `src/components/auth/**`
+- `src/{router.js,stores/**,styles/trickster-buefy.scss}`
+- `docs/{design-system,agent-migration-guide}.md`
+
+Критерии приёмки:
+
+- Каждый auth URL рендерит форму без API calls.
+- Нет old auth classes или component `<style>`; lint, guard и build проходят.
 
 ## Documentation and verification
 
-### Contract guide
+### Contract evidence
 
-### [P0] Task A3.9. Обновить контрактный справочник и выполнить регрессионную матрицу
+### [P1] Task A5.11. Зафиксировать маршрутный и экранный контракт Stage A5
 
-Статус: done
+Статус: todo
 
-Источник: Stage A3 `.plan`; `docs/agent-migration-guide.md`; критерии A3.
+Источник: Stage A5 `.plan`; AGENTS.md; CLAUDE.md.
 
-Описание: downstream-потребитель должен получить документацию фактического контракта и evidence отсутствия визуальной регрессии.
+Описание: Документация и evidence должны отражать фактические routes, fixtures
+и исключения, чтобы A6/B2 не опирались на demo-модель.
 
 Уточнённые требования:
 
-- Для table, forms, tabs, toolbar, catalogs, async-state, pagination, overlays есть раздел с эталонной markup, классами/модификаторами и Buefy component.
-- Справочник содержит исключение NavbarTabs, реестр alias old → new → B4 и антипаттерны `-is-*`, Tailwind, manual Bulma, неверный `__`.
-- `docs/design-system.md` описывает только реализованный контракт и временные aliases.
-- Маршруты Kit проверены на доступность; статический аудит `tr-*`-селекторов зафиксирован как evidence (ручной визуальный прогон не блокирует приёмку — см. `.plan`, «Политика верификации»).
+- Contract docs описывают только реализованные screens/routes/classes и fixture limitations; README меняется только при изменении состава или инструкций.
+- Ручная визуальная матрица не gate; обязательны lint, guard, build, diff-check и audit `axios|fetch`.
 
 План реализации:
 
-1. Сверить итог A3.1–A3.8 с двумя документами.
-2. Обновить эталоны, реестр и README при изменении состава/инструкций Kit.
-3. Прогнать lint, build, diff-check; зафиксировать evidence.
+1. Сверить A5.1–A5.10 с router, styles и docs.
+2. Обновить docs/README только по фактическим изменениям.
+3. Запустить проверки и записать evidence в `.plan`.
 
 Область:
 
-- `docs/agent-migration-guide.md`
-- `docs/design-system.md`
+- `docs/{design-system,agent-migration-guide}.md`
 - `README.md`
 - `.plan`
+- `src/{router.js,navigation.js,components/**,stores/**}`
 
 Критерии приёмки:
 
-- Документация не заявляет несуществующих правил; aliases полны и имеют B4.
-- Визуальных деградаций не выявлено статическим аудитом (см. evidence-блок
-  «Пять брейкпоинтов» в `docs/design-system.md`). Ручной визуальный прогон
-  не является условием для перевода задачи или Stage A3 в `done` — см.
-  `.plan`, «Политика верификации».
-- `npm.cmd run lint:style`, `npm.cmd run build`, `git diff --check` проходят.
-
-## Порядок выполнения
-
-```text
-A3.1 ─┬─→ A3.3 ─┬─→ A3.4 ─┐
-       │          ├─→ A3.5 ─┼─→ A3.9
-       └─→ A3.2 ─┼─→ A3.6 ─┤
-                  ├─→ A3.7 ─┤
-                  └─→ A3.8 ─┘
-```
-
-## Вне этапа
-
-- `get.3xtr.im` migration и `ui-kit:update` — Stage B2/B3.
-- Новые экраны/примитивы — A4/A5; BYOK — A6.
-- Immutable release artifact не дублируется: открытый GitHub Issue #1.
+- Документация не заявляет несуществующих экранов/routes/API.
+- Поиск `axios|fetch` в `src/` пуст; demo-only сущности удалены.
+- `npm.cmd run lint:style`, `npm.cmd run guard:no-component-styles`, `npm.cmd run build` и `git diff --check` проходят.

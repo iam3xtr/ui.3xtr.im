@@ -246,48 +246,58 @@ resource links, меню пространства и меню пользоват
 
 ### Меню страницы в Navbar
 
-**Целевой контракт (Stage A4, ещё не реализован в ките).** В
-`get.3xtr.im` оболочка предоставляет DOM-target через provide/inject, а
-Navbar размещает его в слоте `menu`; страница из любого вложенного
-`RouterView` выводит туда произвольные ссылки, кнопки и компоненты через
-компонент `NavbarMenu` (Teleport-обёртку). Эта часть контракта переносится в
-`trickster-ui-kit` не ранее Stage A4 — здесь ни `NavbarMenu`, ни
-Teleport/provide-inject-механизм не реализованы:
+**Контракт (реализовано в Task A4.3).** Оболочка (`App.vue`) предоставляет
+DOM-target через provide/inject (`navbarMenuKey` из
+`src/composables/navbarMenu.js`) и размещает его в слоте `menu` компонента
+`Navbar.vue` (`<div ref="navbarMenuTarget" class="tr-topbar__menu" />`); а
+страница из вложенного `RouterView` (например, `Workspace.vue` для ветки
+`/workspace`) выводит туда свои вкладки через компонент `NavbarMenu`
+(Teleport-обёртку, `src/components/common/NavbarMenu.vue`):
 
 ```vue
-<!-- целевой API get.3xtr.im, перенос в кит — Stage A4 -->
 <NavbarMenu>
   <NavbarTabs :items="tabs" :aria-label="…" />
 </NavbarMenu>
 ```
 
-Правила целевого контракта (актуальны для `get.3xtr.im`, справочно):
+Правила контракта:
 
 - `NavbarMenu` использует Teleport: обработчики, permissions и реактивное
-  состояние остаются у страницы. До появления target меню не рендерится, оно
-  удаляется при unmount, скрывается при KeepAlive deactivation и
-  восстанавливается при activation.
+  состояние остаются у страницы. До появления target (пока App.vue не
+  смонтировал `navbarMenuTarget`) меню не рендерится, оно удаляется при
+  unmount, скрывается при `KeepAlive` deactivation (`onDeactivated`) и
+  восстанавливается при activation (`onActivated`).
 - На одну ветку маршрутов назначается один владелец меню — обычно родитель
-  раздела. Вложенные страницы используют его либо рендерят собственное меню
-  вместо родительского. Несколько одновременно смонтированных `NavbarMenu`
-  добавляют содержимое в один target.
-- Target не создаёт собственного layout-блока, в том числе когда он пуст.
-- Меню появляется после загрузки данных раздела; при loading и error его нет.
-- Ниже `1024px` вкладки прокручиваются горизонтально в одной строке навбара.
+  раздела (`Workspace.vue` для всех `/workspace/*`). Вложенные страницы
+  используют его либо рендерят собственное меню вместо родительского.
+  Несколько одновременно смонтированных `NavbarMenu` добавляют содержимое в
+  один target — Teleport конфликтов не создаёт.
+- Target не создаёт собственного layout-блока, в том числе когда он пуст:
+  `.tr-topbar > .tr-topbar__menu { display: contents; }` в
+  `trickster-buefy.scss` — пустой target не добавляет flex-item и не
+  оставляет зазор в `.tr-topbar`, а телепортированный `NavbarTabs` становится
+  прямым flex-item `.tr-topbar`, как и при прежнем прямом рендеринге.
+- Ниже `1024px` вкладки прокручиваются горизонтально в одной строке навбара
+  — поведение не изменилось.
+- Жёсткой route-проверки (бывший `isWorkspaceRoute` в `Navbar.vue`) больше
+  нет: `Navbar.vue` ничего не знает о конкретных разделах, он лишь
+  предоставляет слот `menu`.
 
-**Фактическая реализация в ките.** `Navbar.vue` рендерит `NavbarTabs`
-напрямую, без Teleport-посредника: `<NavbarTabs v-if="isWorkspaceRoute"
-:items="workspaceTabs" .../>`, где `isWorkspaceRoute` — жёстко заданная
-проверка префикса `/workspace` в самом `Navbar.vue`, а `workspaceTabs` —
-статический массив `{ label, to }`, а не переданный со страницы список.
+Ограничение кит-версии по сравнению с целевым `get.3xtr.im`-контрактом:
+кит-экраны — статичные демо без реальной загрузки (см. «Что этот репозиторий
+представляет собой»), поэтому правило «меню появляется после загрузки данных
+раздела; при loading и error его нет» здесь не применяется — `Workspace.vue`
+рендерит `NavbarMenu` безусловно. Это фиксируется как факт кит-реализации, не
+как расхождение, которое нужно чинить: воспроизвести loading/error-gating
+верно можно только вместе с `AsyncState`/`ListAsyncState` (план Stage A4,
+Task A4.4).
+
 `items` компонента `NavbarTabs.vue` в ките — `{ label, to }`; поддержки
 `icon` (иконка вместо подписи) в его коде нет, хотя классы
 `.tr-navbar-tabs__icon` и `.tr-navbar-tabs__link--icon` присутствуют в
 `trickster-buefy.scss` — это перенесённые из прежнего `ToolbarTabs`
 `@deprecated`-алиасы для `get.3xtr.im` (Task A3.3, до Stage B4), а не
-подключённая функциональность `NavbarTabs.vue`. Ниже `1024px` вкладки
-прокручиваются горизонтально в самой строке `Navbar.vue` — это поведение
-реализовано.
+подключённая функциональность `NavbarTabs.vue`.
 
 > **Именование.** Компонент называется `NavbarTabs`, потому что это вкладки
 > навбара, а не toolbar страницы. Прежнее имя `ToolbarTabs` и класс
@@ -331,7 +341,13 @@ Sidebar использует Buefy `b-menu` и общий реестр нави�
 Обязательный keyboard-контракт:
 
 - burger и close — нативные `<button type="button">`;
-- Buefy `mobile-modal` управляет фокусом и закрытием по Escape;
+- Buefy `mobile-modal` (через собственную директиву `trap-focus`) держит Tab
+  внутри панели и закрывает её по Escape, но не возвращает фокус триггеру —
+  этот разрыв закрывает `useFocusTrap` (`src/composables/useFocusTrap.js`),
+  подключённый в `Navbar.vue` к обеим `mobile-modal`-панелям
+  (`tr-mobile-nav`, `tr-user-dropdown`): при закрытии панели любым способом
+  (Escape, клик по пункту, клик вне) фокус возвращается на элемент, с
+  которого было открыто меню;
 - переходы выполняются по реальным URL из общего реестра;
 - переключатели темы имеют доступное имя через label или `aria-labelledby`.
 
@@ -363,28 +379,32 @@ Sidebar использует Buefy `b-menu` и общий реестр нави�
 на Stage A4/A5 и который сегодня в ките представлен только CSS-разметкой
 («foundation»-комментарий рядом с определением в `trickster-buefy.scss`) или
 не представлен вовсе. Колонка «В ките» отражает фактическое состояние на
-2026-09-10.
+2026-09-11.
 
 | Компонент | Контракт | В ките |
 |---|---|---|
-| `PageHeader` | Title/subtitle, опциональная back-ссылка, слот действий, скелет на токенах | не реализован — только CSS-foundation (`.tr-page-header`), план Stage A4 |
-| `Toolbar` | Поиск, слот фильтров, слот действий, мобильные фильтры | не реализован как компонент — контракт `.tr-page-toolbar` собирается вручную на каждом экране (раздел «Toolbar» ниже), план Stage A4 |
-| `ToolbarSearch` | Поле поиска с подсказкой `Ctrl K` / `⌘ K` и переводом фокуса | реализован (`src/components/ToolbarSearch.vue`) |
-| `ToolbarDropdown` | Пилюля-фильтр с пунктом «все» | реализован (`src/components/ToolbarDropdown.vue`) |
-| `MobileFilters` | Триггер и панель фильтров ниже брейкпоинта toolbar | реализован (`src/components/MobileFilters.vue`) |
-| `NavbarMenu` | Teleport-target меню страницы в navbar | не реализован — `Navbar.vue` рендерит `NavbarTabs` напрямую по жёсткой проверке маршрута, без Teleport; см. «Меню страницы в Navbar» выше, план Stage A4 |
-| `NavbarTabs` | Маршрутные вкладки раздела (`{ label, to }`, без `icon`) | реализован (`src/components/NavbarTabs.vue`) |
-| `AsyncState` | `loading`, `empty`, `no-results`, `error`, `permission-denied` | не реализован как компонент — контракт `.tr-async-state` применяется вручную на каждом экране (раздел «Пустые состояния и загрузка» в `agent-migration-guide.md`), план Stage A4 |
-| `ListAsyncState` | Маршрутизация состояний с приоритетом `loading > error > empty > no-results` | не реализован, план Stage A4 |
+| `PageHeader` | Title/subtitle, опциональная back-ссылка, слот действий, скелет на токенах | реализован (`src/components/common/PageHeader.vue`) |
+| `Toolbar` | Поиск, слот фильтров, слот действий, мобильные фильтры | реализован (`src/components/common/Toolbar.vue`, Task A4.7) — используется `Agents`, `Knowledge`, `Channels`, `Conversations`; `Navbar` рендерит `ToolbarSearch` напрямую (нет фильтров/действий) |
+| `ToolbarSearch` | Поле поиска с подсказкой `Ctrl K` / `⌘ K` и переводом фокуса | реализован (`src/components/common/ToolbarSearch.vue`) |
+| `ToolbarDropdown` | Пилюля-фильтр с пунктом «все» | реализован (`src/components/common/ToolbarDropdown.vue`) |
+| `MobileFilters` | Триггер и панель фильтров ниже брейкпоинта toolbar | реализован (`src/components/common/MobileFilters.vue`) |
+| `NavbarMenu` | Teleport-target меню страницы в navbar | реализован (`src/components/common/NavbarMenu.vue`, `src/composables/navbarMenu.js`); см. «Меню страницы в Navbar» выше |
+| `NavbarTabs` | Маршрутные вкладки раздела (`{ label, to }`, без `icon`) | реализован (`src/components/common/NavbarTabs.vue`) |
+| `AsyncState` | `loading`, `empty`, `no-results`, `error`, `permission-denied` | реализован (`src/components/common/AsyncState.vue`) — пропсы `variant` (обязателен), `icon` (MDI-имя для `b-icon`), `title`, `message`, слот `default` → `.tr-async-state__actions`; `variant="loading"` рендерит `Loader` вместо иконки/текста |
+| `ListAsyncState` | Маршрутизация состояний с приоритетом `loading > error > empty > no-results` | реализован (`src/components/common/ListAsyncState.vue`) — тонкая обёртка над `AsyncState`, флаги `loading`/`error`/`empty`/`noResults` + `{error,empty,noResults}{Icon,Title,Message}`, слоты `error-action`/`empty-action`/`default`; сама не выполняет запросов |
 | `Icon` | Рендер SVG из реестра с корректной ARIA-семантикой | реализован (`src/components/common/Icon.vue`) |
 | `Loader` | Анимированный логотип, размеры `inline`/`section`/`screen` | реализован (`src/components/common/Loader.vue`) |
-| `CopyPre` | Форматированный текст с копированием и ограниченной высотой | не реализован — только CSS-foundation (`.copy-pre*`), план Stage A4 |
+| `CopyPre` | Форматированный текст с копированием и ограниченной высотой | реализован (`src/components/common/CopyPre.vue`) |
+| `TariffSummaryCard` | Карточка тарифа/лимитов в сайдбаре, ссылка на `workspace-plan` | реализован (`src/components/common/TariffSummaryCard.vue`) — принимает готовый `tariff` (демо-данные Pinia-стора), в отличие от кабинетных `workspace`/`usage`-props |
 
 `AsyncState` и его обёртка не выполняют запросов и не принимают
 permission-решений. Вариант `error` использует `role="alert"` и assertive live
-region; остальные — `role="status"` и polite. Эти правила обязательны для
-вызывающей страницы уже сейчас, до появления самого компонента-обёртки:
-разметка `.tr-async-state--error` в любом кит-экране обязана нести
+region; `empty`/`no-results`/`permission-denied` — `role="status"` и polite.
+Вариант `loading` не ставит `role`/`aria-live` на сам `.tr-async-state` —
+эту семантику несёт вложенный `Loader` (`role="status"`, `aria-live="polite"`,
+`aria-label="Загрузка"`), чтобы не дублировать одну и ту же live-region
+дважды. Разметка `.tr-async-state--error` в любом кит-экране, собранном не
+через `AsyncState` (легаси до миграции), обязана нести
 `role="alert"`/`aria-live="assertive"` сама, см. `agent-migration-guide.md`,
 раздел 9.
 
@@ -416,6 +436,52 @@ region; остальные — `role="status"` и polite. Эти правила 
 
 Собственный компонент допустим, только когда у Buefy нет подходящего. Такое
 решение фиксируется здесь с обоснованием, а не принимается по месту.
+
+### Store-API для оверлеев и уведомлений
+
+Task A4.5. `src/stores/modal.js` (`useModalStore`) и `src/stores/toaster.js`
+(`useToasterStore`) — тонкие Pinia-адаптеры над программным API Buefy, а не
+собственные `Modal.vue`/`ConfirmDialog.vue`/`Toaster.vue`: экраны продолжают
+рендерить `b-modal`/`b-sidebar` в своей разметке, но открытым/закрытым
+состоянием управляет общий store по строковому ключу вместо локального `ref`
+на каждом экране.
+
+- `useModalStore().isOpen(id)` / `.open(id)` / `.close(id)` / `.toggle(id)` —
+  состояние конкретного `b-modal`/`b-sidebar`, привязывается через
+  `:model-value` + `@update:model-value` (ключи — произвольные строки уровня
+  экрана, например `"agents-create"`, `"uikit-sidebar"`).
+- `useModalStore().confirm(options)` — тонкая обёртка над `b-dialog`
+  (`DialogProgrammatic.confirm`); у подтверждения нет декларативной разметки
+  на экране, поэтому ключ не нужен.
+- `useToasterStore().open(options)` / `.success(message)` / `.error(message)`
+  / `.info(message)` — обёртка над `b-toast` (`ToastProgrammatic`).
+
+Escape, focus-trap/return и scroll-lock обеспечивает сам Buefy; слои overlay
+согласованы с `--tr-z-modal`/`--tr-z-sidebar`/`--tr-z-toast` (см. «Z-index и
+stacking» выше) — сторы не вводят собственных значений `z-index`. Используется
+в `UiKit.vue` (демо-модалка, боковая панель, диалог подтверждения, тост),
+`Agents.vue` и `Knowledge.vue` (модалки создания).
+
+### Демо-поток загрузки файлов
+
+Task A4.6. Секция «Загрузка файлов» в `UiKit.vue` показывает очередь, прогресс,
+успех и ошибку на `b-upload` без сети и без собственного компонента загрузки —
+`FileUpload`/`FileList`/`FileListItem` из `get.3xtr.im` в ките не
+воспроизводятся.
+
+- `b-upload` (`drag-drop`, `expanded`) только принимает файл в очередь;
+  сама загрузка — локальная fixture-state machine (`uploadQueue`,
+  `resetUploadDemo()`, `runUploadDemoStep()` в `UiKit.vue`), без `fetch`/`axios`
+  и без persistence.
+- Состояния очереди: `queued` → `uploading` (таймер увеличивает `progress` на
+  25% каждые 400 мс) → `success` или `error` — воспроизводятся детерминированно
+  при загрузке страницы и повторяются кнопкой «Повторить демо».
+- Прогресс отображается через `b-progress`, итог — через `b-message`
+  (`is-success`/`is-danger`); отдельного компонента прогресса или баннера кит
+  не заводит.
+- Файл, добавленный через `b-upload` вручную, встаёт в очередь тем же
+  механизмом и завершается успехом либо ошибкой поочерёдно — это иллюстрация
+  потока, а не реальная валидация файла.
 
 ## Формы
 
@@ -523,10 +589,16 @@ context (`.copy-pre`) — это не отдельный слой шкалы, а
 ### Toolbar
 
 Поиск, фильтры и действия над списком живут в одном контракте
-`.tr-page-toolbar` с областями поиска, фильтров и действий. Ниже брейкпоинта
-инлайновые пилюли-фильтры скрываются, и тот же слот фильтров рендерится
-внутри `MobileFilters` — это не вторая строка toolbar, а единственный способ
-добраться до фильтров на узком экране.
+`.tr-page-toolbar` с областями поиска, фильтров и действий, собранном
+компонентом `Toolbar` (`src/components/common/Toolbar.vue`, Task A4.7):
+`v-model:search` проксируется во внутренний `ToolbarSearch` (сохраняет
+`Ctrl/⌘ K` и `kbd`-подсказку), слот `filters` — набор `ToolbarDropdown`, слот
+`actions` (или `default`) — кнопки действий. Ниже брейкпоинта инлайновые
+пилюли-фильтры скрываются, и тот же слот `filters` рендерится ещё раз внутри
+`MobileFilters` — это не вторая строка toolbar, а единственный способ
+добраться до фильтров на узком экране; проп `filters-active` пробрасывает
+признак «есть активный фильтр» на триггер `MobileFilters`, так как сам
+`Toolbar` не видит состояние слота.
 
 Собственные toolbar-классы под конкретную страницу не заводятся.
 
@@ -557,7 +629,7 @@ context (`.copy-pre`) — это не отдельный слой шкалы, а
 
 ## Расхождения контракта и реализации
 
-Сведено по состоянию на 2026-09-10. Каждая строка закрывается указанным
+Сведено по состоянию на 2026-09-11. Каждая строка закрывается указанным
 этапом `.plan`.
 
 | Что объявлено | Фактически | Этап |
@@ -566,14 +638,13 @@ context (`.copy-pre`) — это не отдельный слой шкалы, а
 | ~~Шкала z-index~~ | ~~Токенов нет, значения — литералы, часть слоёв без CSS~~ — закрыто A3.2 в ките: `--tr-z-*` объявлены, `trickster-buefy.scss` и конфигурация Bulma не содержат литералов; `.sidebar-overlay`/`.sidebar-column`/`.app-loader` остаются без CSS (не входили в scope A3.2) — см. «Z-index и stacking». Потребляющее приложение всё ещё использует свои литералы — закрывается B2 | A3.2 (кит); B2 (приложение) |
 | ~~«Табличные данные — только `b-table`»~~ | ~~25 ручных `<table>` в 9 комбинациях классов~~ — закрыто A3.5 в ките: `Dashboard`/`Knowledge`/`UiKit` используют `b-table` + `mobile-cards`, добавлены модификаторы `--compact`/`--breakdown` (`trickster-buefy.scss`, раздел 6). Кабинет всё ещё держит 25 ручных `<table>` — закрывается B2 | A3.5 (кит); B2 (приложение) |
 | ~~Единый контракт вкладок~~ | ~~Три параллельные системы~~ — закрыто A3.6 в ките: маршрутные вкладки — только `NavbarTabs`, переключение контента — только `b-tabs`; ручного Bulma `.tabs` в `src/components` нет. Кабинет всё ещё держит собственные варианты — закрывается B2 | A3.6 (кит); B2 (приложение) |
-| ~~Единое пространство имён `tr-`~~ | ~~Сосуществуют `modal-form__*`, `request-detail__*`, `async-state__*`, `page-header__*` и ещё десяток семейств~~ — закрыто A3.3 в ките для `src/components/**`: все project-CSS-классы разметки начинаются с `tr-` (не считая штатных классов Bulma/Buefy: `modal-card*`, `dropdown-*`, `is-*` и т.п.). Осознанное исключение — CSS-only `Stage A4 target component`-фундамент в `trickster-buefy.scss` (`page-header__*`, `pagination-controls*`, `progress-bar*`, `skeleton-loader*`, `copy-pre*`), намеренно оставленный без `tr-`-префикса до переноса компонента в Stage A4, см. R2 в `.plan` и «Допустимые исключения» ниже. Кабинет всё ещё держит старые семейства в собственной разметке — закрывается B2 | A3.3 (кит); B2 (приложение) |
+| ~~Единое пространство имён `tr-`~~ | ~~Сосуществуют `modal-form__*`, `request-detail__*`, `async-state__*`, `page-header__*` и ещё десяток семейств~~ — закрыто A3.3 в ките для `src/components/**`: все project-CSS-классы разметки начинаются с `tr-` (не считая штатных классов Bulma/Buefy: `modal-card*`, `dropdown-*`, `is-*` и т.п.). Осознанное исключение — пять семейств в `trickster-buefy.scss` (`page-header__*`, `pagination-controls*`, `progress-bar*`, `skeleton-loader*`, `copy-pre*`), намеренно оставленных без `tr-`-префикса, чтобы совпадать с одноимёнными компонентами `get.3xtr.im`; `page-header__*` и `copy-pre*` уже применены компонентами кита (`PageHeader`/`CopyPre`, Task A4.2), остальные три (`pagination-controls*`, `progress-bar*`, `skeleton-loader*`) остаются CSS-only фундаментом без кит-компонента — Stage A4 решил заменить `PaginationControls`/`ProgressBar`/`SkeletonLoader` в ките штатными `b-pagination`/`b-progress`/`b-skeleton` навсегда, а не перенести их, см. «Допустимые исключения» ниже. Переименование в `tr-*` откладывается до Stage B4, синхронизированно с `get.3xtr.im`, см. R2 в `.plan`. Кабинет всё ещё держит старые семейства в собственной разметке — закрывается B2 | A3.3 (кит); B2 (приложение) |
 | `.is-ellipsis`, `.is-decorative`, `has-fill-*` | Не определены нигде | A3, B1 |
 | Стили только в общем файле | 3102 строки в `<style>` 71 компонента приложения | B3 |
 | Собственный набор — только вендоры и модели (26 иконок) | В приложении 114 иконок, из них 63 не используются вовсе; 5 брендовых иконок каналов мертвы — `ChannelCard` рендерит канал через `b-icon` | A1, B2 |
 | Один загрузчик | Четыре несвязанных механизма: полноэкранный `.app-loader` (CSS закомментирован, не работает), `bars-scale-fade` вручную в 30 местах, CSS-спиннер `AsyncState`, скелеты | A1, B2 |
 | `<icon name="close">` в разметке приложения | `close.svg` в наборе отсутствует, рендерится placeholder | B1 |
 | Tailwind отключён | Классы Tailwind остались в разметке; класс-заглушки `-is-*` | B1 |
-| `NavbarMenu` (Teleport-target меню страницы, provide/inject) | Не реализован в ките: `Navbar.vue` рендерит `NavbarTabs` напрямую по жёсткой проверке `route.path.startsWith("/workspace")`, без Teleport и без передачи `items` со страницы; см. «Меню страницы в Navbar» | A4 |
 | `.tr-navbar-dropdown` — общий маркер ширины панелей topbar на узких экранах | Объявлен в `trickster-buefy.scss`, но не подключён ни к одной из четырёх панелей `Navbar.vue` (`tr-mobile-nav`, `tr-workspace-dropdown`, `tr-notifications-dropdown`, `tr-user-dropdown`) — они несут класс-заглушку `tr-dropdown`, у которого нет собственного CSS-правила; риск для узких вьюпортов (`360px`) не подтверждён визуально в рамках A3.9, требует точечной проверки при исправлении | A3.9 note; исправление — ближайшая задача кита (вне A3.9, правки `src/components`/`src/styles` не входят в её область) |
 | Тема применяется inline-скриптом `index.html` до монтирования, без вспышки | `index.html` не содержит такого скрипта; `App.vue` применяет `dataset.theme` в `onMounted`, после первого рендера — возможна кратковременная вспышка светлой темы при `dark`-предпочтении; классов `theme-light`/`theme-dark` нигде нет | A3.9 note; ближайшая задача кита (вне A3.9) |
 
@@ -584,33 +655,45 @@ context (`.copy-pre`) — это не отдельный слой шкалы, а
 
 1. **`// Stage A5 temporary contract`** — селектор, заранее нужный Stage A5.
    Не считается мёртвым до закрытия Stage A5, после чего пометка и сам класс,
-   если он так и не понадобился, снимаются. На 2026-09-10 таких пометок нет:
-   `tr-tariff-selector__card--current`, ранее числившийся кандидатом на
-   исключение, уже используется `TariffSelector.vue` (кит и приложение).
-2. **`<Компонент>.vue foundation (Stage A4 target component)`** — CSS для
-   компонента из таблицы «Общие компоненты», который в ките ещё не собран
-   (`PageHeader`, `Toolbar`, `AsyncState`, `ListAsyncState`, `NavbarMenu`,
-   `CopyPre` и их вспомогательные классы — `.tr-page-header`,
-   `.tr-action-group`, `.skeleton-loader`/`.tr-skeleton-block`,
-   `.tr-async-state__actions`, `.tr-async-state--error`, `.copy-pre*` и
-   т.п.): стили написаны заранее, компонент, который их применит, — план
-   Stage A4. Пометка снимается вместе с переносом компонента в кит; до этого
-   момента такие правила не считаются мёртвым CSS, даже если ни один
-   `src/components/**/*.vue` их сегодня не использует.
+   если он так и не понадобился, снимаются. На 2026-09-11 под этой пометкой
+   стоит `.tr-form`/`.tr-destructive-zone*` (`trickster-buefy.scss`,
+   WorkspaceSettings full-page-form foundation) — раскладка полностраничной
+   формы настроек, которую Stage A4 сознательно не переносит в кит (текущие
+   формы кита — модальные), и которая понадобится компоненту
+   `WorkspaceSettings` в Stage A5. `tr-tariff-selector__card--current`, ранее
+   числившийся кандидатом на исключение, уже используется
+   `TariffSelector.vue` (кит и приложение) и под эту пометку не подпадает.
+2. **`<Компонент>.vue foundation (get.3xtr.im component, no kit equivalent)`**
+   — CSS для компонента `get.3xtr.im`, который Stage A4 сознательно не
+   переносит в кит (`PaginationControls`, `SkeletonLoader`, `ProgressBar`):
+   `.plan` (Stage A4, «Что сделать») заменяет их в ките штатными
+   `b-pagination`/`b-skeleton`/`b-progress`, поэтому у `.pagination-controls*`
+   (`trickster-buefy.scss`), `.skeleton-loader*` и `.progress-bar*` нет и не
+   будет кит-компонента-потребителя — CSS остаётся только ради 1:1 sync в
+   `get.3xtr.im`, где одноимённые `.vue`-компоненты уже существуют и
+   используют эти классы. Такие правила не считаются мёртвым CSS. Прежде эта
+   же пометка временно означала «Stage A4 target component» для компонентов,
+   которые Stage A4 действительно перенёс: `PageHeader` (`.tr-page-header`,
+   `.page-header__*`) и `CopyPre` (`.copy-pre*`) реализованы задачей A4.2,
+   `AsyncState`/`ListAsyncState` (`.tr-async-state*`, `.tr-section-empty`) —
+   задачей A4.4, `Toolbar`/`ToolbarSearch`/`ToolbarDropdown`/`MobileFilters` —
+   задачей A4.7, `NavbarMenu`/`NavbarTabs` — задачей A4.3; у всех них пометка
+   снята, классы имеют явного потребителя в `src/components/common/`.
 
-   Это же исключение распространяется и на требование префикса `tr-` из R2
-   (`.plan`), а не только на «нет `tr-*` без потребителя»: пять семейств —
+   Отдельное, не связанное с предыдущим пунктом исключение из требования
+   префикса `tr-` из R2 (`.plan`) распространяется на пять семейств:
    `PageHeader` (`.page-header__*`), `PaginationControls`
    (`.pagination-controls*`), `ProgressBar` (`.progress-bar*`),
    `SkeletonLoader` (`.skeleton-loader*`), `CopyPre` (`.copy-pre*`) —
    намеренно используют те же непрефиксированные классы, под которыми
    одноимённые компоненты уже существуют и работают в
-   `get.3xtr.im/src/modules/common/components/` сегодня. `trickster-buefy.scss`
+   `get.3xtr.im/src/modules/common/components/` сегодня, независимо от того,
+   собран ли уже одноимённый компонент в ките. `trickster-buefy.scss`
    синхронизируется в кабинет один в один; переименование этих классов в
-   `tr-*` без одновременного переноса и переименования самого
-   компонента-потребителя сломает стилизацию этих пяти живых экранов
-   кабинета при ближайшем `ui-kit:update`. Переименование в `tr-*`
-   происходит вместе с переносом каждого компонента в Stage A4, не раньше.
+   `tr-*` без одновременного переименования самого компонента-потребителя в
+   `get.3xtr.im` сломает стилизацию этих живых экранов кабинета при
+   ближайшем `ui-kit:update`. Переименование в `tr-*` — задача Stage B4
+   (синхронизированная с `get.3xtr.im`), не раньше.
 
 Класс `tr-*`, не подпадающий ни под один из двух пунктов и не встречающийся в
 `src/**/*.vue`, — мёртвый CSS и подлежит удалению при следующей правке
@@ -660,6 +743,25 @@ foundation-CSS, часть — динамически собираемые кл�
 реализован, `.tr-navbar-dropdown` не подключён ни к одной панели
 `Navbar.vue`, вспышка темы при монтировании — оба пункта остаются открытыми
 рисками, не закрытыми в рамках A3.9).
+
+Evidence Task A4.8 (2026-09-11): `npm.cmd run lint:style`,
+`npm.cmd run guard:no-component-styles`, `npm.cmd run build` и `git diff
+--check` прошли без ошибок. Сверка A4.1–A4.7 с кодом: `NavbarMenu`
+реализован (риск A3.9 закрыт, `src/composables/navbarMenu.js`,
+`src/components/common/NavbarMenu.vue`, используется `Workspace.vue`); все
+примитивы таблицы «Общие компоненты» существуют в
+`src/components/common/**` и не дублируют Buefy; `Agents`, `Knowledge`,
+`Channels`, `Conversations`, `Navbar` используют `Toolbar`/`ToolbarSearch`,
+`SearchField.vue` в дереве `src/` отсутствует; `useModalStore`/
+`useToasterStore` подключены в `Agents`, `Knowledge`, `UiKit`; `b-upload`
+демо-поток — только в `UiKit.vue`. Таблица «Расхождения контракта и
+реализации» и раздел «Допустимые исключения» приведены в соответствие
+решению Stage A4 не переносить `PaginationControls`/`SkeletonLoader`/
+`ProgressBar` в кит (комментарии `foundation` в `trickster-buefy.scss`
+и текст этого документа синхронно правлены, чтобы не называть их временным
+«Stage A4 target component»). Ручная визуальная матрица не проводилась и не
+является блокирующим условием приёмки для этой задачи (см. «Политика
+верификации», `CLAUDE.md`).
 
 После изменения контракта обновляются этот документ и
 `docs/agent-migration-guide.md`. Потребляющее приложение получает изменения

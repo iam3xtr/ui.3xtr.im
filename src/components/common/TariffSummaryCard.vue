@@ -35,7 +35,7 @@
 <script setup>
 import { RouterLink } from "vue-router";
 
-/** @typedef {import("../stores/workspace").WorkspaceTariff} WorkspaceTariff */
+/** @typedef {import("../../stores/workspace").WorkspaceTariff} WorkspaceTariff */
 
 defineProps({
   /** @type {import("vue").PropType<WorkspaceTariff>} */

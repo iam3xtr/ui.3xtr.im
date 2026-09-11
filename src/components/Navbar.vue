@@ -6,6 +6,7 @@
       position="is-bottom-right"
       mobile-modal
       aria-role="menu"
+      @active-change="isMobileNavActive = $event"
     >
       <template #trigger>
         <button
@@ -110,11 +111,7 @@
 
     <Logo />
 
-    <NavbarTabs
-      v-if="isWorkspaceRoute"
-      :items="workspaceTabs"
-      aria-label="Навигация по пространству"
-    />
+    <slot name="menu" />
 
     <ToolbarSearch
       v-if="showSearch"
@@ -277,6 +274,7 @@
         position="is-bottom-left"
         mobile-modal
         aria-role="menu"
+        @active-change="isUserMenuActive = $event"
       >
         <template #trigger>
           <button
@@ -411,10 +409,10 @@ import {
   administrationNavigationItems,
   mainNavigationItems,
 } from "../navigation";
+import { useFocusTrap } from "../composables/useFocusTrap";
 import { useSiteSettingsStore } from "../stores/siteSettings";
 import Logo from "./Logo.vue";
-import NavbarTabs from "./NavbarTabs.vue";
-import ToolbarSearch from "./ToolbarSearch.vue";
+import ToolbarSearch from "./common/ToolbarSearch.vue";
 
 /**
  * @typedef {Object} Workspace
@@ -474,24 +472,29 @@ const {
   showNotifications,
 } = storeToRefs(siteSettings);
 
+// Buefy's `mobile-modal` dropdowns already trap Tab (`trap-focus` directive)
+// and close on Escape themselves (`Dropdown.vue`'s own `keyup` listener);
+// they never return focus to the trigger once closed, so `useFocusTrap` is
+// wired in for that gap only — it reacts to the real `active-change` below,
+// it does not close the dropdown itself (see `composables/useFocusTrap.js`).
+const isMobileNavActive = ref(false);
+const isUserMenuActive = ref(false);
+const mobileNavMenuEl = computed(
+  () => mobileNavDropdown.value?.$el?.querySelector(".dropdown-menu") ?? null,
+);
+const userMenuEl = computed(
+  () => userDropdown.value?.$el?.querySelector(".dropdown-menu") ?? null,
+);
+
+useFocusTrap(mobileNavMenuEl, isMobileNavActive);
+useFocusTrap(userMenuEl, isUserMenuActive);
+
 /** @type {ResourceLink[]} */
 const resourceLinks = [
   { label: "Новости" },
   { label: "API" },
   { label: "Документация" },
 ];
-
-/**
- * @type {{ label: string, to: import("vue-router").RouteLocationRaw }[]}
- */
-const workspaceTabs = [
-  { label: "Обзор", to: { name: "workspace" } },
-  { label: "Настройки", to: { name: "workspace-settings" } },
-  { label: "Участники", to: { name: "workspace-members" } },
-  { label: "Тариф", to: { name: "workspace-plan" } },
-];
-
-const isWorkspaceRoute = computed(() => route.path.startsWith("/workspace"));
 
 /** @type {NotificationEvent[]} */
 const notificationEvents = [

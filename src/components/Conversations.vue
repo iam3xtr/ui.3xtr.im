@@ -3,64 +3,40 @@
     <Loader v-if="isLoading" size="section" />
 
     <template v-else>
-    <div
+    <Toolbar
       v-if="conversations.length > 0"
-      class="tr-workbench-page__header tr-page-toolbar"
+      class="tr-workbench-page__header"
+      v-model:search="query"
+      search-placeholder="Поиск по диалогам"
+      :filters-active="Boolean(statusFilter || channelFilter)"
+      @shortcut="viewMode = 'list'"
     >
-      <ToolbarSearch
-        v-model="query"
-        class="tr-page-toolbar__search"
-        placeholder="Поиск по диалогам"
-        @shortcut="viewMode = 'list'"
-      />
+      <template #filters>
+        <ToolbarDropdown
+          v-model="statusFilter"
+          class="tr-page-toolbar__filter"
+          aria-label="Фильтр диалогов по статусу"
+          all-label="Все статусы"
+          :options="conversationStatuses"
+        />
 
-      <ToolbarDropdown
-        v-model="statusFilter"
-        class="tr-page-toolbar__filter"
-        aria-label="Фильтр диалогов по статусу"
-        all-label="Все статусы"
-        :options="conversationStatuses"
-      />
-
-      <ToolbarDropdown
-        v-model="channelFilter"
-        class="tr-page-toolbar__filter"
-        aria-label="Фильтр диалогов по каналу"
-        all-label="Все каналы"
-        :options="conversationChannels"
-      />
-
-      <MobileFilters :active="Boolean(statusFilter || channelFilter)">
-        <b-field label="Статус">
-          <b-select v-model="statusFilter" expanded>
-            <option value="">Все статусы</option>
-            <option v-for="status in conversationStatuses" :key="status">
-              {{ status }}
-            </option>
-          </b-select>
-        </b-field>
-
-        <b-field label="Канал">
-          <b-select v-model="channelFilter" expanded>
-            <option value="">Все каналы</option>
-            <option v-for="channel in conversationChannels" :key="channel">
-              {{ channel }}
-            </option>
-          </b-select>
-        </b-field>
-      </MobileFilters>
-    </div>
+        <ToolbarDropdown
+          v-model="channelFilter"
+          class="tr-page-toolbar__filter"
+          aria-label="Фильтр диалогов по каналу"
+          all-label="Все каналы"
+          :options="conversationChannels"
+        />
+      </template>
+    </Toolbar>
 
     <section v-if="conversations.length === 0" class="tr-section-empty">
-      <div class="tr-async-state tr-async-state--empty">
-        <span class="tr-async-state__icon">
-          <b-icon icon="message-outline" size="is-large" />
-        </span>
-        <strong class="tr-async-state__title">Диалогов пока нет</strong>
-        <span class="tr-async-state__message">
-          Новые диалоги появятся после обращения пользователей.
-        </span>
-      </div>
+      <AsyncState
+        variant="empty"
+        icon="message-outline"
+        title="Диалогов пока нет"
+        message="Новые диалоги появятся после обращения пользователей."
+      />
     </section>
 
     <section
@@ -99,12 +75,11 @@
           </span>
         </button>
 
-        <div
+        <AsyncState
           v-if="filteredConversations.length === 0"
-          class="tr-async-state tr-async-state--no-results"
-        >
-          <span class="tr-async-state__message">Диалоги не найдены.</span>
-        </div>
+          variant="no-results"
+          message="Диалоги не найдены."
+        />
       </nav>
     </aside>
 
@@ -257,10 +232,10 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import { useSimulatedLoading } from "../composables/useSimulatedLoading";
 import { useWorkspaceStore } from "../stores/workspace";
+import AsyncState from "./common/AsyncState.vue";
 import Loader from "./common/Loader.vue";
-import MobileFilters from "./MobileFilters.vue";
-import ToolbarDropdown from "./ToolbarDropdown.vue";
-import ToolbarSearch from "./ToolbarSearch.vue";
+import Toolbar from "./common/Toolbar.vue";
+import ToolbarDropdown from "./common/ToolbarDropdown.vue";
 
 const { isLoading } = useSimulatedLoading();
 

@@ -1,51 +1,30 @@
 <template>
   <section class="tr-workbench-page">
-    <header
+    <Toolbar
       v-if="viewMode === 'list'"
-      class="tr-workbench-page__header tr-page-toolbar"
+      class="tr-workbench-page__header"
+      v-model:search="query"
+      search-placeholder="Поиск по агентам"
+      :filters-active="Boolean(statusFilter || modelFilter)"
     >
-      <ToolbarSearch
-        v-model="query"
-        class="tr-page-toolbar__search"
-        placeholder="Поиск по агентам"
-      />
+      <template #filters>
+        <ToolbarDropdown
+          v-model="statusFilter"
+          class="tr-page-toolbar__filter"
+          aria-label="Фильтр агентов по статусу"
+          all-label="Все статусы"
+          :options="agentStatuses"
+        />
 
-      <ToolbarDropdown
-        v-model="statusFilter"
-        class="tr-page-toolbar__filter"
-        aria-label="Фильтр агентов по статусу"
-        all-label="Все статусы"
-        :options="agentStatuses"
-      />
-
-      <ToolbarDropdown
-        v-model="modelFilter"
-        class="tr-page-toolbar__filter"
-        aria-label="Фильтр агентов по модели"
-        all-label="Все модели"
-        :options="agentModels"
-      />
-
-      <MobileFilters :active="Boolean(statusFilter || modelFilter)">
-        <b-field label="Статус">
-          <b-select v-model="statusFilter" expanded>
-            <option value="">Все статусы</option>
-            <option v-for="status in agentStatuses" :key="status">
-              {{ status }}
-            </option>
-          </b-select>
-        </b-field>
-
-        <b-field label="Модель">
-          <b-select v-model="modelFilter" expanded>
-            <option value="">Все модели</option>
-            <option v-for="model in agentModels" :key="model">
-              {{ model }}
-            </option>
-          </b-select>
-        </b-field>
-      </MobileFilters>
-    </header>
+        <ToolbarDropdown
+          v-model="modelFilter"
+          class="tr-page-toolbar__filter"
+          aria-label="Фильтр агентов по модели"
+          all-label="Все модели"
+          :options="agentModels"
+        />
+      </template>
+    </Toolbar>
 
     <Loader v-if="viewMode === 'list' && isLoading" size="section" />
 
@@ -245,7 +224,11 @@
     </section>
   </section>
 
-  <b-modal v-model="isCreateOpen" has-modal-card>
+  <b-modal
+    :model-value="modalStore.isOpen('agents-create')"
+    has-modal-card
+    @update:model-value="(value) => (value ? modalStore.open('agents-create') : modalStore.close('agents-create'))"
+  >
     <form class="modal-card" @submit.prevent="createAgent">
       <header class="modal-card-head">
         <p class="modal-card-title">Новый агент</p>
@@ -253,7 +236,7 @@
           class="delete"
           type="button"
           aria-label="Закрыть"
-          @click="isCreateOpen = false"
+          @click="modalStore.close('agents-create')"
         />
       </header>
 
@@ -268,7 +251,9 @@
       </section>
 
       <footer class="modal-card-foot">
-        <b-button @click="isCreateOpen = false">Отмена</b-button>
+        <b-button @click="modalStore.close('agents-create')">
+          Отмена
+        </b-button>
         <b-button native-type="submit" type="is-primary">
           Создать
         </b-button>
@@ -283,13 +268,14 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
 import { useSimulatedLoading } from "../composables/useSimulatedLoading";
+import { useModalStore } from "../stores/modal";
 import { useWorkspaceStore } from "../stores/workspace";
 import Loader from "./common/Loader.vue";
-import MobileFilters from "./MobileFilters.vue";
-import ToolbarDropdown from "./ToolbarDropdown.vue";
-import ToolbarSearch from "./ToolbarSearch.vue";
+import Toolbar from "./common/Toolbar.vue";
+import ToolbarDropdown from "./common/ToolbarDropdown.vue";
 
 const { isLoading } = useSimulatedLoading();
+const modalStore = useModalStore();
 
 /** @typedef {"list" | "chat" | "properties"} ViewMode */
 
@@ -323,7 +309,6 @@ const selectedId = ref(/** @type {number | null} */ (null));
 const viewMode = ref("list");
 const propertiesOpen = ref(true);
 const isWideLayout = ref(false);
-const isCreateOpen = ref(false);
 const newAgentName = ref("");
 /** @type {MediaQueryList | null} */
 let wideLayoutQuery = null;
@@ -458,7 +443,7 @@ function showAgentCatalog() {
 
 function openCreateModal() {
   newAgentName.value = "";
-  isCreateOpen.value = true;
+  modalStore.open("agents-create");
 }
 
 function createAgent() {
@@ -486,7 +471,7 @@ function createAgent() {
   });
   selectedId.value = id;
   viewMode.value = "chat";
-  isCreateOpen.value = false;
+  modalStore.close("agents-create");
 }
 
 watch(activeWorkspaceId, () => {
@@ -497,7 +482,7 @@ watch(activeWorkspaceId, () => {
   draft.value = "";
   viewMode.value = "list";
   propertiesOpen.value = true;
-  isCreateOpen.value = false;
+  modalStore.close("agents-create");
 });
 
 watch(

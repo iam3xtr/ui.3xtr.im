@@ -2,39 +2,23 @@
   <section class="tr-workbench-page tr-knowledge">
     <Loader v-if="!selectedCollection && isLoading" size="section" />
 
-    <header
+    <Toolbar
       v-if="!selectedCollection && !isLoading"
-      class="tr-workbench-page__header tr-page-toolbar"
+      class="tr-workbench-page__header"
+      v-model:search="query"
+      search-placeholder="Поиск коллекций"
+      :filters-active="Boolean(typeFilter)"
     >
-      <ToolbarSearch
-        v-model="query"
-        class="tr-page-toolbar__search"
-        placeholder="Поиск коллекций"
-      />
-
-      <ToolbarDropdown
-        v-model="typeFilterProxy"
-        class="tr-page-toolbar__filter"
-        aria-label="Фильтр коллекций по типу"
-        all-label="Все типы"
-        :options="collectionTypeOptions"
-      />
-
-      <MobileFilters :active="Boolean(typeFilter)">
-        <b-field label="Тип коллекции">
-          <b-select v-model="typeFilter" expanded>
-            <option value="">Все типы</option>
-            <option
-              v-for="type in collectionTypes"
-              :key="type.value"
-              :value="type.value"
-            >
-              {{ type.label }}
-            </option>
-          </b-select>
-        </b-field>
-      </MobileFilters>
-    </header>
+      <template #filters>
+        <ToolbarDropdown
+          v-model="typeFilterProxy"
+          class="tr-page-toolbar__filter"
+          aria-label="Фильтр коллекций по типу"
+          all-label="Все типы"
+          :options="collectionTypeOptions"
+        />
+      </template>
+    </Toolbar>
 
     <section
       v-if="!selectedCollection && !isLoading"
@@ -166,19 +150,21 @@
         </b-table>
       </div>
 
-      <div v-else class="tr-async-state tr-async-state--empty">
-        <span class="tr-async-state__icon">
-          <b-icon icon="file-plus-outline" size="is-large" />
-        </span>
-        <strong class="tr-async-state__title">В коллекции пока нет элементов</strong>
-        <span class="tr-async-state__message">
-          Добавьте файл, ссылку или Markdown-документ.
-        </span>
-      </div>
+      <AsyncState
+        v-else
+        variant="empty"
+        icon="file-plus-outline"
+        title="В коллекции пока нет элементов"
+        message="Добавьте файл, ссылку или Markdown-документ."
+      />
     </article>
   </section>
 
-  <b-modal v-model="isCreateOpen" has-modal-card>
+  <b-modal
+    :model-value="modalStore.isOpen('knowledge-create')"
+    has-modal-card
+    @update:model-value="(value) => (value ? modalStore.open('knowledge-create') : modalStore.close('knowledge-create'))"
+  >
     <form class="modal-card" @submit.prevent="createCollection">
       <header class="modal-card-head">
         <p class="modal-card-title">Новая коллекция</p>
@@ -186,7 +172,7 @@
           class="delete"
           type="button"
           aria-label="Закрыть"
-          @click="isCreateOpen = false"
+          @click="modalStore.close('knowledge-create')"
         />
       </header>
 
@@ -221,7 +207,9 @@
       </section>
 
       <footer class="modal-card-foot">
-        <b-button @click="isCreateOpen = false">Отмена</b-button>
+        <b-button @click="modalStore.close('knowledge-create')">
+          Отмена
+        </b-button>
         <b-button native-type="submit" type="is-primary">
           Создать
         </b-button>
@@ -235,13 +223,15 @@ import { storeToRefs } from "pinia";
 import { computed, ref, watch } from "vue";
 
 import { useSimulatedLoading } from "../composables/useSimulatedLoading";
+import { useModalStore } from "../stores/modal";
 import { useWorkspaceStore } from "../stores/workspace";
+import AsyncState from "./common/AsyncState.vue";
 import Loader from "./common/Loader.vue";
-import MobileFilters from "./MobileFilters.vue";
-import ToolbarDropdown from "./ToolbarDropdown.vue";
-import ToolbarSearch from "./ToolbarSearch.vue";
+import Toolbar from "./common/Toolbar.vue";
+import ToolbarDropdown from "./common/ToolbarDropdown.vue";
 
 const { isLoading } = useSimulatedLoading();
+const modalStore = useModalStore();
 
 /**
  * @typedef {"mixed" | "website" | "files" | "links" | "markdown" | "faq"} CollectionType
@@ -424,7 +414,6 @@ const collectionTypeOptions = computed(
   () => collectionTypes.map((type) => ({ value: type.value, label: type.label })),
 );
 const selectedId = ref(/** @type {number | null} */ (null));
-const isCreateOpen = ref(false);
 const newCollectionName = ref("");
 /** @type {import("vue").Ref<CollectionType>} */
 const newCollectionType = ref("mixed");
@@ -490,7 +479,7 @@ function removeItem(item) {
 function openCreateModal() {
   newCollectionName.value = "";
   newCollectionType.value = "mixed";
-  isCreateOpen.value = true;
+  modalStore.open("knowledge-create");
 }
 
 function createCollection() {
@@ -513,7 +502,7 @@ function createCollection() {
     items: [],
   });
   selectedId.value = id;
-  isCreateOpen.value = false;
+  modalStore.close("knowledge-create");
 }
 
 watch(

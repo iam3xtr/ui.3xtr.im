@@ -1,18 +1,12 @@
 <template>
   <!-- Интерактивная витрина компонентов и состояний UI-kit. -->
-          <div class="tr-page-header">
-            <div>
-              <h1 class="tr-page-title">Trickster UI Kit</h1>
-              <p class="tr-page-subtitle">
-                Основные Buefy-компоненты и состояния.
-              </p>
-            </div>
-
-            <div class="buttons">
-              <b-button>Отмена</b-button>
-              <b-button type="is-primary">Сохранить</b-button>
-            </div>
-          </div>
+          <PageHeader
+            title="Trickster UI Kit"
+            subtitle="Основные Buefy-компоненты и состояния."
+          >
+            <b-button>Отмена</b-button>
+            <b-button type="is-primary">Сохранить</b-button>
+          </PageHeader>
 
           <section class="tr-card mb-5">
             <h2 class="tr-card__title">Кнопки</h2>
@@ -177,6 +171,40 @@
           </section>
 
           <section class="tr-card mb-5">
+            <h2 class="tr-card__title">Toolbar</h2>
+            <p class="tr-muted mb-4">
+              <code>Toolbar</code> собирает поиск (<code>ToolbarSearch</code>,
+              горячая клавиша <code>Ctrl/⌘ K</code>), фильтры
+              (<code>ToolbarDropdown</code> в слоте <code>filters</code>) и
+              действия в один контракт <code>.tr-page-toolbar</code>; ниже
+              768px тот же слот фильтров переходит в <code>MobileFilters</code>
+              вместо второй строки тулбара.
+            </p>
+
+            <Toolbar
+              v-model:search="toolbarDemoQuery"
+              search-placeholder="Поиск по демо-записям"
+              :filters-active="Boolean(toolbarDemoStatus)"
+            >
+              <template #filters>
+                <ToolbarDropdown
+                  v-model="toolbarDemoStatus"
+                  class="tr-page-toolbar__filter"
+                  aria-label="Фильтр по статусу"
+                  all-label="Все статусы"
+                  :options="['Активен', 'Черновик']"
+                />
+              </template>
+
+              <template #actions>
+                <b-button type="is-primary" icon-left="plus">
+                  Добавить
+                </b-button>
+              </template>
+            </Toolbar>
+          </section>
+
+          <section class="tr-card mb-5">
             <h2 class="tr-card__title">Вкладки</h2>
 
             <b-tabs v-model="activeTab" type="is-boxed">
@@ -280,6 +308,16 @@
           </section>
 
           <section class="tr-card mb-5">
+            <h2 class="tr-card__title">Копируемый блок</h2>
+            <p class="tr-muted mb-4">
+              <code>CopyPre</code> — ограниченный по высоте
+              <code>&lt;pre&gt;</code> с кнопкой копирования, доступной с
+              клавиатуры.
+            </p>
+            <CopyPre :text="apiKeyExample" title="Скопировать ключ API" />
+          </section>
+
+          <section class="tr-card mb-5">
             <h2 class="tr-card__title">Диалог подтверждения</h2>
             <p class="tr-muted mb-4">
               Подтверждение опасного действия — штатный <code>b-dialog</code>,
@@ -288,6 +326,11 @@
             <b-button type="is-danger" outlined @click="confirmDeleteAgent">
               Удалить агента…
             </b-button>
+            <p class="tr-muted mt-2">
+              Вызов идёт через <code>useModalStore().confirm()</code> —
+              общий store-API оверлеев (Task A4.5), не собственный
+              <code>ConfirmDialog</code>.
+            </p>
           </section>
 
           <section class="tr-card mb-5">
@@ -334,16 +377,50 @@
           </section>
 
           <section class="tr-card mb-5">
-            <h2 class="tr-card__title">Загрузка файлов</h2>
-            <b-upload v-model="uploadedFile" drag-drop expanded>
+            <div class="tr-row tr-row--between mb-4">
+              <h2 class="tr-card__title mb-0">Загрузка файлов</h2>
+              <b-button size="is-small" @click="resetUploadDemo">
+                Повторить демо
+              </b-button>
+            </div>
+
+            <b-upload v-model="uploadPickedFile" drag-drop expanded>
               <div class="has-text-centered tr-uikit-demo-padded">
                 <p><b-icon icon="upload" size="is-medium" /></p>
-                <p>Перетащите файл сюда или нажмите для выбора</p>
+                <p>
+                  Перетащите файл сюда или нажмите для выбора — он встанет в
+                  очередь ниже
+                </p>
               </div>
             </b-upload>
-            <p v-if="uploadedFile" class="tr-muted mt-2">
-              Выбран файл: {{ uploadedFile.name }}
-            </p>
+
+            <div class="tr-stack mt-4">
+              <div v-for="item in uploadQueue" :key="item.id">
+                <div class="tr-row tr-row--between mb-2">
+                  <span>
+                    {{ item.name }}
+                    <span class="tr-muted">({{ item.size }})</span>
+                  </span>
+                  <span class="tr-muted">{{ uploadStatusLabel(item.status) }}</span>
+                </div>
+                <b-progress
+                  v-if="item.status === 'queued' || item.status === 'uploading'"
+                  :value="item.progress"
+                  size="is-small"
+                  show-value
+                />
+                <b-message
+                  v-else-if="item.status === 'success'"
+                  type="is-success"
+                  :closable="false"
+                >
+                  Файл «{{ item.name }}» загружен успешно.
+                </b-message>
+                <b-message v-else type="is-danger" :closable="false">
+                  Не удалось загрузить «{{ item.name }}»: {{ item.errorReason }}.
+                </b-message>
+              </div>
+            </div>
           </section>
 
           <section class="tr-card mb-5">
@@ -361,45 +438,135 @@
 
           <section class="tr-card mb-5">
             <h2 class="tr-card__title">Боковая панель</h2>
-            <b-button @click="isSidebarOpen = true">Открыть панель</b-button>
-            <b-sidebar v-model="isSidebarOpen" type="is-light" right overlay>
+            <b-button @click="modalStore.open('uikit-sidebar')">
+              Открыть панель
+            </b-button>
+            <b-sidebar
+              :model-value="modalStore.isOpen('uikit-sidebar')"
+              type="is-light"
+              right
+              overlay
+              @update:model-value="(value) => (value ? modalStore.open('uikit-sidebar') : modalStore.close('uikit-sidebar'))"
+            >
               <div class="tr-uikit-demo-padded">
                 <h3 class="tr-card__title">Свойства</h3>
                 <p class="tr-muted">
-                  Демонстрация штатной боковой панели Buefy.
+                  Демонстрация штатной боковой панели Buefy, открытой через
+                  общий <code>useModalStore()</code>.
                 </p>
-                <b-button class="mt-4" @click="isSidebarOpen = false">
+                <b-button class="mt-4" @click="modalStore.close('uikit-sidebar')">
                   Закрыть
                 </b-button>
               </div>
             </b-sidebar>
           </section>
 
-          <section class="tr-card has-text-centered">
-            <h2 class="tr-card__title">Пустое состояние</h2>
-            <div class="tr-async-state tr-async-state--empty">
-              <span class="tr-async-state__icon">
-                <b-icon icon="shape-outline" size="is-large" />
-              </span>
-              <strong class="tr-async-state__title">Здесь пока пусто</strong>
-              <span class="tr-async-state__message">
-                Создайте первый объект, чтобы он появился в списке.
-              </span>
+          <section class="tr-card mb-5">
+            <h2 class="tr-card__title">Async-состояния</h2>
+            <p class="tr-muted mb-4">
+              AsyncState — единый блок для пяти состояний контента
+              (<code>.tr-async-state</code>, Task A3.7). ListAsyncState
+              выбирает нужный вариант по фиксированному приоритету
+              loading &gt; error &gt; empty &gt; no-results и не выполняет
+              запросов.
+            </p>
+
+            <div class="tr-grid tr-grid--2 mb-5">
+              <div class="tr-card">
+                <AsyncState variant="loading" />
+              </div>
+
+              <div class="tr-card">
+                <AsyncState
+                  variant="empty"
+                  icon="shape-outline"
+                  title="Здесь пока пусто"
+                  message="Создайте первый объект, чтобы он появился в списке."
+                >
+                  <b-button
+                    type="is-primary"
+                    size="is-small"
+                    @click="modalStore.open('uikit-create-agent')"
+                  >
+                    Создать
+                  </b-button>
+                </AsyncState>
+              </div>
+
+              <div class="tr-card">
+                <AsyncState
+                  variant="no-results"
+                  icon="magnify"
+                  title="Ничего не найдено"
+                  message="Измените условия поиска или сбросьте фильтры."
+                />
+              </div>
+
+              <div class="tr-card">
+                <AsyncState
+                  variant="error"
+                  icon="alert-circle-outline"
+                  title="Не удалось загрузить данные"
+                  message="Проверьте соединение и повторите попытку."
+                >
+                  <b-button size="is-small" @click="showSavedToast">
+                    Повторить
+                  </b-button>
+                </AsyncState>
+              </div>
+
+              <div class="tr-card">
+                <AsyncState
+                  variant="permission-denied"
+                  icon="lock-outline"
+                  title="Доступ ограничен"
+                  message="У вас нет прав для просмотра этого раздела."
+                />
+              </div>
             </div>
-            <b-button
-              class="mt-4"
-              type="is-primary"
-              @click="isModalOpen = true"
-            >
-              Создать
-            </b-button>
+
+            <div class="tr-card tr-uikit-demo-padded">
+              <p class="tr-muted mb-2">
+                ListAsyncState — переключите флаги, чтобы увидеть приоритет
+                loading &gt; error &gt; empty &gt; no-results.
+              </p>
+              <div class="buttons mb-3">
+                <b-switch v-model="listAsyncDemo.loading">loading</b-switch>
+                <b-switch v-model="listAsyncDemo.error">error</b-switch>
+                <b-switch v-model="listAsyncDemo.empty">empty</b-switch>
+                <b-switch v-model="listAsyncDemo.noResults">
+                  no-results
+                </b-switch>
+              </div>
+
+              <ListAsyncState
+                :loading="listAsyncDemo.loading"
+                :error="listAsyncDemo.error"
+                error-icon="alert-circle-outline"
+                error-title="Не удалось загрузить данные"
+                error-message="Проверьте соединение и повторите попытку."
+                :empty="listAsyncDemo.empty"
+                empty-icon="shape-outline"
+                empty-title="Здесь пока пусто"
+                empty-message="Создайте первый объект, чтобы он появился в списке."
+                :no-results="listAsyncDemo.noResults"
+                no-results-icon="magnify"
+                no-results-title="Ничего не найдено"
+                no-results-message="Измените условия поиска или сбросьте фильтры."
+              >
+                <p class="tr-muted">
+                  Контент готов — ни один флаг выше не включён.
+                </p>
+              </ListAsyncState>
+            </div>
           </section>
 
           <b-modal
-            v-model="isModalOpen"
+            :model-value="modalStore.isOpen('uikit-create-agent')"
             has-modal-card
             trap-focus
             :destroy-on-hide="false"
+            @update:model-value="(value) => (value ? modalStore.open('uikit-create-agent') : modalStore.close('uikit-create-agent'))"
           >
             <div class="modal-card">
               <header class="modal-card-head">
@@ -407,7 +574,7 @@
                 <button
                   class="delete"
                   aria-label="Закрыть"
-                  @click="isModalOpen = false"
+                  @click="modalStore.close('uikit-create-agent')"
                 />
               </header>
 
@@ -418,8 +585,13 @@
               </section>
 
               <footer class="modal-card-foot">
-                <b-button @click="isModalOpen = false">Отмена</b-button>
-                <b-button type="is-primary" @click="isModalOpen = false">
+                <b-button @click="modalStore.close('uikit-create-agent')">
+                  Отмена
+                </b-button>
+                <b-button
+                  type="is-primary"
+                  @click="modalStore.close('uikit-create-agent')"
+                >
                   Создать
                 </b-button>
               </footer>
@@ -428,41 +600,151 @@
 </template>
 
 <script setup>
-import { reactive, ref } from "vue";
-import { useDialog, useToast } from "buefy";
+import { onUnmounted, reactive, ref, watch } from "vue";
 
+import { useModalStore } from "../stores/modal";
+import { useToasterStore } from "../stores/toaster";
+import AsyncState from "./common/AsyncState.vue";
+import CopyPre from "./common/CopyPre.vue";
+import ListAsyncState from "./common/ListAsyncState.vue";
 import Loader from "./common/Loader.vue";
+import PageHeader from "./common/PageHeader.vue";
+import Toolbar from "./common/Toolbar.vue";
+import ToolbarDropdown from "./common/ToolbarDropdown.vue";
 import TariffSelector from "./TariffSelector.vue";
 
 const activeTab = ref(0);
-const isModalOpen = ref(false);
+const toolbarDemoQuery = ref("");
+const toolbarDemoStatus = ref("");
+const listAsyncDemo = reactive({
+  loading: false,
+  error: false,
+  empty: false,
+  noResults: false,
+});
 const selectedTariffId = ref("superior");
 /** @type {import("vue").Ref<"monthly" | "yearly">} */
 const selectedBillingPeriod = ref("monthly");
 
 const isOverlayLoading = ref(false);
-const uploadedFile = ref(null);
 const paginationPage = ref(1);
-const isSidebarOpen = ref(false);
+const apiKeyExample = "sk-trickster-3f9a1c7e0d4b4c2a9f6e8d1b2a3c4d5e";
 
-const dialog = useDialog();
-const toast = useToast();
+const modalStore = useModalStore();
+const toaster = useToasterStore();
 
 function confirmDeleteAgent() {
-  dialog.confirm({
+  modalStore.confirm({
     title: "Удалить агента",
     message: "Действие необратимо. Продолжить?",
     confirmText: "Удалить",
     cancelText: "Отмена",
     type: "is-danger",
     hasIcon: true,
-    onConfirm: () => toast.open({ message: "Агент удалён", type: "is-danger" }),
+    onConfirm: () => toaster.error("Агент удалён"),
   });
 }
 
 function showSavedToast() {
-  toast.open({ message: "Изменения сохранены", type: "is-success" });
+  toaster.success("Изменения сохранены");
 }
+
+// Демо-поток b-upload: локальная fixture-state machine без сети и без
+// собственного компонента загрузки — очередь, прогресс, успех и ошибка
+// воспроизводятся таймерами поверх статичных данных. См. Task A4.6.
+const UPLOAD_STATUS_LABELS = {
+  queued: "В очереди",
+  uploading: "Загрузка",
+  success: "Готово",
+  error: "Ошибка",
+};
+const DEFAULT_UPLOAD_ERROR_REASON = "сервис вернул ошибку при обработке файла";
+const UPLOAD_DEMO_FIXTURES = [
+  { name: "brand-guidelines.pdf", size: "2.4 МБ", outcome: "success" },
+  {
+    name: "corrupted-archive.zip",
+    size: "1.1 МБ",
+    outcome: "error",
+    errorReason: "архив повреждён и не может быть распакован",
+  },
+];
+
+const uploadPickedFile = ref(null);
+const uploadQueue = ref([]);
+let uploadQueueNextId = 0;
+
+function uploadStatusLabel(status) {
+  return UPLOAD_STATUS_LABELS[status] || status;
+}
+
+function formatUploadFileSize(bytes) {
+  if (!Number.isFinite(bytes)) return "";
+  const units = ["Б", "КБ", "МБ", "ГБ"];
+  let value = bytes;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  const precision = unitIndex > 0 && value < 10 ? 1 : 0;
+  return `${value.toFixed(precision)} ${units[unitIndex]}`;
+}
+
+function runUploadDemoStep(item) {
+  // Задержка перед стартом загрузки нужна, чтобы стадия "queued" была
+  // реально видна на экране, а не перезаписывалась в "uploading" в тот же
+  // тик рендера (Task A4.6 review finding). Id таймера складывается на сам
+  // item, чтобы resetUploadDemo/размонтирование могли его отменить и не
+  // мутировать уже отсоединённый объект.
+  item.timerId = setTimeout(() => {
+    item.status = "uploading";
+    const tick = () => {
+      item.progress = Math.min(100, item.progress + 25);
+      if (item.progress < 100) {
+        item.timerId = setTimeout(tick, 400);
+        return;
+      }
+      item.status = item.outcome;
+    };
+    item.timerId = setTimeout(tick, 400);
+  }, 500);
+}
+
+function clearUploadTimers(items) {
+  items.forEach((item) => clearTimeout(item.timerId));
+}
+
+function enqueueUpload(name, size, outcome, errorReason) {
+  const item = reactive({
+    id: ++uploadQueueNextId,
+    name,
+    size,
+    outcome,
+    errorReason: outcome === "error" ? errorReason || DEFAULT_UPLOAD_ERROR_REASON : null,
+    status: "queued",
+    progress: 0,
+  });
+  uploadQueue.value.push(item);
+  runUploadDemoStep(item);
+}
+
+function resetUploadDemo() {
+  clearUploadTimers(uploadQueue.value);
+  uploadQueue.value = [];
+  UPLOAD_DEMO_FIXTURES.forEach((fixture) =>
+    enqueueUpload(fixture.name, fixture.size, fixture.outcome, fixture.errorReason),
+  );
+}
+
+watch(uploadPickedFile, (file) => {
+  if (!file) return;
+  const outcome = uploadQueue.value.length % 2 === 0 ? "success" : "error";
+  enqueueUpload(file.name, formatUploadFileSize(file.size), outcome);
+  uploadPickedFile.value = null;
+});
+
+resetUploadDemo();
+onUnmounted(() => clearUploadTimers(uploadQueue.value));
 
 const form = reactive({
   name: "Консультант",

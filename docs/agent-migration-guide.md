@@ -211,30 +211,44 @@
 ## 5. Toolbar (поиск + фильтры над списком)
 
 Эталон: шапка `Agents.vue` / `Knowledge.vue` / `Channels.vue` /
-`Conversations.vue`.
+`Conversations.vue`. С Task A4.7 сборка идёт через компонент `Toolbar`
+(`src/components/common/Toolbar.vue`), а не вручную на каждом экране.
 
 ```html
-<header class="tr-workbench-page__header tr-page-toolbar">
-  <ToolbarSearch v-model="query" class="tr-page-toolbar__search" placeholder="..." />
+<Toolbar
+  class="tr-workbench-page__header"
+  v-model:search="query"
+  search-placeholder="..."
+  :filters-active="Boolean(filter)"
+>
+  <template #filters>
+    <ToolbarDropdown
+      v-model="filter"
+      class="tr-page-toolbar__filter"
+      all-label="Все ..."
+      aria-label="..."
+      :options="filterOptions"
+    />
+  </template>
 
-  <ToolbarDropdown
-    v-model="filter"
-    class="tr-page-toolbar__filter"
-    all-label="Все ..."
-    aria-label="..."
-    :options="filterOptions"
-  />
-
-  <MobileFilters :active="Boolean(filter)">
-    <b-field label="...">
-      <b-select v-model="filter" expanded>...</b-select>
-    </b-field>
-  </MobileFilters>
-</header>
+  <template #actions>
+    <b-button type="is-primary" icon-left="plus">Добавить</b-button>
+  </template>
+</Toolbar>
 ```
 
-Классы `tr-page-toolbar`, `__search`, `__filter`, `__action` — общие,
-использовать без изменений.
+`Toolbar` рендерит `.tr-page-toolbar` с поиском (`ToolbarSearch`, наследует
+`Ctrl/⌘ K` и `kbd`-подсказку), слотом `filters`, слотом `actions` (или
+`default`) и — ниже брейкпоинта `.tr-page-toolbar__filter` — тем же слотом
+`filters` ещё раз внутри `MobileFilters`: это не второй набор полей, а
+единственный способ добраться до фильтров на узком экране, поэтому
+`MobileFilters` содержит те же `ToolbarDropdown`, а не `b-field`/`b-select`.
+Проп `filters-active` пробрасывает признак «есть активный фильтр» на триггер
+`MobileFilters` — сам `Toolbar` не видит состояние слота. Классы
+`tr-page-toolbar`, `__search`, `__filter`, `tr-action-group` — общие,
+использовать без изменений; собственные toolbar-классы под конкретный экран
+не заводятся. `Navbar` — исключение: у него нет фильтров/действий, поэтому
+он рендерит `ToolbarSearch` напрямую, без `Toolbar`.
 
 Фильтр-пилюля в toolbar — всегда компонент `ToolbarDropdown` (обёртка над
 `b-dropdown` с `v-model`), а не `b-select`: он даёт кастомный вид кнопки с
@@ -244,10 +258,6 @@
 Если исходное состояние типизировано уже, а не просто `string` (`ref<Status
 | "">("")`), под `v-model` нужен `computed`-прокси с приведением типа при
 записи — см. `typeFilterProxy` в `Knowledge.vue`.
-
-Внутри `MobileFilters` (мобильный drawer с фильтрами) `b-select` остаётся —
-это форма с явными подписями `b-field`, а не toolbar-пилюля, паттерн
-`ToolbarDropdown` на неё не распространяется.
 
 ## 6. Master-detail / workbench-страницы (список + контент)
 
@@ -301,11 +311,14 @@
 Единственное документированное исключение из Buefy-first (раздел 0, п. 3):
 `b-tabs` умеет переключать только локальный контент, а не маршрут.
 
-Эталон: `NavbarTabs` в `Navbar.vue` (рендерится в шапке для маршрутов
-рабочего пространства).
+Эталон: `NavbarTabs` в `Workspace.vue`, телепортированный в шапку через
+`NavbarMenu` (владелец ветки маршрутов — родитель раздела, не `Navbar.vue`
+сам по себе; см. «Меню страницы в Navbar» в `design-system.md`).
 
 ```html
-<NavbarTabs :items="workspaceTabs" aria-label="Навигация по пространству" />
+<NavbarMenu>
+  <NavbarTabs :items="workspaceTabs" aria-label="Навигация по пространству" />
+</NavbarMenu>
 ```
 
 `items` — массив `{ label, to }`, `to` — `RouteLocationRaw` для `RouterLink`.
@@ -363,8 +376,14 @@
 Он ограничен пятью модификаторами и третьего не заводится:
 `--loading`, `--empty`, `--no-results`, `--error`, `--permission-denied`.
 Presentation-only: блок ничего не запрашивает и не решает про permissions —
-это остаётся на вызывающей странице (Stage A4 оборачивает контракт в
-компонент `AsyncState.vue`/`ListAsyncState.vue` с той же разметкой).
+это остаётся на вызывающей странице. В ките контракт собран в
+`src/components/common/AsyncState.vue` (пропсы `variant`/`icon`/`title`/
+`message`, слот `default` → `.tr-async-state__actions`; сам расставляет
+`role`/`aria-live`) и `ListAsyncState.vue` (тонкая обёртка, флаги
+`loading`/`error`/`empty`/`noResults`, приоритет
+`loading > error > empty > no-results`, слоты `error-action`/
+`empty-action`/`default`) — новая разметка использует их вместо ручных
+`<div class="tr-async-state ...">`.
 
 ```html
 <div class="tr-async-state tr-async-state--empty">
@@ -760,6 +779,35 @@ toast.open({ message: "Сохранено", type: "is-success" });
 - Баннер (не всплывающий, встроенный в страницу) — `b-message`, это не
   overlay и в данный раздел не входит (см. пример в `UiKit.vue`, «Баннер и
   тост»).
+
+## 16a. Загрузка файлов
+
+Task A4.6. Эталон — секция «Загрузка файлов» в `UiKit.vue`.
+`src/modules/uploader/components/{FileUpload,FileList,FileListItem}.vue` в ЛК
+переносятся как **шаблон разметки поверх `b-upload`**, а не переносятся один в
+один: `b-upload` (`drag-drop`, `expanded`) закрывает дропзону, `b-progress` —
+прогресс по каждому файлу, `b-message` (`is-success`/`is-danger`) — итог
+успеха/ошибки. Кастомные `.file-upload*`/`.file-list*` классы и их
+`<style scoped>` в кит не переносятся.
+
+```html
+<b-upload v-model="pickedFile" drag-drop expanded>
+  <div class="has-text-centered">
+    <p><b-icon icon="upload" size="is-medium" /></p>
+    <p>Перетащите файл сюда или нажмите для выбора</p>
+  </div>
+</b-upload>
+
+<b-progress :value="item.progress" size="is-small" show-value />
+<b-message type="is-success" :closable="false">Файл загружен успешно.</b-message>
+<b-message type="is-danger" :closable="false">Ошибка загрузки файла.</b-message>
+```
+
+Реальная загрузка (подготовка `upload_url`, `axios.put` с `onUploadProgress`,
+`collectionObjectCreate`/`Update`/`Delete`) остаётся в ЛК как есть — кит
+демонстрирует только очередь/прогресс/успех/ошибку без сети, локальной
+fixture-state machine (см. `docs/design-system.md`, «Демо-поток загрузки
+файлов»), и не задаёт форму сетевого протокола.
 
 ## 17. Порядок работы над одной страницей ЛК
 

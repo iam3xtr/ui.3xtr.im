@@ -12,12 +12,15 @@
 
 - `src/styles/_trickster-tokens.scss` — фирменные цвета, нейтральная палитра, типографика, отступы и геометрия.
 - `src/styles/trickster-buefy.scss` — конфигурация Bulma/Buefy, светлая и тёмная темы, базовые стили приложения. Это **единственный** файл со стилями проекта.
-- `src/router.js` — маршруты основных разделов приложения.
+- `src/router.js`, `src/navigation.js` — маршруты и реестр навигации основных разделов приложения.
 - `src/components/Dashboard.vue` — главный экран рабочего пространства.
-- `src/components/Conversations.vue` — список и поиск диалогов.
-- `src/components/UiKit.vue` — примеры основных компонентов Buefy, иконок и загрузчика (страница `/ui-kit`).
+- `src/components/{Agents,Knowledge,Channels,Conversations}.vue` — каталоги/списки сущностей на общем контракте `Toolbar` + каталог карточек или `b-table`.
+- `src/components/{Workspace,WorkspaceSettings,WorkspacePlans}.vue` — экраны пространства (вкладки навбара, настройки, тарифы).
+- `src/components/UiKit.vue` — витрина компонентов Buefy, общих примитивов, иконок и загрузчика (страница `/ui-kit`).
+- `src/components/common/` — общие примитивы, которых нет в Buefy: `Toolbar`/`ToolbarSearch`/`ToolbarDropdown`/`MobileFilters` (поиск, фильтры и действия над списком), `NavbarMenu`/`NavbarTabs` (маршрутные вкладки раздела в навбаре через Teleport), `PageHeader`, `AsyncState`/`ListAsyncState` (состояния `loading`/`empty`/`no-results`/`error`/`permission-denied`), `CopyPre`, `TariffSummaryCard`, `Icon`, `Loader`. Подробный контракт каждого — в [`docs/design-system.md`](docs/design-system.md#общие-компоненты).
+- `src/composables/` — `navbarMenu.js` (provide/inject target для `NavbarMenu`), `useFocusTrap.js` (возврат фокуса для мобильных `mobile-modal` панелей), `useSimulatedLoading.js` (демо-задержка кит-экранов).
+- `src/stores/` — Pinia-сторы демо-состояния: `modal.js`/`toaster.js` — тонкие адаптеры над программным API Buefy (`b-modal`/`b-sidebar`/`b-dialog`/`b-toast`), `workspace.js`/`siteSettings.js` — фикстуры кита. Реального API кит не вызывает.
 - `src/assets/icons/` — обоснованный набор кастомных SVG-иконок (вендоры LLM и виды моделей), см. раздел «Иконки».
-- `src/components/common/Icon.vue`, `src/components/common/Loader.vue` — общие компоненты набора иконок и индикации загрузки.
 
 ## Целевая версия
 

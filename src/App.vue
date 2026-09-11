@@ -9,7 +9,11 @@
       :workspaces="workspaces"
       :user="user"
       @create-workspace="workspaceStore.createWorkspace"
-    />
+    >
+      <template #menu>
+        <div ref="navbarMenuTarget" class="tr-topbar__menu" />
+      </template>
+    </Navbar>
 
     <div class="tr-app-shell">
       <Sidebar />
@@ -30,11 +34,14 @@
 
 <script setup>
 import { storeToRefs } from "pinia";
-import { computed, onMounted, ref, watch } from "vue";
+import {
+  computed, onMounted, provide, ref, shallowRef, watch,
+} from "vue";
 import { RouterView, useRoute } from "vue-router";
 
 import Navbar from "./components/Navbar.vue";
 import Sidebar from "./components/Sidebar.vue";
+import { navbarMenuKey } from "./composables/navbarMenu";
 import { useWorkspaceStore } from "./stores/workspace";
 
 /** @typedef {"light" | "dark"} Theme */
@@ -52,6 +59,9 @@ const {
 } = storeToRefs(workspaceStore);
 const isDark = ref(false);
 const route = useRoute();
+
+const navbarMenuTarget = shallowRef(null);
+provide(navbarMenuKey, navbarMenuTarget);
 
 const isFluidContent = computed(
   () => route.meta.contentMode === "fluid",
