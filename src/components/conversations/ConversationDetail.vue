@@ -1,11 +1,20 @@
 <template>
   <section class="tr-conversation-detail">
+    <AsyncState
+      v-if="conversation && demoStore.isPermissionDenied"
+      variant="permission-denied"
+      v-bind="demoStore.permissionDeniedState"
+    />
+
     <ListAsyncState
-      :loading="isLoading"
-      :error="!conversation"
-      error-icon="message-off-outline"
-      error-title="Диалог не найден"
-      error-message="Возможно, диалог был удалён или вы переключили рабочее пространство."
+      v-else
+      :loading="isLoading || (Boolean(conversation) && demoStore.isLoading)"
+      :error="!conversation || demoStore.isError"
+      :error-icon="conversation ? demoStore.listAsyncState.errorIcon : 'message-off-outline'"
+      :error-title="conversation ? demoStore.listAsyncState.errorTitle : 'Диалог не найден'"
+      :error-message="conversation
+        ? demoStore.listAsyncState.errorMessage
+        : 'Возможно, диалог был удалён или вы переключили рабочее пространство.'"
     >
       <template #error-action>
         <b-button tag="router-link" :to="backTo" type="is-primary">
@@ -29,7 +38,9 @@ import { RouterView, useRoute } from "vue-router";
 
 import { useSimulatedLoading } from "../../composables/useSimulatedLoading";
 import { useConversationsStore } from "../../stores/conversations";
+import { useDemoStore } from "../../stores/demo";
 import { useWorkspaceStore } from "../../stores/workspace";
+import AsyncState from "../common/AsyncState.vue";
 import ListAsyncState from "../common/ListAsyncState.vue";
 import NavbarMenu from "../common/NavbarMenu.vue";
 import NavbarTabs from "../common/NavbarTabs.vue";
@@ -49,8 +60,15 @@ import NavbarTabs from "../common/NavbarTabs.vue";
 // `ListAsyncState` error branch as the other detail shells, with a way back
 // to the list — no request is ever made for either case, there being no
 // backend.
+//
+// Demo-режим (Stage A7, Task A7.5): тот же приём, что
+// `agents/AgentDetail.vue` и `knowledge/CollectionDetail.vue` (Task A7.4) —
+// route-валидация (`!conversation`) побеждает над глобальным demo-режимом,
+// а когда диалог найден, `ListAsyncState` дополнительно отражает
+// `demoStore.isLoading`/`isError`, permission-denied — прямым `AsyncState`.
 const route = useRoute();
 const { isLoading } = useSimulatedLoading();
+const demoStore = useDemoStore();
 const conversationsStore = useConversationsStore();
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId } = storeToRefs(workspaceStore);

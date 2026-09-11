@@ -137,6 +137,77 @@
 
     <div v-if="!minimal" class="tr-topbar__actions">
       <b-dropdown
+        class="tr-dropdown tr-demo-panel"
+        position="is-bottom-left"
+        aria-role="menu"
+      >
+        <template #trigger>
+          <button
+            class="tr-navbar-trigger tr-demo-panel-trigger"
+            type="button"
+            aria-label="Панель демо-режима кита"
+          >
+            <b-icon icon="tune-variant" size="is-small" />
+            <span class="tr-navbar-trigger__label">Demo</span>
+          </button>
+        </template>
+
+        <b-dropdown-item custom :focusable="false">
+          <p class="tr-dropdown-intro">
+            Только кит: переключает демонстрационное состояние экранов, не
+            затрагивая контракт кабинета.
+          </p>
+        </b-dropdown-item>
+
+        <b-dropdown-item separator />
+
+        <b-dropdown-item custom :focusable="false">
+          <div class="tr-demo-panel__field">
+            <label class="tr-demo-panel__label" for="tr-demo-panel-mode">
+              Сценарий
+            </label>
+            <b-select
+              id="tr-demo-panel-mode"
+              v-model="demoMode"
+              size="is-small"
+              expanded
+              aria-label="Демо-сценарий состояния"
+            >
+              <option
+                v-for="item in demoModeOptions"
+                :key="item.value"
+                :value="item.value"
+              >
+                {{ item.label }}
+              </option>
+            </b-select>
+          </div>
+        </b-dropdown-item>
+
+        <b-dropdown-item custom :focusable="false">
+          <div class="tr-dropdown-setting">
+            <span class="tr-dropdown-action">Длинные подписи</span>
+            <b-switch
+              v-model="demoLongLabels"
+              size="is-small"
+              aria-label="Длинные подписи в демо-данных"
+            />
+          </div>
+        </b-dropdown-item>
+
+        <b-dropdown-item custom :focusable="false">
+          <div class="tr-dropdown-setting">
+            <span class="tr-dropdown-action">Много данных</span>
+            <b-switch
+              v-model="demoDenseData"
+              size="is-small"
+              aria-label="Большой набор демо-данных"
+            />
+          </div>
+        </b-dropdown-item>
+      </b-dropdown>
+
+      <b-dropdown
         v-model="workspace"
         class="tr-dropdown tr-workspace-dropdown"
         position="is-bottom-left"
@@ -395,6 +466,7 @@
 
 <script setup>
 import { computed, ref } from "vue";
+import { storeToRefs } from "pinia";
 import { useRoute, useRouter } from "vue-router";
 
 import {
@@ -402,6 +474,7 @@ import {
   mainNavigationItems,
 } from "../navigation";
 import { useFocusTrap } from "../composables/useFocusTrap";
+import { DEMO_MODE_LABELS, DEMO_MODES, useDemoStore } from "../stores/demo";
 import Logo from "./Logo.vue";
 import ToolbarSearch from "./common/ToolbarSearch.vue";
 
@@ -466,6 +539,21 @@ const mobileNavDropdown = ref(null);
 const userDropdown = ref(null);
 const route = useRoute();
 const router = useRouter();
+
+// Kit-only demo control panel (Task A7.2): two-way bound to `useDemoStore()`
+// (Task A7.1), not part of the get.3xtr.im navbar contract — see
+// `docs/design-system.md`, "Демо-панель навбара (только кит)".
+const demoStore = useDemoStore();
+const {
+  mode: demoMode,
+  longLabels: demoLongLabels,
+  denseData: demoDenseData,
+} = storeToRefs(demoStore);
+
+const demoModeOptions = DEMO_MODES.map((value) => ({
+  value,
+  label: DEMO_MODE_LABELS[value],
+}));
 
 // Buefy's `mobile-modal` dropdowns already trap Tab (`trap-focus` directive)
 // and close on Escape themselves (`Dropdown.vue`'s own `keyup` listener);

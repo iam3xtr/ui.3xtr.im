@@ -3427,6 +3427,48 @@ button.dropdown-item:hover {
   font-size: tr.$font-size-sm;
 }
 
+// -----------------------------------------------------------------------------
+// Демо-панель навбара (Task A7.2) — kit-only, не является продуктовым
+// контрактом: эти правила не переносятся в get.3xtr.im (см. "Downstream
+// sync" в CLAUDE.md) и не имеют аналога в `docs/design-system.md`'s
+// "Application shell" contract. Изолированы явным префиксом `tr-demo-panel*`.
+// -----------------------------------------------------------------------------
+
+.tr-demo-panel-trigger {
+  min-height: 36px;
+  height: 36px;
+  padding-block: 2px;
+  padding-inline: tr.$space-3;
+  font-size: tr.$font-size-base;
+  background: var(--tr-input-bg);
+  border-color: var(--tr-border);
+}
+
+.tr-demo-panel-trigger:hover {
+  background: var(--tr-input-bg);
+  border-color: var(--tr-text-subtle);
+  opacity: 1;
+}
+
+.dropdown.is-active .tr-demo-panel-trigger {
+  background: var(--tr-input-bg);
+  border-color: var(--tr-primary);
+  box-shadow: 0 0 0 3px rgb(142 100 206 / 0.16);
+  opacity: 1;
+}
+
+.tr-demo-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: tr.$space-2;
+}
+
+.tr-demo-panel__label {
+  color: var(--tr-text-muted);
+  font-size: tr.$font-size-xs;
+  font-weight: tr.$font-weight-medium;
+}
+
 // =============================================================================
 // 14. Responsive
 // =============================================================================
@@ -3624,6 +3666,7 @@ button.dropdown-item:hover {
   }
 
   .tr-topbar > .tr-brand,
+  .tr-demo-panel,
   .tr-workspace-dropdown,
   .tr-notifications-dropdown,
   .tr-user-summary {

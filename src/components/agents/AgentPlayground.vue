@@ -28,6 +28,15 @@
             Сообщения здесь не попадут в реальные диалоги.
           </div>
 
+          <b-message
+            v-if="demoStore.isPartial"
+            type="is-warning"
+            :closable="false"
+          >
+            Показана не вся история песочницы: часть сообщений недоступна
+            из-за временной ошибки. Остальные ниже — актуальны.
+          </b-message>
+
           <div
             v-for="message in agent?.messages"
             :key="message.id"
@@ -64,14 +73,21 @@ import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import { useAgentsStore } from "../../stores/agents";
+import { useDemoStore } from "../../stores/demo";
 import { useWorkspaceStore } from "../../stores/workspace";
 
 // Agent sandbox tab (Task A5.4), routed at `/agents/:id`. Renders inside
 // `AgentDetail`'s `RouterView`, which already gates on the agent existing —
 // `agent` is re-derived here from the route param rather than passed down,
 // mirroring get.3xtr.im's `agents/components/Playground.vue`.
+//
+// Demo-режим (Stage A7, Task A7.5): loading/error/permission-denied are
+// gated by the parent shell (`agents/AgentDetail.vue`); this tab only adds
+// the `partial` banner over its own message list — the same `b-message`
+// contract as `knowledge/Files.vue`/`Agents.vue` (Task A7.3/A7.4).
 const route = useRoute();
 const router = useRouter();
+const demoStore = useDemoStore();
 const agentsStore = useAgentsStore();
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId } = storeToRefs(workspaceStore);

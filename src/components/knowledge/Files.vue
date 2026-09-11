@@ -33,67 +33,77 @@
 
     <Loader v-if="isLoading" size="section" />
 
-    <ListAsyncState
-      v-else
-      :empty="objects.length === 0"
-      empty-icon="file-plus-outline"
-      empty-title="В коллекции пока нет файлов"
-      empty-message="Добавьте файл, ссылку или текстовый документ."
-    >
-      <div class="tr-knowledge__items-header">
-        <span>{{ objects.length }} {{ objectsLabel }}</span>
-        <span class="tr-muted">{{ formatBytes(totalSize) }}</span>
-      </div>
+    <template v-else>
+      <b-message
+        v-if="demoStore.isPartial"
+        type="is-warning"
+        :closable="false"
+      >
+        Показаны не все файлы коллекции: часть списка недоступна из-за
+        временной ошибки. Остальные файлы ниже — актуальны.
+      </b-message>
 
-      <div class="tr-card">
-        <b-table :data="filteredObjects" hoverable mobile-cards>
-          <b-table-column field="name" label="Название" v-slot="{ row }">
-            <span class="tr-row">
-              <b-icon :icon="getObjectKind(row.kind).icon" size="is-small" />
-              <span>
-                <strong>{{ row.name }}</strong>
-                <br v-if="row.sourceLabel" />
-                <small v-if="row.sourceLabel" class="tr-muted">{{ row.sourceLabel }}</small>
+      <ListAsyncState
+        :empty="objects.length === 0 || demoStore.isEmpty"
+        empty-icon="file-plus-outline"
+        empty-title="В коллекции пока нет файлов"
+        empty-message="Добавьте файл, ссылку или текстовый документ."
+      >
+        <div class="tr-knowledge__items-header">
+          <span>{{ objects.length }} {{ objectsLabel }}</span>
+          <span class="tr-muted">{{ formatBytes(totalSize) }}</span>
+        </div>
+
+        <div class="tr-card">
+          <b-table :data="displayObjects" :row-key="(row) => row._demoKey ?? row.id" hoverable mobile-cards>
+            <b-table-column field="name" label="Название" v-slot="{ row }">
+              <span class="tr-row">
+                <b-icon :icon="getObjectKind(row.kind).icon" size="is-small" />
+                <span>
+                  <strong>{{ row.name }}</strong>
+                  <br v-if="row.sourceLabel" />
+                  <small v-if="row.sourceLabel" class="tr-muted">{{ row.sourceLabel }}</small>
+                </span>
               </span>
-            </span>
-          </b-table-column>
+            </b-table-column>
 
-          <b-table-column field="status" label="Статус" v-slot="{ row }">
-            <b-tag size="is-small" :type="getObjectStatus(row.status).tagType">
-              {{ getObjectStatus(row.status).label }}
-            </b-tag>
-          </b-table-column>
+            <b-table-column field="status" label="Статус" v-slot="{ row }">
+              <b-tag size="is-small" :type="getObjectStatus(row.status).tagType">
+                {{ getObjectStatus(row.status).label }}
+              </b-tag>
+            </b-table-column>
 
-          <b-table-column field="size" label="Размер" v-slot="{ row }">
-            {{ formatBytes(row.size) }}
-          </b-table-column>
+            <b-table-column field="size" label="Размер" v-slot="{ row }">
+              {{ formatBytes(row.size) }}
+            </b-table-column>
 
-          <b-table-column field="updatedLabel" label="Обновлено" v-slot="{ row }">
-            {{ row.updatedLabel }}
-          </b-table-column>
+            <b-table-column field="updatedLabel" label="Обновлено" v-slot="{ row }">
+              {{ row.updatedLabel }}
+            </b-table-column>
 
-          <b-table-column v-slot="{ row }" width="56">
-            <b-dropdown position="is-bottom-left" aria-role="list" append-to-body>
-              <template #trigger>
-                <b-button
-                  type="is-text"
-                  icon-left="dots-horizontal"
-                  size="is-small"
-                  :aria-label="`Действия с файлом «${row.name}»`"
-                />
-              </template>
-              <b-dropdown-item aria-role="listitem" @click="removeObject(row)">
-                Удалить
-              </b-dropdown-item>
-            </b-dropdown>
-          </b-table-column>
-        </b-table>
-      </div>
+            <b-table-column v-slot="{ row }" width="56">
+              <b-dropdown position="is-bottom-left" aria-role="list" append-to-body>
+                <template #trigger>
+                  <b-button
+                    type="is-text"
+                    icon-left="dots-horizontal"
+                    size="is-small"
+                    :aria-label="`Действия с файлом «${row.name}»`"
+                  />
+                </template>
+                <b-dropdown-item aria-role="listitem" @click="removeObject(row)">
+                  Удалить
+                </b-dropdown-item>
+              </b-dropdown>
+            </b-table-column>
+          </b-table>
+        </div>
 
-      <p v-if="filteredObjects.length === 0 && objects.length > 0" class="tr-catalog-empty">
-        По вашему запросу файлы не найдены.
-      </p>
-    </ListAsyncState>
+        <p v-if="filteredObjects.length === 0 && objects.length > 0" class="tr-catalog-empty">
+          По вашему запросу файлы не найдены.
+        </p>
+      </ListAsyncState>
+    </template>
 
     <KnowledgeFileFormModal :collection-id="route.params.id" :initial-tab="objectFormTab" />
   </section>
@@ -107,6 +117,7 @@ import {
 import { useRoute } from "vue-router";
 
 import { useSimulatedLoading } from "../../composables/useSimulatedLoading";
+import { useDemoStore } from "../../stores/demo";
 import { useKnowledgeStore } from "../../stores/knowledge";
 import { useModalStore } from "../../stores/modal";
 import { useWorkspaceStore } from "../../stores/workspace";
@@ -125,8 +136,18 @@ import KnowledgeFileFormModal from "./KnowledgeFileFormModal.vue";
 // and-forget timer — the same convention as `KnowledgeFileFormModal.vue`'s
 // `addObject` — so switching tabs before it fires can't leave the object
 // stuck in `indexing` forever.
+//
+// Demo-режим (Stage A7, Task A7.4): the parent shell
+// (`knowledge/CollectionDetail.vue`) already gates loading/error/
+// permission-denied for the whole tab set, so this tab only adds what's
+// local to it — an `empty` override and the `partial` banner (this task's
+// "PartialDataBanner" contract, i.e. the same `b-message` pattern as
+// `Agents.vue`/`ChannelsView.vue`, Task A7.3) over the file table, plus
+// presentation-only "много данных"/"длинные подписи" in `displayObjects`
+// that never touch `useKnowledgeStore()`.
 const route = useRoute();
 const { isLoading } = useSimulatedLoading();
+const demoStore = useDemoStore();
 const knowledgeStore = useKnowledgeStore();
 const modalStore = useModalStore();
 const workspaceStore = useWorkspaceStore();
@@ -152,6 +173,38 @@ const filteredObjects = computed(() => {
   }
 
   return objects.value.filter((object) => object.name.toLocaleLowerCase().includes(search));
+});
+
+const DENSE_TARGET_COUNT = 24;
+const LONG_LABEL_SUFFIX = " — демонстрационное длинное название для проверки переноса строк в таблице файлов";
+
+const displayObjects = computed(() => {
+  let list = filteredObjects.value;
+
+  if (demoStore.denseData && list.length > 0 && list.length < DENSE_TARGET_COUNT) {
+    const dense = [...list];
+    let i = 0;
+    while (dense.length < DENSE_TARGET_COUNT) {
+      const source = list[i % list.length];
+      const copyIndex = Math.floor(dense.length / list.length) + 1;
+      dense.push({
+        ...source,
+        name: `${source.name} (${copyIndex})`,
+        _demoKey: `${source.id}-dense-${dense.length}`,
+      });
+      i += 1;
+    }
+    list = dense;
+  }
+
+  if (demoStore.longLabels) {
+    list = list.map((object) => ({
+      ...object,
+      name: `${object.name}${LONG_LABEL_SUFFIX}`,
+    }));
+  }
+
+  return list;
 });
 
 function getObjectKind(kind) {

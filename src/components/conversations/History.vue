@@ -22,6 +22,15 @@
       </header>
 
       <div class="tr-conversation-messages" aria-live="polite">
+        <b-message
+          v-if="demoStore.isPartial"
+          type="is-warning"
+          :closable="false"
+        >
+          Показана не вся история диалога: часть сообщений недоступна
+          из-за временной ошибки. Остальные ниже — актуальны.
+        </b-message>
+
         <div
           v-for="message in conversation.messages"
           :key="message.id"
@@ -64,6 +73,7 @@ import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import { useConversationsStore } from "../../stores/conversations";
+import { useDemoStore } from "../../stores/demo";
 import { useWorkspaceStore } from "../../stores/workspace";
 import ConversationHeader from "./ConversationHeader.vue";
 import MessageDeliveryStatus from "./MessageDeliveryStatus.vue";
@@ -75,8 +85,14 @@ import MessageDeliveryStatus from "./MessageDeliveryStatus.vue";
 // re-derives its agent instead of receiving it as a prop (Task A5.4). The
 // composer only ever mutates the store's in-memory `messages` array — no
 // network call is made, per Task A5.7's acceptance criteria.
+//
+// Demo-режим (Stage A7, Task A7.5): loading/error/permission-denied are
+// gated by the parent shell (`conversations/ConversationDetail.vue`); this
+// tab only adds the `partial` banner over its own message list — the same
+// `b-message` contract as `knowledge/Files.vue`/`agents/AgentPlayground.vue`.
 const route = useRoute();
 const router = useRouter();
+const demoStore = useDemoStore();
 const conversationsStore = useConversationsStore();
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId } = storeToRefs(workspaceStore);

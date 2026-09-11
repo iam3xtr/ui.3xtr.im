@@ -1,93 +1,115 @@
 <template>
   <section class="tr-workbench-page">
-    <Loader v-if="isLoading" size="section" />
+    <Loader v-if="loading" size="section" />
+
+    <AsyncState
+      v-else-if="demoStore.isPermissionDenied"
+      variant="permission-denied"
+      v-bind="demoStore.permissionDeniedState"
+    />
 
     <template v-else>
-    <Toolbar
-      v-if="conversations.length > 0"
-      class="tr-workbench-page__header"
-      v-model:search="query"
-      search-placeholder="Поиск по диалогам"
-      :filters-active="Boolean(statusFilter || channelFilter || agentFilter)"
-    >
-      <template #filters>
-        <ToolbarDropdown
-          v-if="agentOptions.length > 0"
-          v-model="agentFilter"
-          class="tr-page-toolbar__filter"
-          aria-label="Фильтр диалогов по агенту"
-          all-label="Все агенты"
-          :options="agentOptions"
-        />
+      <b-message
+        v-if="demoStore.isPartial"
+        type="is-warning"
+        :closable="false"
+      >
+        Показаны не все диалоги: часть списка недоступна из-за временной
+        ошибки. Остальные диалоги ниже — актуальны.
+      </b-message>
 
-        <ToolbarDropdown
-          v-model="statusFilter"
-          class="tr-page-toolbar__filter"
-          aria-label="Фильтр диалогов по статусу"
-          all-label="Все статусы"
-          :options="conversationStatuses"
-        />
-
-        <ToolbarDropdown
-          v-model="channelFilter"
-          class="tr-page-toolbar__filter"
-          aria-label="Фильтр диалогов по каналу"
-          all-label="Все каналы"
-          :options="conversationChannels"
-        />
-      </template>
-    </Toolbar>
-
-    <section v-if="conversations.length === 0" class="tr-section-empty">
-      <AsyncState
-        variant="empty"
-        icon="message-outline"
-        title="Диалогов пока нет"
-        message="Новые диалоги появятся после обращения пользователей."
-      />
-    </section>
-
-    <section v-else class="tr-conversations">
-      <aside class="tr-conversation-panel tr-conversations-list">
-        <nav class="tr-conversations-list__items" aria-label="Список диалогов">
-          <button
-            v-for="conversation in filteredConversations"
-            :key="conversation.id"
-            class="tr-conversation-item"
-            type="button"
-            @click="openConversation(conversation)"
-          >
-            <span class="tr-conversation-avatar">
-              {{ conversation.initials }}
-            </span>
-            <span class="tr-conversation-item__content">
-              <span class="tr-conversation-item__heading">
-                <strong>{{ conversation.contact }}</strong>
-                <small>{{ conversation.updated }}</small>
-              </span>
-              <span class="tr-conversation-item__preview">
-                {{ conversation.preview }}
-              </span>
-              <span class="tr-conversation-item__channel">
-                {{ conversation.channel }} · {{ conversation.agent }}
-              </span>
-            </span>
-          </button>
-
-          <AsyncState
-            v-if="filteredConversations.length === 0"
-            variant="no-results"
-            message="Диалоги не найдены."
+      <Toolbar
+        v-if="conversations.length > 0 && !demoStore.isEmpty && !demoStore.isError"
+        class="tr-workbench-page__header"
+        v-model:search="query"
+        search-placeholder="Поиск по диалогам"
+        :filters-active="Boolean(statusFilter || channelFilter || agentFilter)"
+      >
+        <template #filters>
+          <ToolbarDropdown
+            v-if="agentOptions.length > 0"
+            v-model="agentFilter"
+            class="tr-page-toolbar__filter"
+            aria-label="Фильтр диалогов по агенту"
+            all-label="Все агенты"
+            :options="agentOptions"
           />
-        </nav>
-      </aside>
 
-      <article class="tr-conversations-placeholder">
-        <b-icon icon="message-text-outline" size="is-large" />
-        <strong>Выберите диалог</strong>
-        <span>Сообщения и свойства диалога откроются на отдельной странице.</span>
-      </article>
-    </section>
+          <ToolbarDropdown
+            v-model="statusFilter"
+            class="tr-page-toolbar__filter"
+            aria-label="Фильтр диалогов по статусу"
+            all-label="Все статусы"
+            :options="conversationStatuses"
+          />
+
+          <ToolbarDropdown
+            v-model="channelFilter"
+            class="tr-page-toolbar__filter"
+            aria-label="Фильтр диалогов по каналу"
+            all-label="Все каналы"
+            :options="conversationChannels"
+          />
+        </template>
+      </Toolbar>
+
+      <!--
+        `loading` из `demoStore.listAsyncState` переопределён в false: этот
+        блок и так рендерится только в v-else от внешнего `Loader`, который
+        уже перехватил `demoStore.isLoading` выше — без переопределения
+        одноимённое поле объекта осталось бы мёртвым и вводящим в заблуждение
+        (структурно недостижимым в этой позиции).
+      -->
+      <ListAsyncState
+        v-bind="demoStore.listAsyncState"
+        :loading="false"
+        :empty="conversations.length === 0 || demoStore.isEmpty"
+        empty-icon="message-outline"
+        empty-title="Диалогов пока нет"
+        empty-message="Новые диалоги появятся после обращения пользователей."
+      >
+        <section class="tr-conversations">
+          <aside class="tr-conversation-panel tr-conversations-list">
+            <nav class="tr-conversations-list__items" aria-label="Список диалогов">
+              <button
+                v-for="conversation in displayConversations"
+                :key="conversation._demoKey ?? conversation.id"
+                class="tr-conversation-item"
+                type="button"
+                @click="openConversation(conversation)"
+              >
+                <span class="tr-conversation-avatar">
+                  {{ conversation.initials }}
+                </span>
+                <span class="tr-conversation-item__content">
+                  <span class="tr-conversation-item__heading">
+                    <strong>{{ conversation.contact }}</strong>
+                    <small>{{ conversation.updated }}</small>
+                  </span>
+                  <span class="tr-conversation-item__preview">
+                    {{ conversation.preview }}
+                  </span>
+                  <span class="tr-conversation-item__channel">
+                    {{ conversation.channel }} · {{ conversation.agent }}
+                  </span>
+                </span>
+              </button>
+
+              <AsyncState
+                v-if="filteredConversations.length === 0"
+                variant="no-results"
+                message="Диалоги не найдены."
+              />
+            </nav>
+          </aside>
+
+          <article class="tr-conversations-placeholder">
+            <b-icon icon="message-text-outline" size="is-large" />
+            <strong>Выберите диалог</strong>
+            <span>Сообщения и свойства диалога откроются на отдельной странице.</span>
+          </article>
+        </section>
+      </ListAsyncState>
     </template>
   </section>
 </template>
@@ -104,8 +126,10 @@ import {
   CONVERSATION_STATUSES,
   useConversationsStore,
 } from "../stores/conversations";
+import { useDemoStore } from "../stores/demo";
 import { useWorkspaceStore } from "../stores/workspace";
 import AsyncState from "./common/AsyncState.vue";
+import ListAsyncState from "./common/ListAsyncState.vue";
 import Loader from "./common/Loader.vue";
 import Toolbar from "./common/Toolbar.vue";
 import ToolbarDropdown from "./common/ToolbarDropdown.vue";
@@ -123,10 +147,20 @@ import ToolbarDropdown from "./common/ToolbarDropdown.vue";
 const route = useRoute();
 const router = useRouter();
 const { isLoading } = useSimulatedLoading();
+const demoStore = useDemoStore();
 const conversationsStore = useConversationsStore();
 const agentsStore = useAgentsStore();
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId } = storeToRefs(workspaceStore);
+
+// Demo-режим (Stage A7, Task A7.3) — тот же контракт, что и в
+// `Agents.vue`/`ChannelsView.vue`: loading/empty/error через
+// `ListAsyncState`, permission-denied прямым `AsyncState`, partial —
+// `b-message`-баннером поверх доступных диалогов. Список внутри панели
+// сохраняет свой собственный no-results (`AsyncState variant="no-results"`)
+// для «диалоги не найдены по поиску» — это отдельный случай от demo-режима
+// и не трогается.
+const loading = computed(() => isLoading.value || demoStore.isLoading);
 
 /** @typedef {import("../stores/conversations").Conversation} Conversation */
 
@@ -178,6 +212,44 @@ const filteredConversations = computed(() => {
 
     return matchesSearch && matchesStatus && matchesChannel;
   });
+});
+
+// Плотность и длина подписей списка диалогов для demo-режима (Task A7.3):
+// presentation-проекция `filteredConversations`, ничего не пишет в
+// `useConversationsStore()`. Клик по дублю открывает тот же реальный
+// диалог — `id`/`agentId` не меняются, меняется только `contact`/`preview`
+// и служебный `_demoKey` для `v-for`.
+const DENSE_TARGET_COUNT = 30;
+const LONG_LABEL_SUFFIX = " — демонстрационное длинное имя для проверки переноса текста в списке диалогов";
+
+const displayConversations = computed(() => {
+  let list = filteredConversations.value;
+
+  if (demoStore.denseData && list.length > 0 && list.length < DENSE_TARGET_COUNT) {
+    const dense = [...list];
+    let i = 0;
+    while (dense.length < DENSE_TARGET_COUNT) {
+      const source = list[i % list.length];
+      const copyIndex = Math.floor(dense.length / list.length) + 1;
+      dense.push({
+        ...source,
+        contact: `${source.contact} (${copyIndex})`,
+        _demoKey: `${source.id}-dense-${dense.length}`,
+      });
+      i += 1;
+    }
+    list = dense;
+  }
+
+  if (demoStore.longLabels) {
+    list = list.map((conversation) => ({
+      ...conversation,
+      contact: `${conversation.contact}${LONG_LABEL_SUFFIX}`,
+      preview: `${conversation.preview}${LONG_LABEL_SUFFIX}`,
+    }));
+  }
+
+  return list;
 });
 
 /**

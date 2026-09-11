@@ -10,14 +10,30 @@
       </b-button>
     </div>
 
-    <Loader v-if="isLoading" size="section" class="tr-loader--standalone" />
+    <Loader v-if="loading" size="section" class="tr-loader--standalone" />
+
+    <AsyncState
+      v-else-if="demoStore.isPermissionDenied"
+      variant="permission-denied"
+      v-bind="demoStore.permissionDeniedState"
+    />
 
     <template v-else>
+      <b-message
+        v-if="demoStore.isPartial"
+        type="is-warning"
+        :closable="false"
+      >
+        Показаны не все участники и приглашения: часть списка недоступна
+        из-за временной ошибки. Остальное ниже — актуально.
+      </b-message>
+
       <div class="tr-card mb-5">
         <h2 class="tr-card__title">Участники</h2>
 
         <ListAsyncState
-          :empty="members.length === 0"
+          v-bind="demoStore.listAsyncState"
+          :empty="members.length === 0 || demoStore.isEmpty"
           empty-icon="account-group-outline"
           empty-title="В пространстве пока нет участников"
         >
@@ -83,7 +99,8 @@
         <h2 class="tr-card__title">Приглашения</h2>
 
         <ListAsyncState
-          :empty="invites.length === 0"
+          v-bind="demoStore.listAsyncState"
+          :empty="invites.length === 0 || demoStore.isEmpty"
           empty-icon="email-outline"
           empty-title="Нет активных приглашений"
           empty-message="Пригласите участников по email — они появятся здесь до подтверждения."
@@ -122,10 +139,12 @@ import { storeToRefs } from "pinia";
 import { computed, ref, watch } from "vue";
 
 import { useSimulatedLoading } from "../../composables/useSimulatedLoading";
+import { useDemoStore } from "../../stores/demo";
 import { MEMBER_ROLES, useMembersStore } from "../../stores/members";
 import { useModalStore } from "../../stores/modal";
 import { useToasterStore } from "../../stores/toaster";
 import { useWorkspaceStore } from "../../stores/workspace";
+import AsyncState from "../common/AsyncState.vue";
 import Loader from "../common/Loader.vue";
 import ListAsyncState from "../common/ListAsyncState.vue";
 import InviteMemberForm from "./InviteMemberForm.vue";
@@ -136,7 +155,14 @@ import InviteMemberForm from "./InviteMemberForm.vue";
 // mirrors the cabinet's start/save/cancel inline-select pattern
 // (`get.3xtr.im/src/modules/workspace/components/Members.vue`) without its
 // permission gate — the kit has no auth/roles store to check against.
+//
+// Demo-режим (Stage A7, Task A7.5): тот же контракт, что у каталогов
+// (Task A7.3) — `Loader`/прямой `AsyncState` на loading/permission-denied,
+// `demoStore.listAsyncState` на оба `ListAsyncState` (error/empty), partial —
+// `b-message`-баннером поверх обеих таблиц.
 const { isLoading } = useSimulatedLoading();
+const demoStore = useDemoStore();
+const loading = computed(() => isLoading.value || demoStore.isLoading);
 const membersStore = useMembersStore();
 const modalStore = useModalStore();
 const toaster = useToasterStore();

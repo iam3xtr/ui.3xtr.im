@@ -5,6 +5,7 @@ import { createMemoryHistory, createRouter } from "vue-router";
 import Buefy from "buefy";
 
 import Agents from "../../../src/components/Agents.vue";
+import { useDemoStore } from "../../../src/stores/demo.js";
 import { useWorkspaceStore } from "../../../src/stores/workspace.js";
 
 // Регрессия из ревью Stage A6 (Finding 2): Task A6.1 поменяло `agent.model` с
@@ -28,12 +29,16 @@ if (typeof window.matchMedia !== "function") {
   });
 }
 
-async function mountAgents({ workspaceId = "demo" } = {}) {
+async function mountAgents({ workspaceId = "demo", demoMode } = {}) {
   const pinia = createPinia();
   setActivePinia(pinia);
 
   const workspaceStore = useWorkspaceStore();
   workspaceStore.activeWorkspaceId = workspaceId;
+
+  if (demoMode) {
+    useDemoStore().setMode(demoMode);
+  }
 
   const router = createRouter({
     history: createMemoryHistory(),
@@ -95,5 +100,52 @@ describe("Agents.vue — модель в карточке и фильтре (Sta
     // в каталог — показывается как есть, а не как undefined/пустая строка.
     expect(wrapper.text()).toContain("meta-llama/llama-3.1-405b-instruct");
     expect(wrapper.text()).not.toContain("undefined");
+  });
+});
+
+// Task A7.3: каталог агентов подключён к глобальному demo-режиму
+// (`useDemoStore()`, Task A7.1) — loading/empty/error через
+// `ListAsyncState`, permission-denied прямым `AsyncState`, partial —
+// `b-message`-баннером поверх доступных карточек.
+describe("Agents.vue — demo-состояния (Task A7.3)", () => {
+  it("error: показывает ошибку и не рендерит карточки каталога", async () => {
+    const { wrapper } = await mountAgents({ demoMode: "error" });
+
+    expect(wrapper.find(".tr-async-state--error").exists()).toBe(true);
+    expect(wrapper.findAll(".tr-entity-card").length).toBe(0);
+  });
+
+  it("empty: показывает пустое состояние, не рендерит карточки агентов и предлагает создать первого", async () => {
+    const { wrapper } = await mountAgents({ demoMode: "empty" });
+
+    expect(wrapper.find(".tr-async-state--empty").exists()).toBe(true);
+    expect(wrapper.findAll(".tr-entity-card--interactive:not(.tr-entity-card--create)").length).toBe(0);
+    // Finding 5 (Stage A7 review): CTA "Создать нового агента" не должен
+    // пропадать в demo empty-режиме — согласовано с ChannelsView.vue/Files.vue.
+    const createButton = wrapper.findAll("button")
+      .find((button) => button.text().includes("Создать нового агента"));
+    expect(createButton).toBeTruthy();
+  });
+
+  it("permission-denied: показывает отказ в доступе через AsyncState", async () => {
+    const { wrapper } = await mountAgents({ demoMode: "permission-denied" });
+
+    expect(wrapper.find(".tr-async-state--permission-denied").exists()).toBe(true);
+    expect(wrapper.findAll(".tr-entity-card").length).toBe(0);
+  });
+
+  it("partial: показывает баннер и оставляет доступные карточки агентов", async () => {
+    const { wrapper } = await mountAgents({ demoMode: "partial" });
+
+    expect(wrapper.find(".message.is-warning").exists()).toBe(true);
+    expect(wrapper.findAll(".tr-entity-card__title").length).toBeGreaterThan(0);
+  });
+
+  it("ready сохраняет обычный список карточек без демо-баннеров", async () => {
+    const { wrapper } = await mountAgents({ demoMode: "ready" });
+
+    expect(wrapper.find(".message.is-warning").exists()).toBe(false);
+    expect(wrapper.find(".tr-async-state--permission-denied").exists()).toBe(false);
+    expect(wrapper.findAll(".tr-entity-card__title").length).toBeGreaterThan(0);
   });
 });

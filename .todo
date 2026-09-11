@@ -1,150 +1,319 @@
-# TODO: Stage A6 — Выбор модели и BYOK
+# TODO: Stage A7 — Демо-переключатель состояний
 
 Дата актуализации: 2026-09-11
 
-Статус: декомпозиция активного Stage A6 из `.plan`; Stage A5 закрыт.
+Статус: Stage A7 завершён; все задачи проверены и закрыты 2026-09-11.
 
 ## Назначение
 
-Этот файл декомпозирует только Stage A6: локальный каталог моделей,
-Buefy-first селектор и BYOK-состояние в настройках агента. Вне scope —
-серверный контракт и перенос свободного идентификатора в `get.3xtr.im`
-(подпункт Stage B2), API-вызовы и этапы A7–B4.
+Этот файл декомпозирует только Stage A7: глобальный режим демонстрационных
+состояний, применение его на маршрутах кита и матрицу контрактов на `/kit`.
+Вне scope — сетевые запросы, продуктовая панель в `get.3xtr.im`, screenshot
+visual-regression (deferred backlog) и контракт синхронизации Stage A8.
 
-Issue [api.3xtr.im#112](https://github.com/iam3xtr/api.3xtr.im/issues/112)
-задаёт контракт произвольного OpenRouter `provider_model_id` для
-workspace-пользователя. Перенос свободного ввода в кабинет ждёт его реализации.
+Открытые Issues `iam3xtr/ui.3xtr.im` проверены 2026-09-11: Issue #1 о
+версионированных release-артефактах не пересекается с этим этапом.
 
-## Agent domain
+## Demo state
 
-### Model fixtures
+### Store and persistence
 
-### [P0] Task A6.1. Ввести каталог моделей и fixture-контракт агента
+### [P2] Task A7.1. Ввести persisted demo-store и контракт проекций состояния
 
 Статус: done
 
-Источник: Stage A6 `.plan`; контракт `recommended`, `api_key_provider_id`,
-`api_key_cleared`, `has_api_key`, `provider_model_id`.
+Источник: Stage A7 `.plan`; контракты `AsyncState`/`ListAsyncState`;
+`src/stores/*.js`.
 
-Описание: Настройки агента должны получать локальный каталог моделей и
-состояние BYOK, чтобы селектор и сохранение воспроизводили контракт без сети.
+Описание: Кит должен иметь единый реактивный источник демонстрационных
+состояний, чтобы переход между маршрутами немедленно показывал одинаковый
+режим без API и без локальных условных цепочек.
 
 Уточнённые требования:
 
-- Каталог содержит рекомендуемые и обычные модели нескольких вендоров,
-  включая `openrouter`, длинное имя и запись без иконки.
-- Агент хранит каталожную модель и, только для BYOK, опциональный
-  `provider_model_id`; свободный идентификатор не подменяет UID модели.
-- Все изменения — синхронные Pinia fixture-операции без `fetch`/`axios` и
-  persistence.
+- Допустимы только режимы `ready`, `loading`, `empty`, `error`,
+  `permission-denied`, `partial`; неизвестное сохранённое значение заменяется
+  на `ready`.
+- Отдельные булевы настройки «длинные подписи» и «много данных» сохраняются
+  вместе с режимом в namespaced ключе `localStorage` кита.
+- Store предоставляет одно нормализованное представление флагов и текстов для
+  `ListAsyncState`; приоритет самого компонента не меняется.
+- Store не выполняет сетевых вызовов, не изменяет fixture-данные доменных
+  stores и безопасно работает при недоступном `localStorage` в unit-тестах.
 
 План реализации:
 
-1. Добавить `src/stores/models.js` с нормализованными fixture-моделями и
-   провайдерами.
-2. Дополнить `src/stores/agents.js` полями BYOK и action сохранения, который
-   моделирует `api_key_cleared`.
-3. Добавить узкие unit-тесты store для OpenRouter и сброса идентификатора.
+1. Добавить `src/stores/demo.js` с валидацией, actions переключателей и
+   загрузкой/сохранением параметров.
+2. Добавить компактный helper/composable для передачи нормализованных props в
+   `ListAsyncState`, если без него экран вынужден дублировать mapping режимов.
+3. Добавить unit-тесты сценариев default, persistence и invalid persisted value.
 
 Область:
 
-- `src/stores/models.js`
-- `src/stores/agents.js`
+- `src/stores/demo.js`
+- `src/composables/**`
 - `tests/unit/stores/**`
 
 Критерии приёмки:
 
-- Fixture-каталог покрывает состояния Stage A6.
-- Store не выполняет сетевых вызовов и отражает `api_key_cleared`.
-- Узкие тесты, `npm run lint:style`, `npm run guard:no-component-styles` и
-  `npm run build` проходят.
+- Режим и обе настройки изменяются реактивно, переживают reload и не допускают
+  невалидного состояния.
+- Единая проекция корректно выражает `loading`, `empty`, `error` и
+  `permission-denied` через существующий async-контракт.
+- Узкие unit-тесты проходят без сети.
 
-### Accessible model picker
+### Navbar control panel
 
-### [P0] Task A6.2. Реализовать `ModelSelect` на `b-autocomplete`
+### [P2] Task A7.2. Добавить изолированную панель управления demo-режимом
 
 Статус: done
 
-Источник: Stage A6 `.plan`; `get.3xtr.im/src/modules/agents/components/ModelSelect.vue`.
+Источник: Stage A7 `.plan`; `src/components/Navbar.vue`; Task A7.1.
 
-Описание: Пользователь выбирает модель через доступный поиск с рекомендациями,
-иконкой провайдера и BYOK-ограничением вместо ручного dropdown.
+Описание: Разработчик должен переключать сценарий, объём и длину подписей из
+глобальной навигации кита, не меняя маршрута и не затрагивая контракт кабинета.
 
 Уточнённые требования:
 
-- Без поиска выводится группа «Рекомендуемые»; ввод ищет по имени, вендору и
-  идентификатору по всему каталогу в группе «Все модели».
-- BYOK ограничивает список OpenRouter и явно сообщает это пользователю.
-- При пустом поиске с BYOK доступен пункт `vendor/model`: только непустая
-  строка без пробелов, максимум 255 символов. Без BYOK этого пункта нет.
-- Иконка разрешается цепочкой `provider.icon → provider.protocol →
-  provider.id → brain`; прямых DOM-обращений нет.
+- Панель доступна только в ките и не отображается на auth-маршрутах с
+  минимальным `Navbar`.
+- Контролы используют Buefy-компоненты, имеют доступные подписи и двусторонне
+  связаны с `useDemoStore()`.
+- Селектор режима включает все шесть значений; переключатели управляют
+  длинными подписями и большим набором данных.
+- Все новые классы имеют явный demo-префикс и stylesheet-комментарий о том,
+  что они не являются продуктовым контрактом для downstream sync.
 
 План реализации:
 
-1. Создать `src/components/agents/ModelSelect.vue` вокруг `b-autocomplete` с
-   группированием, фильтрацией и slot-разметкой результата.
-2. Реализовать выбор каталожной модели и валидацию/отображение свободного
-   BYOK-идентификатора.
-3. Добавить необходимые модификаторы autocomplete в общий stylesheet.
+1. Подключить demo-store к `Navbar.vue` и разместить компактную панель в
+   существующей навигационной поверхности.
+2. Добавить только необходимые изолированные правила в
+   `trickster-buefy.scss`.
+3. Зафиксировать назначение панели и её исключение из продуктового контракта в
+   `docs/design-system.md`.
 
 Область:
 
-- `src/components/agents/ModelSelect.vue`
+- `src/components/Navbar.vue`
 - `src/styles/trickster-buefy.scss`
-- `docs/{design-system,agent-migration-guide}.md`
+- `docs/design-system.md`
+- `tests/unit/components/**`
 
 Критерии приёмки:
 
-- Выбор управляется клавиатурой средствами Buefy; прямых DOM-обращений нет.
-- Рекомендации, поиск, OpenRouter-фильтр, placeholder и свободный
-  идентификатор соответствуют требованиям.
-- Нет `<style>` в компоненте; `lint:style`, guard и build проходят.
+- Переключение из navbar меняет demo-store без перезагрузки и сохраняется.
+- Минимальный navbar auth-экранов не содержит demo-панели.
+- Нет `<style>` в `.vue`; component-тест и `npm run lint:style` проходят.
 
-### BYOK save flow
+## Catalog and conversation domains
 
-### [P1] Task A6.3. Встроить выбор модели и подтверждение BYOK в настройки агента
+### State projection on main catalogs
+
+### [P2] Task A7.3. Подключить demo-состояния к каталогам агентов, каналов и диалогов
 
 Статус: done
 
-Источник: Stage A6 `.plan`; `AgentForm.vue` и тесты BYOK кабинета.
+Источник: Stage A7 `.plan`; `Agents.vue`, `channels/ChannelsView.vue`,
+`Conversations.vue`; Task A7.1.
 
-Описание: Настройки агента должны показывать состояние собственного ключа,
-предупреждать о последствиях и подтверждать очистку до fixture-сохранения.
+Описание: Основные списки агентов, каналов и диалогов должны показывать один
+и тот же выбранный сценарий, включая длинные названия и плотный fixture-набор.
 
 Уточнённые требования:
 
-- Ключ использует `b-input type="password" password-reveal`; собственный
-  переключатель видимости и `tr-field__secret-toggle` не используются.
-- Изменение BYOK сразу показывает `b-message` о фильтрации, сбросе модели и
-  вероятном удалении ключа.
-- Очистка ключа или смена провайдера вызывает `b-dialog` до mutation: отмена
-  ничего не меняет, подтверждение сохраняет и отражает `api_key_cleared`.
-- Выключение BYOK очищает `provider_model_id`; код ссылается на Issue #112,
-  не утверждая существование API-контракта.
+- `ready` сохраняет существующую интерактивность и fixture-поведение экранов.
+- `loading`, `empty`, `error` и `permission-denied` выводятся только через
+  `ListAsyncState`, без новых локальных компонентов состояний.
+- `partial` использует существующий контракт `PartialDataBanner` вместе с
+  доступным контентом, а не заменяет его ошибкой.
+- «Много данных» расширяет только отображаемый набор fixture-объектов, а
+  «длинные подписи» не меняют исходные данные stores.
 
 План реализации:
 
-1. Заменить `b-select` в `AgentSettings.vue` на `ModelSelect`, добавить
-   BYOK-control и Buefy-поле ключа.
-2. Вести draft отдельно от fixture, подключить inline warning и pre-save
-   `b-dialog` через доступный overlay adapter.
-3. Добавить component-тесты сохранения и обновить контрактную документацию
-   по фактическому поведению.
+1. Подключить demo-store/projection к `Agents.vue`, `ChannelsView.vue` и
+   `Conversations.vue`.
+2. Добавить route-local presentation fixtures для длинных подписей и больших
+   списков без записи в доменные stores.
+3. Добавить узкие component-тесты приоритетных состояний и partial-баннера.
 
 Область:
 
-- `src/components/agents/AgentSettings.vue`
-- `src/components/agents/ModelSelect.vue`
-- `src/stores/agents.js`
-- `tests/unit/agents/**`
-- `docs/design-system.md`
+- `src/components/Agents.vue`
+- `src/components/channels/ChannelsView.vue`
+- `src/components/Conversations.vue`
+- `tests/unit/components/**`
 
 Критерии приёмки:
 
-- Экран собирает состояния без ключа, BYOK, пустого поиска, свободного
-  идентификатора, ошибок валидации и открытого подтверждения.
-- Отмена не меняет сохранённого агента; подтверждение применяет mutation и
-  показывает очистку ключа.
-- `npm run lint:style`, `npm run guard:no-component-styles`, `npm run build`
-  и `git diff --check` проходят.
+- Каждый из трёх каталогов немедленно отражает все шесть demo-режимов.
+- `partial` оставляет доступный контент и показывает единый banner-контракт.
+- Узкие component-тесты и `npm run test:unit` проходят.
+
+### [P2] Task A7.4. Подключить demo-состояния к knowledge-маршрутам
+
+Статус: done
+
+Источник: Stage A7 `.plan`; `Knowledge.vue`, `knowledge/**`; Task A7.1.
+
+Описание: Каталог знаний, карточка коллекции, файлы, статистика и настройки
+должны быть проверяемы в тех же глобальных состояниях, что и остальные
+данные кита.
+
+Уточнённые требования:
+
+- Не найденная route-сущность продолжает показывать свой корректный fallback;
+  глобальный demo-режим не маскирует route validation.
+- Для списков и detail-shell используется `ListAsyncState`; форма не получает
+  отдельную несовместимую систему заглушек.
+- `partial` на файловых и статистических представлениях использует только
+  существующий `PartialDataBanner`-контракт.
+- Длинные подписи и большой набор применяются к presentation-данным knowledge,
+  без mutation `useKnowledgeStore()`.
+
+План реализации:
+
+1. Подключить projection к каталогу и detail-shell коллекции.
+2. Распространить единый сценарий на Files, Statistics и Settings там, где
+   экран отображает асинхронные fixture-данные.
+3. Добавить component-тесты для empty/error/detail fallback и partial.
+
+Область:
+
+- `src/components/Knowledge.vue`
+- `src/components/knowledge/**`
+- `tests/unit/components/**`
+
+Критерии приёмки:
+
+- Все knowledge-маршруты воспроизводимо показывают релевантный выбранный
+  demo-сценарий.
+- Ошибка маршрута и глобальный demo-режим не смешиваются.
+- `npm run test:unit` проходит.
+
+## Remaining application routes
+
+### [P2] Task A7.5. Подключить demo-состояния к detail, workspace, profile и auth-экранам
+
+Статус: done
+
+Источник: Stage A7 `.plan`; `agents/**`, `conversations/**`, `workspace/**`,
+`profile/**`, `auth/**`, `Dashboard.vue`; Task A7.1.
+
+Описание: Все оставшиеся маршруты согласованного охвата должны участвовать в
+одном demo-режиме, чтобы редизайн не проверялся только на каталогах.
+
+Уточнённые требования:
+
+- Detail-shell агентов и диалогов сохраняют navbar-вкладки и route fallback в
+  каждом применимом состоянии.
+- Workspace, profile и dashboard используют `ListAsyncState` либо уже
+  существующий эквивалентный async-контракт; новые частные state-блоки не
+  создаются.
+- Auth-формы не симулируют ложные permissions: режим влияет только на
+  асинхронно загружаемые fixture-поверхности и не ломает отправку демо-форм.
+- `ready` не меняет существующие CRUD/overlay fixtures; большие данные и
+  длинные подписи остаются presentation-only.
+
+**Статические исключения (зафиксировано по итогам review 2026-09-11, решение
+пользователя).** «Каждый маршрут согласованного Stage A5 охвата» относится
+только к маршрутам, у которых есть собственная async fixture-поверхность
+(список/детали, которые в реальном кабинете подгружаются с сервера). У
+перечисленных ниже маршрутов такой поверхности нет вовсе — это чисто
+синхронные формы редактирования (читают/пишут стор напрямую, без состояния
+загрузки в принципе) или auth-формы, которым запрещено симулировать ложные
+permissions самим этим же критерием выше. Подключать к ним `useDemoStore()`
+означало бы конструировать incoherent loading/error-состояние, которого в
+реальном поведении экрана никогда не бывает — это намеренно не делается:
+
+- `src/components/agents/AgentSettings.vue` (`/agents/:id/settings`);
+- `src/components/conversations/Settings.vue` (`/conversations/:agentId/:conversationId/settings`);
+- `src/components/knowledge/Settings.vue` (`/knowledge/:id/settings`);
+- `src/components/profile/Settings.vue` (`/profile`);
+- `src/components/WorkspaceSettings.vue` (`/workspace/settings`);
+- `src/components/workspace/WorkspaceBilling.vue` (`/workspace/billing`) —
+  уже статичный `AsyncState` «скоро будет» без fixture-данных; demo-режим
+  ничего не добавил бы к единственному состоянию, которое экран умеет
+  показывать;
+- `src/components/auth/{LoginView,SignupView,ForgotView,VerifyView}.vue`
+  (`/auth/{login,signup,forgot,verify}`) — синхронная валидация формы, никакой
+  fixture-загрузки; `auth/InviteView.vue` (`/auth/invite`) — исключение из
+  исключения: у него есть реальная async-поверхность (проверка токена
+  приглашения) и он подключён к demo-режиму.
+
+План реализации:
+
+1. Подключить projection к agent/conversation detail shells и дочерним
+   представлениям с данными.
+2. Подключить workspace, profile и dashboard в границах их существующих
+   async-поверхностей.
+3. Обработать применимые auth-fixtures без подмены сценариев валидации и
+   добавить регрессионные component-тесты.
+
+Область:
+
+- `src/components/Dashboard.vue`
+- `src/components/agents/**`
+- `src/components/conversations/**`
+- `src/components/workspace/**`
+- `src/components/Workspace*.vue`
+- `src/components/profile/**`
+- `src/components/auth/**`
+- `tests/unit/**`
+
+Критерии приёмки:
+
+- Каждый маршрут согласованного Stage A5 охвата, у которого есть собственная
+  async fixture-поверхность, реагирует на demo-режим без полного reload;
+  маршруты из списка «Статические исключения» выше документированно не
+  подключены.
+- Вкладки, route fallback и auth validation сохраняют существующее поведение.
+- Релевантные unit/component-тесты и `npm run test:unit` проходят.
+
+## UI Kit reference
+
+### State matrix
+
+### [P2] Task A7.6. Собрать матрицу demo-состояний на `/kit`
+
+Статус: done
+
+Источник: Stage A7 `.plan`; `UiKit.vue`; контракты Stage A3 и A4.
+
+Описание: Страница `/kit` должна давать в одном месте обозримую эталонную
+матрицу состояний всех контрактов, а не только ручные несвязанные примеры.
+
+Уточнённые требования:
+
+- Матрица показывает `ready`, `loading`, `empty`, `error`,
+  `permission-denied` и `partial` для применимых контрактов Stage A3/A4.
+- Демонстрации используют те же `AsyncState`, `ListAsyncState` и
+  `PartialDataBanner`, что и маршруты, без дублирующей разметки состояния.
+- Локальные переключатели старой async-демонстрации либо заменяются глобальным
+  demo-store, либо остаются только для демонстрации документированного
+  приоритета `ListAsyncState`.
+- Матрица не меняет глобальный demo-режим неожиданно при открытии `/kit`.
+
+План реализации:
+
+1. Перестроить async-раздел `UiKit.vue` в матрицу контрактов и режимов.
+2. Подключить read-only представление demo-store и сохранить отдельный пример
+   приоритета, если он нужен для справочника.
+3. Обновить `docs/design-system.md` и README по фактическому назначению `/kit`.
+
+Область:
+
+- `src/components/UiKit.vue`
+- `docs/design-system.md`
+- `README.md`
+- `tests/unit/components/**`
+
+Критерии приёмки:
+
+- `/kit` показывает все применимые состояния и использует общие контракты.
+- Глобальный выбранный режим виден в матрице, но переход на страницу не
+  перезаписывает persisted настройки.
+- Component-тесты, `npm run lint:style`, `npm run guard:no-component-styles`,
+  `npm run build` и `git diff --check` проходят.

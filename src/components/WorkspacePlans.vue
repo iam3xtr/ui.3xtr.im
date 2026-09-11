@@ -7,7 +7,21 @@
       </div>
     </div>
 
-    <Loader v-if="isLoading" size="section" class="tr-loader--standalone" />
+    <Loader v-if="loading" size="section" class="tr-loader--standalone" />
+
+    <AsyncState
+      v-else-if="demoStore.isPermissionDenied"
+      variant="permission-denied"
+      v-bind="demoStore.permissionDeniedState"
+    />
+
+    <AsyncState
+      v-else-if="demoStore.isError"
+      variant="error"
+      :icon="demoStore.listAsyncState.errorIcon"
+      :title="demoStore.listAsyncState.errorTitle"
+      :message="demoStore.listAsyncState.errorMessage"
+    />
 
     <TariffSelector
       v-else
@@ -20,14 +34,23 @@
 
 <script setup>
 import { storeToRefs } from "pinia";
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
 import { useSimulatedLoading } from "../composables/useSimulatedLoading";
+import { useDemoStore } from "../stores/demo";
 import { useWorkspaceStore } from "../stores/workspace";
+import AsyncState from "./common/AsyncState.vue";
 import Loader from "./common/Loader.vue";
 import TariffSelector from "./TariffSelector.vue";
 
+// Demo-режим (Stage A7, Task A7.5): loading/permission-denied/error через
+// `Loader`/прямой `AsyncState` — тот же приём, что `Dashboard.vue`/
+// `workspace/Usage.vue`. `tariffOptions` — статичный каталог, не fixture
+// список из стора, поэтому здесь нет ни `empty`, ни `partial`: сравнивать
+// не с чем.
 const { isLoading } = useSimulatedLoading();
+const demoStore = useDemoStore();
+const loading = computed(() => isLoading.value || demoStore.isLoading);
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId, activeWorkspaceTariff } = storeToRefs(workspaceStore);
 

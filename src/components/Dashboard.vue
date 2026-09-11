@@ -1,9 +1,23 @@
 <template>
   <div>
-    <Loader v-if="isLoading" size="section" class="tr-loader--standalone" />
+    <Loader v-if="loading" size="section" class="tr-loader--standalone" />
+
+    <AsyncState
+      v-else-if="demoStore.isPermissionDenied"
+      variant="permission-denied"
+      v-bind="demoStore.permissionDeniedState"
+    />
+
+    <AsyncState
+      v-else-if="demoStore.isError"
+      variant="error"
+      :icon="demoStore.listAsyncState.errorIcon"
+      :title="demoStore.listAsyncState.errorTitle"
+      :message="demoStore.listAsyncState.errorMessage"
+    />
 
     <RouterLink
-      v-else-if="agents.length === 0"
+      v-else-if="agents.length === 0 || demoStore.isEmpty"
       :to="{ name: 'agents', query: { create: '1' } }"
       class="tr-card tr-card--interactive tr-dashboard-create"
     >
@@ -15,6 +29,15 @@
     </RouterLink>
 
     <template v-else>
+      <b-message
+        v-if="demoStore.isPartial"
+        type="is-warning"
+        :closable="false"
+      >
+        Показан не весь обзор: часть виджетов недоступна из-за временной
+        ошибки. Остальные ниже — актуальны.
+      </b-message>
+
       <section class="tr-grid tr-grid--3 tr-dashboard-grid mb-5">
         <RouterLink
           v-for="item in dashboardNavigationItems"
@@ -104,12 +127,23 @@ import { computed } from "vue";
 import { RouterLink } from "vue-router";
 
 import { useSimulatedLoading } from "../composables/useSimulatedLoading";
+import { useDemoStore } from "../stores/demo";
 import { useProfileStore } from "../stores/profile";
 import { useWorkspaceStore } from "../stores/workspace";
 
+import AsyncState from "./common/AsyncState.vue";
 import Loader from "./common/Loader.vue";
 
+// Demo-режим (Stage A7, Task A7.5): та же схема, что у каталогов Task A7.3 —
+// `Loader` на загрузку, прямой `AsyncState` на permission-denied/error,
+// `b-message`-баннер на partial поверх виджетов. `empty` переиспользует уже
+// существующую CTA-карточку «Создать первого агента» (реальный
+// эквивалент AsyncState-empty для этого экрана), а не заводит второй
+// empty-контракт — она срабатывает и когда агентов правда нет, и когда
+// demo-режим форсирует пустоту.
 const { isLoading } = useSimulatedLoading();
+const demoStore = useDemoStore();
+const loading = computed(() => isLoading.value || demoStore.isLoading);
 
 // Tile set and order mirror get.3xtr.im's Dashboard.vue tiles (Task A5.3):
 // conversations, agents, knowledge, workspace settings/plan, then the

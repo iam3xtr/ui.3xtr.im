@@ -318,6 +318,141 @@ Task A4.4).
 > `@deprecated`-алиасом до Stage B4 (см. `agent-migration-guide.md`,
 > «Реестр алиасов миграции»).
 
+### Демо-панель навбара (только кит)
+
+Task A7.2. `Navbar.vue` рендерит компактную панель (`b-dropdown` с триггером
+«Demo», класс `.tr-demo-panel`) в `.tr-topbar__actions`, рядом с переключателем
+рабочего пространства — только когда `minimal` не задан, то есть не на
+`/auth/*` (см. `App.vue`). Панель двусторонне связана с `useDemoStore()`
+(Task A7.1, `src/stores/demo.js`) через `storeToRefs`:
+
+- `b-select` со всеми шестью значениями `DEMO_MODES`
+  (`ready | loading | empty | error | permission-denied | partial`) с
+  человекочитаемыми подписями на русском;
+- два `b-switch` — «Длинные подписи» (`longLabels`) и «Много данных»
+  (`denseData`).
+
+Переключение любого контрола сразу меняет `useDemoStore()` и переживает
+перезагрузку (persistence — контракт Task A7.1), без изменения маршрута и без
+собственной валидации в `Navbar.vue` — нормализация значений остаётся в
+сторе.
+
+Это **не часть контракта кабинета**: панель существует только для проверки
+дизайна на всех состояниях внутри кита (см. Stage A7 в `.plan`) и не переносится
+в `get.3xtr.im`. Изоляция обеспечена явным префиксом `tr-demo-panel*` в
+`trickster-buefy.scss` (там же комментарий, что правила не входят в
+продуктовый контракт) и переиспользованием уже существующих нейтральных
+классов (`tr-navbar-trigger`, `tr-dropdown-intro`, `tr-dropdown-setting`,
+`tr-dropdown-action`, `tr-navbar-trigger__label`) там, где они точно
+совпадают с уже задокументированным навигационным паттерном. На узких экранах
+(`≤1023px`, breakpoint мобильного `tr-mobile-nav`) панель скрывается вместе с
+`.tr-workspace-dropdown`/`.tr-notifications-dropdown` — она не дублируется в
+мобильном меню-гамбургере.
+
+**Подключённые маршруты (Task A7.3).** `Agents.vue`, `channels/ChannelsView.vue`
+и `Conversations.vue` читают `useDemoStore()` напрямую (без собственных
+условных цепочек): `loading`/`empty`/`error` идут через `ListAsyncState` (её
+готовую проекцию отдаёт `demoStore.listAsyncState`), `permission-denied` —
+прямым `<AsyncState variant="permission-denied">` (сама проекция
+`listAsyncState` его не поднимает — см. комментарий в `stores/demo.js`), а
+`partial` — баннером `b-message type="is-warning" :closable="false"` поверх
+всё ещё доступного содержимого каталога, а не вместо него (замена
+несостоявшегося отдельного компонента `PartialDataBanner.vue` — решение
+Stage A4 переиспользовать штатный `b-message`). `ready` не меняет
+существующую fixture-логику этих экранов. Оба переключателя панели —
+presentation-only проекции у каждого экрана (`displayAgents`/
+`displayChannels`/`displayConversations`): «Много данных» циклически
+повторяет уже загруженные fixture-строки каталога/списка до целевого
+количества, «Длинные подписи» приписывает к отображаемому названию/описанию
+фиксированный длинный суффикс — оба не пишут в `useAgentsStore()`/
+`useChannelsStore()`/`useConversationsStore()`, и клик по повторённой
+карточке/диалогу по-прежнему открывает тот самый реальный объект (id не
+меняется).
+
+**Knowledge-маршруты (Task A7.4).** Каталог `Knowledge.vue` следует тому же
+контракту, что и Task A7.3 (`ListAsyncState`/`listAsyncState`,
+permission-denied прямым `AsyncState`, `partial` баннером, «Много
+данных»/«Длинные подписи» — presentation-only в `displayCollections`, без
+записи в `useKnowledgeStore()`). Detail-shell `knowledge/CollectionDetail.vue`
+добавляет один нюанс: **route-валидация всегда побеждает над demo-режимом**
+— несуществующий `:id` показывает свой собственный fallback «Коллекция не
+найдена» с ссылкой на каталог независимо от того, в каком demo-режиме кит
+сейчас находится (в том числе `empty`/`permission-denied` не подменяют его),
+а `demoStore.isLoading`/`isError`/`isPermissionDenied` применяются тем же
+`ListAsyncState`/`AsyncState` только когда коллекция реально найдена. Внутри
+shell'а вложенные вкладки не заводят свою copy loading/error/permission-denied
+логику (общий гейт — задача shell'а), но `Files.vue` и `Statistics.vue`
+каждая показывает свой `partial`-баннер поверх всё ещё доступной таблицы
+файлов/показателей (тот же `b-message`-контракт); `Settings.vue` как форма
+не участвует в `partial` и не заводит отдельную несовместимую систему
+заглушек. `Files.vue` дополнительно несёт presentation-only «Много
+данных»/«Длинные подписи» в `displayObjects`, тем же приёмом, что каталоги
+Task A7.3.
+
+**Detail, workspace, profile и auth-экраны (Task A7.5).**
+`agents/AgentDetail.vue` и `conversations/ConversationDetail.vue` следуют
+тому же приёму, что `knowledge/CollectionDetail.vue` (Task A7.4):
+route-валидация (агент/диалог не найден) всегда побеждает над demo-режимом,
+а когда сущность реально найдена, тот же `ListAsyncState` дополнительно
+отражает `demoStore.isLoading`/`isError`, permission-denied — прямым
+`AsyncState`. Их вложенные data-вкладки (`agents/AgentPlayground.vue`,
+`conversations/History.vue`) добавляют только `partial`-баннер поверх
+истории сообщений; вкладки-формы (`agents/AgentSettings.vue`,
+`conversations/Settings.vue`) не участвуют — тот же принцип, что
+`knowledge/Settings.vue`. `Dashboard.vue` подключён напрямую:
+`Loader`/прямой `AsyncState` на loading/permission-denied/error, `empty`
+расширяет уже существующую CTA-карточку «Создать первого агента» (не
+заводит второй empty-контракт), `partial` — баннер поверх виджетов.
+`workspace/Usage.vue`, `workspace/Members.vue`, `WorkspacePlans.vue` и
+`profile/Security.vue` читают `useDemoStore()` тем же контрактом, что
+каталоги Task A7.3 (`Loader`/прямой `AsyncState` на loading/
+permission-denied/error, `demoStore.listAsyncState` на `ListAsyncState` для
+табличных списков, `partial` — баннером); `WorkspaceSettings.vue`,
+`workspace/WorkspaceBilling.vue`, `profile/Settings.vue`, `Workspace.vue` и
+`profile/ProfileShell.vue` не подключены — формы и статичные
+"coming soon"/tabs-shell экраны без async-fixture-поверхности, тем же
+принципом, что формы-настройки в Task A7.4. В auth-экранах demo-режим
+применяется только там, где кит уже симулирует асинхронную загрузку
+fixture-данных — `auth/InviteView.vue`'s найденное приглашение
+(`status === 'ready'`) получает тот же `Loader`/`AsyncState`/`partial`
+контракт, но реальная валидация токена (`inspecting`/`invalid`) остаётся
+нетронутой; формы входа/регистрации/восстановления (`LoginView.vue`,
+`SignupView.vue`, `ForgotView.vue`, `VerifyView.vue`) не подключены — там
+нет async fixture-поверхности, только валидация демо-формы, которую
+demo-режим не должен подменять.
+
+**Матрица demo-состояний на `/kit` (Task A7.6).** `UiKit.vue` собирает
+контракты Task A7.3–A7.5 в одном обозримом месте — не подборку ручных
+несвязанных примеров, а витрину всех шести значений `DEMO_MODES`, каждое из
+которых показано тем же реальным компонентом, который его рендерит на
+маршрутах кита. **Это не таблица «контракт × все шесть режимов» — ни один
+раздел не показывает все шесть карточек сразу**, потому что сами контракты
+неравнозначны: `ListAsyncState` структурно не имеет ветки `permission-denied`
+(на маршрутах она всегда рендерится отдельным прямым `AsyncState`, а не через
+`ListAsyncState`), а прямой `AsyncState` не имеет варианта `empty`/`partial`
+(тем более что `partial` — вообще не вариант `AsyncState`, а баннер поверх
+контента). Соответственно: раздел «Каталог/список — ListAsyncState»
+перебирает `ready`/`loading`/`empty`/`error` через сам `ListAsyncState`,
+раздел «Detail/сводный экран — прямой AsyncState» — `ready`/`loading`/`error`
+плюс `permission-denied` через прямой `AsyncState` (без отдельной карточки
+`empty` — она уже показана в разделе «Каталог/список», и без
+`permission-denied` в первом разделе — там, где он реально нужен на
+маршрутах, он тоже показывается прямым `AsyncState`, а не `ListAsyncState`),
+раздел «Partial» — тот же `b-message type="is-warning"`-баннер поверх ещё
+доступного контента, что в `Agents.vue`/`Files.vue`. Карточки матрицы читают
+только статичные тексты `useDemoStore().listAsyncState` /
+`permissionDeniedState` (read-only проекция стора, без дублирования строк) и
+не подписаны на его текущий `mode` — карточки в пределах каждого раздела
+рендерятся одновременно, независимо от того, что выбрано в демо-панели
+навбара, поэтому открытие `/kit` не читает и не переписывает persisted
+`mode`. Сам текущий
+глобальный режим виден отдельной read-only строкой над матрицей
+(`demoStore.mode` через `b-tag`) только для справки. Старое демо приоритета
+`ListAsyncState` (loading &gt; error &gt; empty &gt; no-results) остаётся
+отдельным блоком со своими локальными переключателями — оно не входит в
+матрицу и не дублирует её разметку, а иллюстрирует то, что сама матрица не
+показывает: поведение компонента при одновременно включённых флагах.
+
 ### Master-detail и рабочие области
 
 Раздел с постоянным списком слева и содержимым справа строится как

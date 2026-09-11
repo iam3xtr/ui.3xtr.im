@@ -5,14 +5,30 @@
       subtitle="Активные сеансы и выход с других устройств."
     />
 
-    <Loader v-if="isLoading" size="section" class="tr-loader--standalone" />
+    <Loader v-if="loading" size="section" class="tr-loader--standalone" />
+
+    <AsyncState
+      v-else-if="demoStore.isPermissionDenied"
+      variant="permission-denied"
+      v-bind="demoStore.permissionDeniedState"
+    />
 
     <template v-else>
+      <b-message
+        v-if="demoStore.isPartial"
+        type="is-warning"
+        :closable="false"
+      >
+        Показаны не все активные сеансы: часть списка недоступна из-за
+        временной ошибки. Остальное ниже — актуально.
+      </b-message>
+
       <div class="tr-card">
         <h2 class="tr-card__title">Активные сеансы</h2>
 
         <ListAsyncState
-          :empty="sessions.length === 0"
+          v-bind="demoStore.listAsyncState"
+          :empty="sessions.length === 0 || demoStore.isEmpty"
           empty-icon="devices"
           empty-title="Нет активных сеансов"
         >
@@ -67,9 +83,11 @@ import { storeToRefs } from "pinia";
 import { computed } from "vue";
 
 import { useSimulatedLoading } from "../../composables/useSimulatedLoading";
+import { useDemoStore } from "../../stores/demo";
 import { useModalStore } from "../../stores/modal";
 import { useProfileStore } from "../../stores/profile";
 import { useToasterStore } from "../../stores/toaster";
+import AsyncState from "../common/AsyncState.vue";
 import Loader from "../common/Loader.vue";
 import ListAsyncState from "../common/ListAsyncState.vue";
 import PageHeader from "../common/PageHeader.vue";
@@ -82,7 +100,14 @@ import PageHeader from "../common/PageHeader.vue";
 // requirement ("/profile/security — sessions/security actions"). Same
 // list pattern as `workspace/Members.vue`: `useSimulatedLoading` + `Loader`
 // + `ListAsyncState`, revoke actions confirmed through `useModalStore`.
+//
+// Demo-режим (Stage A7, Task A7.5): тот же контракт, что у
+// `workspace/Members.vue` — `Loader`/прямой `AsyncState` на
+// loading/permission-denied, `demoStore.listAsyncState` на `ListAsyncState`
+// (error/empty), partial — `b-message`-баннером поверх таблицы сеансов.
 const { isLoading } = useSimulatedLoading();
+const demoStore = useDemoStore();
+const loading = computed(() => isLoading.value || demoStore.isLoading);
 const profileStore = useProfileStore();
 const modalStore = useModalStore();
 const toaster = useToasterStore();

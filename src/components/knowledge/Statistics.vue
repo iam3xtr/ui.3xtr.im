@@ -1,5 +1,14 @@
 <template>
   <section v-if="collection" class="tr-knowledge-stats">
+    <b-message
+      v-if="demoStore.isPartial"
+      type="is-warning"
+      :closable="false"
+    >
+      Показана не вся статистика: часть данных недоступна из-за временной
+      ошибки. Остальные показатели ниже — актуальны.
+    </b-message>
+
     <div class="tr-grid tr-grid--3 mb-5">
       <article class="tr-card">
         <span class="tr-muted">Всего объектов</span>
@@ -42,6 +51,7 @@ import { storeToRefs } from "pinia";
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 
+import { useDemoStore } from "../../stores/demo";
 import { OBJECT_STATUSES, useKnowledgeStore } from "../../stores/knowledge";
 import { useWorkspaceStore } from "../../stores/workspace";
 
@@ -50,7 +60,14 @@ import { useWorkspaceStore } from "../../stores/workspace";
 // usage-summary widget this repo has no equivalent module for yet). Numbers
 // are derived straight from the fixture collection's own objects — no
 // separate stats fixture to keep in sync, and no backend to disagree with it.
+//
+// Demo-режим (Stage A7, Task A7.4): loading/error/permission-denied are
+// gated by the parent shell (`knowledge/CollectionDetail.vue`); this tab
+// only adds the `partial` banner over its own numbers (the same
+// `b-message` contract as `Files.vue`/`Agents.vue`) — the counts themselves
+// stay fixture-derived, not mutated by demo mode.
 const route = useRoute();
+const demoStore = useDemoStore();
 const knowledgeStore = useKnowledgeStore();
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId } = storeToRefs(workspaceStore);
