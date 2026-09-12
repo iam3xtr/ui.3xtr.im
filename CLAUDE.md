@@ -82,7 +82,8 @@ shell, navigation, toolbar, tabs, tables, forms, cards and catalogs, states, ove
 tariffs, conversations, utilities, responsive, deprecated aliases — see the file's own
 table of contents at the top) rather than creating a new file or an inline component
 style. A class renamed for the A3 contract keeps its old selector as a transitional
-`@deprecated` alias in that last section until Stage B4; log every alias in
+`@deprecated` alias in that last section until the external B4 migration task
+(see [get.3xtr.im#27](https://github.com/iam3xtr/get.3xtr.im/issues/27)); log every alias in
 `docs/agent-migration-guide.md` ("Реестр алиасов миграции"). Inherited
 Bulma/Buefy specificity overrides are explicitly marked as `Stage A3 debt` in the
 stylesheet; do not add new `!important` declarations or suppressions.
