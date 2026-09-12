@@ -112,10 +112,10 @@ component or ad hoc spinners.
 src/
   router.js              # Routes mirror the cabinet's real paths (hash history when
                          #   VITE_ROUTER_MODE=hash): /, /agents/**, /conversations/**,
-                         #   /knowledge/**, /workspace/**, /profile/**, /auth/**, /kit, /404
+                         #   /knowledge/**, /workspace/**, /profile/**, /auth/**, /kit/**, /404
   navigation.js         # Nav item registry consumed by Sidebar/Navbar
   components/           # Catalog/top-level screens (Dashboard, Agents, Conversations,
-                         #   Knowledge, Workspace, WorkspaceSettings, WorkspacePlans, UiKit,
+                         #   Knowledge, Workspace, WorkspaceSettings, WorkspacePlans,
                          #   NotFound, ...) — each catalog's detail lives in its own
                          #   domain subdirectory below, route-driven off the catalog
   components/agents/    # Agent detail: route-driven shell + its Navbar-tab screens (Task A5.4)
@@ -125,6 +125,8 @@ src/
   components/workspace/ # Workspace tabs beyond Settings/Plans: usage, members, billing (Task A5.8)
   components/profile/   # Profile shell + settings/security tabs (Task A5.9)
   components/auth/      # Auth container + login/signup/forgot/verify/invite screens (Task A5.10)
+  components/kit/       # UI Kit reference shell + its five route-driven sections: overview,
+                         #   forms, tables, navigation-states, dialogs-overlays (Task A8.6)
   components/common/    # Shared primitives: Icon.vue, Loader.vue, Toolbar/NavbarMenu/AsyncState/...
   composables/          # Shared composition functions
   stores/                # Pinia stores backing kit-only demo state (no real API): one file per

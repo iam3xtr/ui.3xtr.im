@@ -7,23 +7,25 @@
         {{ errorMessage }}
       </b-notification>
 
-      <b-field label="Email">
+      <b-field>
         <b-input
           v-model="form.email"
           type="email"
-          placeholder="demo@3xtr.im"
+          placeholder="Введите email"
+          aria-label="Email"
           autocomplete="email"
           :disabled="isSubmitting"
           required
         />
       </b-field>
 
-      <b-field label="Пароль">
+      <b-field>
         <b-input
           v-model="form.password"
           type="password"
           password-reveal
-          placeholder="Пароль"
+          placeholder="Введите пароль"
+          aria-label="Пароль"
           autocomplete="current-password"
           :disabled="isSubmitting"
           required
@@ -74,7 +76,10 @@ import WorkspaceSelector from "./WorkspaceSelector.vue";
 // вместо отдельного `PasswordInput.vue` — см. `docs/agent-migration-guide.md`,
 // раздел 14 «Формы» («Секретное поле — `b-input type="password"
 // password-reveal`, свой toggle-глаз не рисуется»), тот же выбор уже сделан
-// `ChannelFormModal.vue` (Task A5.5).
+// `ChannelFormModal.vue` (Task A5.5). В отличие от остальных форм кабинета
+// (раздел 14 — `b-field label="..."`), кабинетные формы входа/регистрации
+// подписей полей не используют — здесь `b-field` без `label`, а подпись
+// поля для скринридеров переносится в `aria-label` на `b-input`.
 //
 // После успешного фикстурного входа кит демонстрирует `WorkspaceSelector` —
 // показывает пикер пространства поверх формы (а не редиректом сквозь

@@ -17,12 +17,6 @@
       </button>
     </template>
 
-    <b-dropdown-item value="" aria-role="listitem">
-      {{ allLabel }}
-    </b-dropdown-item>
-
-    <b-dropdown-item separator />
-
     <b-dropdown-item
       v-for="option in normalizedOptions"
       :key="option.value"
@@ -30,6 +24,12 @@
       aria-role="listitem"
     >
       {{ option.label }}
+    </b-dropdown-item>
+
+    <b-dropdown-item separator />
+
+    <b-dropdown-item value="" aria-role="listitem">
+      {{ allLabel }}
     </b-dropdown-item>
   </b-dropdown>
 </template>

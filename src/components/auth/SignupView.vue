@@ -11,20 +11,22 @@
         {{ errorMessage }}
       </b-notification>
 
-      <b-field label="Имя">
+      <b-field>
         <b-input
           v-model="form.name"
-          placeholder="Иван Петров"
+          placeholder="Введите имя"
+          aria-label="Имя"
           autocomplete="name"
           :disabled="isSubmitting"
           required
         />
       </b-field>
 
-      <b-field v-if="!isWorkspaceInvite" label="Название пространства">
+      <b-field v-if="!isWorkspaceInvite">
         <b-input
           v-model="form.workspace"
-          placeholder="Моя команда"
+          placeholder="Введите название пространства"
+          aria-label="Название пространства"
           autocomplete="organization"
           maxlength="64"
           :disabled="isSubmitting"
@@ -32,34 +34,38 @@
         />
       </b-field>
 
-      <b-field label="Email">
+      <b-field>
         <b-input
           v-model="form.email"
           type="email"
-          placeholder="you@example.com"
+          placeholder="Введите email"
+          aria-label="Email"
           autocomplete="email"
           :disabled="isSubmitting"
           required
         />
       </b-field>
 
-      <b-field label="Пароль">
+      <b-field>
         <b-input
           v-model="form.password"
           type="password"
           password-reveal
-          placeholder="Не короче 8 символов"
+          placeholder="Придумайте пароль (не короче 8 символов)"
+          aria-label="Пароль"
           autocomplete="new-password"
           :disabled="isSubmitting"
           required
         />
       </b-field>
 
-      <b-field label="Повторите пароль">
+      <b-field>
         <b-input
           v-model="form.repeat"
           type="password"
           password-reveal
+          placeholder="Повторите пароль"
+          aria-label="Повторите пароль"
           autocomplete="new-password"
           :disabled="isSubmitting"
           required
@@ -100,6 +106,9 @@ import AuthPage from "./AuthPage.vue";
 // `signup()` — фикстурный промис), поэтому здесь сохранён только
 // пользовательский эффект режима: поле «Название пространства» скрывается,
 // когда есть pending workspace-инвайт (см. `LoginView.vue`/`InviteView.vue`).
+// Как и `LoginView.vue`, форма без подписей полей (`b-field` без `label`) —
+// это отличие auth-форм от остального кабинета (раздел 14), подпись для
+// скринридеров переносится в `aria-label` на `b-input`.
 const router = useRouter();
 const authStore = useAuthStore();
 const toaster = useToasterStore();

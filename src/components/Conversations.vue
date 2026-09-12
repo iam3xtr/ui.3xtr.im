@@ -68,13 +68,17 @@
         empty-title="Диалогов пока нет"
         empty-message="Новые диалоги появятся после обращения пользователей."
       >
-        <section class="tr-conversations">
+        <section
+          class="tr-conversations tr-conversation-split"
+          :class="[splitViewClass, { 'is-properties-open': propertiesOpen }]"
+        >
           <aside class="tr-conversation-panel tr-conversations-list">
             <nav class="tr-conversations-list__items" aria-label="Список диалогов">
               <button
                 v-for="conversation in displayConversations"
                 :key="conversation._demoKey ?? conversation.id"
                 class="tr-conversation-item"
+                :class="{ 'is-active': isConversationActive(conversation) }"
                 type="button"
                 @click="openConversation(conversation)"
               >
@@ -103,10 +107,12 @@
             </nav>
           </aside>
 
-          <article class="tr-conversations-placeholder">
+          <RouterView v-if="hasSelectedConversation" />
+
+          <article v-else class="tr-conversations-placeholder">
             <b-icon icon="message-text-outline" size="is-large" />
             <strong>Выберите диалог</strong>
-            <span>Сообщения и свойства диалога откроются на отдельной странице.</span>
+            <span>Сообщения и свойства диалога откроются рядом со списком.</span>
           </article>
         </section>
       </ListAsyncState>
@@ -116,9 +122,12 @@
 
 <script setup>
 import { storeToRefs } from "pinia";
-import { computed, ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import {
+  computed, provide, ref, watch,
+} from "vue";
+import { RouterView, useRoute, useRouter } from "vue-router";
 
+import { conversationPropertiesKey } from "../composables/conversationProperties";
 import { useSimulatedLoading } from "../composables/useSimulatedLoading";
 import { useAgentsStore } from "../stores/agents";
 import {
@@ -134,16 +143,29 @@ import Loader from "./common/Loader.vue";
 import Toolbar from "./common/Toolbar.vue";
 import ToolbarDropdown from "./common/ToolbarDropdown.vue";
 
-// List screen (Task A5.7), routed at `/conversations` and, agent-scoped, at
-// `/conversations/:agentId` — picking a dialog now navigates to the fully
-// separate `conversation`/`conversation-settings` routes
-// (`components/conversations/ConversationDetail.vue`) instead of switching
-// an internal `viewMode` the way this component used to. The list therefore
-// always renders the same two-column `.tr-conversations` layout (list +
-// "pick a dialog" placeholder); there is no way back to reflect which
-// dialog is currently open in the list's own selection state any more
-// (that would be exactly the internal view-mode state Task A5.7 removes),
-// so list items never carry an `is-active` state.
+// List screen (Task A5.7), routed at `/conversations`. Task A8.4 nests the
+// `conversation` route under `conversations-agent` (`/conversations/:agentId`,
+// see `router.js`) and renders it through this component's own
+// `<RouterView>` next to the list, restoring the persistent split-view the
+// list lost when Task A5.7 moved detail to a fully separate route tree —
+// selected dialogs get their `is-active` list state back as a result. The
+// `:agentId` in that nested route identifies which agent's conversation to
+// look up (`ConversationDetail.vue`'s own `getConversation` call) — it is
+// not, and must not become, the agent *filter*'s state; see `agentFilter`'s
+// own comment below for the bug that conflating the two caused. Below the
+// shell's own `1024px` sidebar-collapse breakpoint, `.tr-conversation-split`
+// (see `trickster-buefy.scss`) shows only one pane at a time, picked by
+// `mobileView`, a plain computed off whether a dialog is selected —
+// `ConversationDetail.vue`'s "К диалогам" button actually navigates back to
+// this plain `/conversations` route (this message's fix; it used to only
+// flip a shared `mobileView` ref via a `conversationMobileViewKey` provide/
+// inject pair, leaving `route.params.conversationId` set so the dialog
+// stayed selected underneath — since the button no longer needs to mutate
+// anything here, that whole provide/inject pair is gone, along with
+// `composables/conversationMobileView.js`). This same shell also owns the
+// settings pane as a third grid column (`conversationPropertiesKey`, see
+// that composable) — the gear button in `ConversationDetail.vue`'s header
+// opens/closes it without touching the route.
 const route = useRoute();
 const router = useRouter();
 const { isLoading } = useSimulatedLoading();
@@ -153,6 +175,63 @@ const agentsStore = useAgentsStore();
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId } = storeToRefs(workspaceStore);
 
+/** @typedef {import("../stores/conversations").Conversation} Conversation */
+
+const hasSelectedConversation = computed(() => Boolean(route.params.conversationId));
+const mobileView = computed(() => (hasSelectedConversation.value ? "detail" : "list"));
+
+// Settings-pane state: a local toggle, not a route — `ConversationDetail.vue`'s
+// gear button opens it through `conversationPropertiesKey` instead of owning
+// the grid itself, mirroring get.3xtr.im's `conversation-workbench` provide
+// (see that composable's own comment). `splitViewClass` folds it into the
+// `mobileView` pane picker above: below the shell's `1024px` breakpoint
+// exactly one of list/chat/properties is visible at a time
+// (`.tr-conversation-split`'s own `is-${view}-view` rules in
+// `trickster-buefy.scss`); at/above it, `is-properties-open` alone controls
+// whether the properties column exists in the persistent 3-column grid, and
+// list+chat stay visible regardless. Open by default (matching
+// `AgentPlayground.vue`'s sandbox pane) — every freshly opened dialog shows
+// its settings right away; it only disappears on a narrow viewport, where
+// there is no `×` any more, only the aside's own arrow-left
+// (`ConversationDetail.vue`'s `tr-conversation-properties-action`) to switch
+// back to history.
+const propertiesOpen = ref(true);
+const splitViewClass = computed(() => {
+  if (mobileView.value !== "detail") {
+    return "is-list-view";
+  }
+
+  return propertiesOpen.value ? "is-properties-view" : "is-chat-view";
+});
+
+// Resets `propertiesOpen` back to its open-by-default state whenever the
+// selected dialog changes (a genuinely different one — an empty id, i.e.
+// leaving the dialog entirely, is included, though harmless there since
+// nothing reads it once `hasSelectedConversation` is false), so the next
+// dialog always starts with settings showing regardless of what the
+// previous one was left at.
+watch(() => route.params.conversationId, () => {
+  propertiesOpen.value = true;
+});
+
+provide(conversationPropertiesKey, {
+  propertiesOpen,
+  openProperties: () => {
+    propertiesOpen.value = true;
+  },
+  closeProperties: () => {
+    propertiesOpen.value = false;
+  },
+});
+
+/**
+ * @param {Conversation} conversation
+ */
+function isConversationActive(conversation) {
+  return hasSelectedConversation.value
+    && String(conversation.id) === String(route.params.conversationId);
+}
+
 // Demo-режим (Stage A7, Task A7.3) — тот же контракт, что и в
 // `Agents.vue`/`ChannelsView.vue`: loading/empty/error через
 // `ListAsyncState`, permission-denied прямым `AsyncState`, partial —
@@ -161,8 +240,6 @@ const { activeWorkspaceId } = storeToRefs(workspaceStore);
 // для «диалоги не найдены по поиску» — это отдельный случай от demo-режима
 // и не трогается.
 const loading = computed(() => isLoading.value || demoStore.isLoading);
-
-/** @typedef {import("../stores/conversations").Conversation} Conversation */
 
 const query = ref("");
 const statusFilter = ref("");
@@ -176,22 +253,23 @@ const agentOptions = computed(
     .map((agent) => ({ value: String(agent.id), label: agent.name })),
 );
 
-// The agent filter scopes to a different route (`conversations-agent`)
-// rather than narrowing the current list client-side — same
-// route-is-the-filter convention as get.3xtr.im's own agent filter — so it
-// proxies through router.push instead of a plain ref.
-const agentFilter = computed({
-  get: () => (route.params.agentId ? String(route.params.agentId) : ""),
-  set: (value) => {
-    router.push(value
-      ? { name: "conversations-agent", params: { agentId: value } }
-      : { name: "conversations" });
-  },
-});
+// A plain ref, same as `statusFilter`/`channelFilter` — narrows the list
+// client-side, nothing more. It used to proxy through `router.push` to a
+// dedicated `conversations-agent` route, on the theory that the route *is*
+// the filter (get.3xtr.im's own agent filter still works that way) — but
+// `conversation`'s route already carries `:agentId` for an entirely
+// different reason (identifying which agent's conversation to look up), so
+// opening *any* dialog from an unfiltered list silently dragged this
+// dropdown to that dialog's agent too, with no way to tell "I chose this
+// filter" apart from "I merely opened a dialog". Decoupling the two (this
+// message's fix) means picking a dialog never moves the dropdown, and
+// picking the dropdown never has to fight over which nested route to land
+// on.
+const agentFilter = ref("");
 
 const conversations = computed(() => (
-  route.params.agentId
-    ? conversationsStore.listByAgent(activeWorkspaceId.value, route.params.agentId)
+  agentFilter.value
+    ? conversationsStore.listByAgent(activeWorkspaceId.value, agentFilter.value)
     : conversationsStore.listByWorkspace(activeWorkspaceId.value)
 ));
 

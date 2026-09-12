@@ -288,6 +288,22 @@ a:hover {
   margin-inline-start: auto;
 }
 
+// Auth screens' bare Navbar (`<Navbar minimal>`, Task A5.10/A8.7): no
+// workspace/resource/notifications/user chrome, so it should read as part of
+// the auth page rather than a product topbar — no fill, no border/blur.
+.tr-topbar--minimal {
+  background: transparent;
+  border-bottom-color: transparent;
+  backdrop-filter: none;
+}
+
+.tr-topbar__auth-actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+}
+
 // NavbarMenu Teleport target (see App.vue / Navbar.vue's `menu` slot): must
 // not add a flex item of its own, including while empty, so a page without a
 // menu leaves no gap in .tr-topbar.
@@ -2023,6 +2039,14 @@ a:hover {
 
 .dropdown-content {
   min-width: 300px;
+  // Caps the menu's width regardless of how long an item's label is (a
+  // dropdown-item's text used to force `.dropdown-content` to grow to fit
+  // it on one line, overflowing past the trigger and, at narrow widths,
+  // past the viewport — first spotted on the conversations agent filter,
+  // but nothing here is specific to it, so the fix is generic). `100vw`
+  // minus the page's own side gutter keeps it from overflowing the
+  // viewport on a narrow screen even when the trigger sits near the edge.
+  max-width: min(360px, calc(100vw - #{tr.$space-8}));
   padding: tr.$space-2;
   border: 1px solid var(--tr-border);
   border-radius: tr.$radius-large;
@@ -2037,13 +2061,27 @@ a:hover {
   font-size: tr.$font-size-base;
 }
 
+// Truncates a long label with an ellipsis instead of forcing
+// `.dropdown-content` wider than its `max-width` above (Bulma's own default
+// leaves `white-space: nowrap` but no `overflow`/`text-overflow`, so the box
+// just grew instead of clipping). Scoped to `a.dropdown-item`/
+// `button.dropdown-item` — Buefy's `DropdownItem.vue` renders exactly one of
+// these two tags for a plain, single-line clickable item (`ToolbarDropdown`,
+// the workspace list, main-nav items, …) — deliberately not the bare
+// `.dropdown-item` above, which is also the base style for a `custom`
+// dropdown-item (rendered as a plain `div`, e.g. `.tr-dropdown-setting`'s
+// switches/selects, the mobile workspace picker) — those hold real
+// interactive content, not a text label, and must keep flowing/wrapping
+// normally rather than getting clipped. Also re-specified here (not on the
+// bare `.dropdown-item`) because Bulma's own same-tag compound selector
+// otherwise wins the cascade at equal specificity by source order.
 a.dropdown-item,
 button.dropdown-item {
-  background-color: transparent;
-}
-
-.tr-workspace-dropdown a.dropdown-item {
   padding-inline-end: tr.$space-3;
+  background-color: transparent;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .dropdown-item.is-active {
@@ -2564,16 +2602,18 @@ button.dropdown-item:hover {
   flex: 1;
 }
 
-// `.tr-conversations`' 3-column list/chat/properties grid and its
-// `is-properties-open` toggle are kept exactly as before this task: the
-// kit's own `Conversations.vue` list page never sets that class, so it
-// always renders in the collapsed 2-column state below (list + placeholder)
-// without needing a rule of its own — but get.3xtr.im's still-unported
-// conversation view (`conversations/views/Conversations.vue`) does still
-// toggle a live 3-column list/chat/properties layout through this exact
-// class on the synced stylesheet, so the mechanism stays in place until
-// that view is ported to the kit's routed-tab pattern (Task A5.7 only
-// changes the kit's own components; see "Downstream sync" in CLAUDE.md).
+// `.tr-conversations`' 3-column list/chat/properties grid: collapsed to 2
+// columns (list + the open dialog, or the "pick a dialog" placeholder when
+// none is selected — see `.tr-conversation-split` further down) by default
+// via `:not(.is-properties-open)` below, expanding to the full 3-column
+// list/chat/properties layout while a dialog's settings pane is open. The
+// kit's own `Conversations.vue` toggles this exact class through
+// `conversationPropertiesKey` (see `src/composables/conversationProperties.js`)
+// — `conversations/ConversationDetail.vue`'s gear button opens/closes the
+// pane without a route, unlike get.3xtr.im's still-unported conversation
+// view (`conversations/views/Conversations.vue`), which toggles the same
+// class but keeps settings as a `/settings` route (see
+// `docs/agent-migration-guide.md` section 6 for the two mechanisms).
 .tr-conversations {
   --tr-conversation-main-column: 66.6667%;
 
@@ -2706,13 +2746,11 @@ button.dropdown-item:hover {
   background: var(--tr-surface-hover);
 }
 
-// The kit's own `Conversations.vue` list (Task A5.7) never sets `is-active`
-// any more — selecting a dialog navigates to a fully separate route instead
-// of persisting a "currently open" selection inside the list's own state
-// (see the component's top-of-file comment) — but get.3xtr.im's
-// still-unported conversation list view does still toggle this exact class
-// on the synced stylesheet, so the rule stays in place until that view is
-// ported.
+// The kit's own `Conversations.vue` list sets `is-active` again as of Task
+// A8.4 — the open dialog is now derived straight from `route.params.conversationId`
+// rather than tracked in the list's own state, but it renders the same way;
+// get.3xtr.im's still-unported conversation list view also toggles this
+// exact class on the synced stylesheet.
 .tr-conversation-item.is-active {
   color: var(--tr-primary);
   background: var(--tr-primary-soft);
@@ -2889,16 +2927,16 @@ button.dropdown-item:hover {
   flex: 1;
 }
 
-// The kit's own conversation detail (Task A5.7, conversations/Settings.vue)
-// moved the properties aside's content into a routed settings tab built on
-// the `.tr-settings__panel`/`.tr-form` contract instead, so nothing in
-// `src/**/*.vue` renders these three any more. They stay defined solely as
-// `@extend` targets for get.3xtr.im's still-unported BEM aliases
-// (`.tr-conversations__properties-body`/`__profile`/`__profile-image`,
-// Section 15 "Deprecated aliases") — get.3xtr.im's own conversation view
-// still renders a properties aside under those old class names, and this
-// repo's synced stylesheet must keep it styled until that view is ported to
-// the new tabbed pattern (a coordinated follow-up, not this task).
+// `.tr-conversation-properties-body` wraps the settings pane's content in
+// `conversations/ConversationDetail.vue`'s own properties aside (this
+// message's fix) — a plain `.tr-form` (`conversations/Settings.vue`), not
+// the avatar/profile block below. `.tr-conversation-profile`/
+// `-profile-image` stay defined solely as `@extend` targets for
+// get.3xtr.im's still-unported BEM aliases (`.tr-conversations__profile`/
+// `__profile-image`, Section 15 "Deprecated aliases") — its own conversation
+// properties aside still renders an avatar block under those old class
+// names, and this repo's synced stylesheet must keep it styled until that
+// view is ported (a coordinated follow-up, not this task).
 .tr-conversation-properties-body {
   display: flex;
   flex-direction: column;
@@ -2933,33 +2971,56 @@ button.dropdown-item:hover {
   color: inherit;
 }
 
-// Agent sandbox (Task A5.4, AgentPlayground.vue) is chat-only — there is no
-// properties aside to share the grid with any more (settings moved to its
-// own routed tab) — so this always collapses `.tr-conversations`' 3-column
-// list/chat/properties grid down to one full-width column. The compound
-// selector (vs. a bare `.tr-agents__workbench`) keeps specificity above the
-// `.tr-conversations` narrow-viewport override in Responsive below, which
-// would otherwise win by source order at the same specificity.
+// Agent sandbox (Task A5.4, AgentPlayground.vue) has no list column — its
+// gear button (this message's fix) opens a properties aside for the
+// runtime-affecting playground fields (temperature, system prompt) that
+// moved out of `AgentSettings.vue`'s routed tab, which keeps only
+// non-runtime agent fields (name/status — see that file's own comment).
+// Collapsed to one full-width column by default (`:not(.is-properties-open)`
+// would otherwise still reserve a list column, which this page never has),
+// expanding to chat + properties (no list) while the aside is open. The
+// compound selector (vs. a bare `.tr-agents__workbench`) keeps specificity
+// above the `.tr-conversations` narrow-viewport override in Responsive
+// below, which would otherwise win by source order at the same specificity.
 .tr-conversations.tr-agents__workbench {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.tr-conversations.tr-agents__workbench.is-properties-open {
+  grid-template-columns:
+    minmax(0, var(--tr-conversation-main-column))
+    minmax(0, 1fr);
 }
 
 .tr-agents__workbench .tr-conversation-list-action {
   display: inline-flex;
 }
 
-// Conversation detail (Task A5.7, conversations/History.vue): picking a
-// dialog from `Conversations.vue`'s list navigates to a fully separate route
-// rather than swapping a panel inside a persistent list+chat grid, so the
-// detail page never shares its grid with a list column either — same
-// full-width collapse as `.tr-agents__workbench` above, under its own class
-// since the two screens are unrelated route trees.
-.tr-conversations.tr-conversation-standalone {
-  grid-template-columns: minmax(0, 1fr);
-}
+// Conversations page (Task A8.4, Conversations.vue +
+// conversations/ConversationDetail.vue): the open dialog now renders through
+// `Conversations.vue`'s own nested `<RouterView>`, next to the still-visible
+// list, on one persistent grid — unlike `.tr-agents__workbench` above, which
+// never shares its grid with a list column at any width. This class needs no
+// rule at the widths where `.tr-conversations`' own base/`:not(.is-properties-open)`
+// rules already apply (the list+main 2-column grid); it only matters in
+// Responsive below, where it opts the page out of the generic `1279px`
+// collapse other `.tr-conversations` consumers use, keeping list+dialog
+// together down to `1024px` (the shell's own sidebar-collapse breakpoint)
+// before switching to one full-width pane (see Responsive below); its back
+// button (`.tr-conversation-list-action`) stays default-hidden until then.
 
-.tr-conversation-standalone .tr-conversation-list-action {
-  display: inline-flex;
+// `.tr-conversation-detail-body` wraps `ConversationDetail.vue`'s chat pane
+// content (`History.vue`): a flex item below the shell's fixed header that
+// scrolls independently — `History.vue`'s messages/composer pair manages its
+// own internal `flex: 1`/`flex: 0 0 auto` split inside it. The settings pane
+// (`Settings.vue`) is a separate grid column now (`.tr-conversation-properties-body`
+// above), not routed through here.
+.tr-conversation-detail-body {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
 }
 
 .tr-conversation-channel-context {
@@ -3007,30 +3068,44 @@ button.dropdown-item:hover {
   text-align: end;
 }
 
-// Hidden by default — a routed detail page always shows the list-action
-// button instead (see `.tr-agents__workbench`/`.tr-conversation-standalone`
-// above), since there is no persistent list column at that width to click
-// "back" into; the properties-action button stays default-hidden for
-// get.3xtr.im's still-unported properties-aside toggle (Responsive below).
+// Hidden by default. `.tr-agents__workbench` above always shows the
+// list-action button instead, since that page never has a persistent list
+// column to click "back" into at any width; `.tr-conversation-split`
+// (Responsive below) only shows it below `1024px`, where its list column
+// collapses out of view. The properties-action button (the aside's own
+// "back to chat/history" arrow — both `ConversationDetail.vue`'s and
+// `AgentPlayground.vue`'s asides render only this, no `×`) stays
+// default-hidden the same way — desktop shows chat+properties (and, for
+// conversations, the list) together and settings stay open with nothing to
+// leave; both `.tr-conversation-split` and the generic narrow-viewport
+// block further down (Responsive) show it once a breakpoint collapses the
+// grid to one pane at a time, which is the only way the properties pane
+// ever becomes hidden.
 .tr-conversation-list-action,
 .tr-conversation-properties-action {
   display: none;
 }
 
-// Settings tab (Task A5.7, conversations/Settings.vue) reuses the `.tr-form`/
+// Settings pane (`conversations/Settings.vue`) reuses the `.tr-form`/
 // `.tr-settings__panel` contract shared with `AgentSettings.vue`/
-// `knowledge/Settings.vue`, but its route is `contentMode: fluid` (unlike
-// those two, which are `contained`) — this caps the panel's own width so a
-// short field stack doesn't stretch edge-to-edge on wide viewports.
+// `knowledge/Settings.vue`; capped narrower here since the properties aside
+// column itself is already narrow (`--tr-conversation-main-column`'s
+// complement) — this just keeps a short field stack from stretching
+// edge-to-edge inside it.
 .tr-conversation-settings {
   max-width: 640px;
 }
 
-// The kit's own History.vue reaches settings through `NavbarTabs` now (no
-// inline cog button), so nothing in `src/**/*.vue` sets either class below —
-// kept for get.3xtr.im's still-unported properties aside, whose close
-// button and settings-action toggle rely on these, same as the
-// properties-aside rules above.
+// `.tr-conversation-properties-close` (a `×` close button) is not rendered
+// by either kit consumer any more — both `ConversationDetail.vue`'s and
+// `AgentPlayground.vue`'s asides only have the arrow-left above — but the
+// rule stays for get.3xtr.im's still-unported conversation view, whose own
+// properties aside does render one (see the class registry above). The gear
+// button in the chat header (`.tr-conversation-settings-action`) stays
+// visible by default here for the same reason (that view's gear can be
+// toggled independently of a narrow-viewport collapse) — the kit's own two
+// consumers instead only render it conditionally (`v-if="!propertiesOpen"`),
+// so this rule never actually applies to them.
 .tr-conversation-settings-action,
 .tr-conversation-properties-close {
   display: inline-flex;
@@ -3068,6 +3143,18 @@ button.dropdown-item:hover {
 .tr-conversation-icon-action.button:focus-visible {
   border-color: transparent;
   box-shadow: 0 0 0 3px rgb(142 100 206 / 0.16);
+}
+
+// Gear button for the settings pane, pressed/`is-active` while it's open.
+// Neither kit consumer (`conversations/ConversationDetail.vue`'s chat header,
+// `agents/AgentPlayground.vue`'s sandbox header) sets this any more — their
+// gear only renders while the pane is *closed* (`v-if="!propertiesOpen"`),
+// so it is never simultaneously visible and active — kept for get.3xtr.im's
+// still-unported conversation view, whose gear stays visible and toggles
+// `is-active` against its own `isSettingsTab`.
+.tr-conversation-settings-action.is-active {
+  color: var(--tr-primary);
+  background: var(--tr-primary-soft);
 }
 
 // =============================================================================
@@ -3754,6 +3841,71 @@ button.dropdown-item:hover {
   .tr-grid--2,
   .tr-grid--3 {
     grid-template-columns: 1fr;
+  }
+
+  // Task A8.4: `Conversations.vue`'s persistent list+dialog split collapses
+  // to one full-width pane here — the same breakpoint the Sidebar itself
+  // collapses at above, rather than the generic `1279px`/`768px` guards
+  // below, which exist for `.tr-agents__workbench`'s narrower embedded
+  // 3-column widget and never share a route with this page. `is-list-view`/
+  // `is-chat-view`/`is-properties-view` pick which single pane shows,
+  // mirroring the mechanism get.3xtr.im's still-unported view already
+  // toggles on the synced stylesheet (see the `768px` block below and
+  // `docs/agent-migration-guide.md` section 6).
+  .tr-conversations.tr-conversation-split {
+    height: calc(100vh - #{tr.$topbar-height} - #{tr.$space-8});
+    display: block;
+  }
+
+  .tr-conversation-split.is-list-view .tr-conversations-list,
+  .tr-conversation-split.is-chat-view .tr-conversation-chat {
+    height: 100%;
+    display: flex;
+  }
+
+  .tr-conversation-split.is-list-view .tr-conversation-chat,
+  .tr-conversation-split.is-chat-view .tr-conversations-list {
+    display: none;
+  }
+
+  // Settings pane (this message's fix): mirrors the list/chat pair above —
+  // `is-properties-view` is entered only from `is-chat-view` (the gear
+  // button lives in the chat header), so only chat/properties need a
+  // visibility swap here; the list stays hidden either way.
+  .tr-conversation-split.is-properties-view .tr-conversation-properties {
+    height: 100%;
+    display: flex;
+  }
+
+  .tr-conversation-split.is-properties-view .tr-conversation-chat {
+    display: none;
+  }
+
+  .tr-conversation-split .tr-conversations-placeholder {
+    display: none;
+  }
+
+  .tr-conversation-split .tr-conversation-list-action,
+  .tr-conversation-split .tr-conversation-properties-action {
+    display: inline-flex;
+  }
+
+  // The aside's own "back to chat" arrow above replaces this close button
+  // once the properties pane is the only visible column — mirrors
+  // `.tr-conversation-list-action` vs `.tr-conversation-settings-action` in
+  // the chat header.
+  .tr-conversation-split.is-properties-view .tr-conversation-properties-close {
+    display: none;
+  }
+
+  .tr-conversation-split.is-list-view .tr-conversation-item.is-active {
+    color: var(--tr-text);
+    background: transparent;
+  }
+
+  .tr-conversation-split.is-list-view .tr-conversation-item.is-active:hover {
+    color: var(--tr-text-strong);
+    background: var(--tr-surface-hover);
   }
 }
 

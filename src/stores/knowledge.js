@@ -107,7 +107,7 @@ export const REINDEX_RUN_STATUSES = {
  * state (Stage A5.2); статусы объектов и запусков переиндексации меняются по
  * таймерам, которыми владеют компоненты-потребители
  * (`components/knowledge/Files.vue`, `components/knowledge/Settings.vue`),
- * не сам стор — тот же приём, что и демо `b-upload` в `UiKit.vue`.
+ * не сам стор — тот же приём, что и демо `b-upload` в `components/kit/Forms.vue`.
  *
  * @type {Record<string, KnowledgeCollection[]>}
  */
@@ -341,7 +341,7 @@ export const useKnowledgeStore = defineStore("knowledge", () => {
    * Registers a new object in `indexing` status — callers own the timer that
    * eventually flips it to `indexed`/`error` via `setObjectStatus` (kept out
    * of the store so unmounting the tab cancels the timer, same pattern as
-   * `UiKit.vue`'s upload demo).
+   * `components/kit/Forms.vue`'s upload demo).
    *
    * @param {string} workspaceId
    * @param {string | number} collectionId

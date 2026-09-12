@@ -20,7 +20,7 @@ app.use(createPinia());
 // docs/design-system.md#собственный-компонент-или-buefy is satisfied by this
 // single call; no per-component registration is needed. Do not switch to
 // selective component imports without updating that registry and the smoke
-// examples in UiKit.vue that exercise it.
+// examples under src/components/kit/** that exercise it.
 app.use(Buefy, {
   defaultIconPack: "mdi",
   defaultContainerElement: "#app",

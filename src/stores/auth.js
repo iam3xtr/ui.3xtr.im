@@ -41,6 +41,16 @@ export const useAuthStore = defineStore("auth", () => {
   }
 
   /**
+   * Fixture logout (Task A8.7): the kit has no session to invalidate, so this
+   * only clears the in-memory continuation state a real logout would also
+   * drop — no API call, no token, no persistence. `App.vue`'s `@logout`
+   * handler calls this before navigating to `auth-login`.
+   */
+  function logout() {
+    clearPendingInvite();
+  }
+
+  /**
    * @param {{ email: string, password: string }} credentials
    * @returns {Promise<void>}
    */
@@ -77,5 +87,6 @@ export const useAuthStore = defineStore("auth", () => {
     clearPendingInvite,
     login,
     signup,
+    logout,
   };
 });

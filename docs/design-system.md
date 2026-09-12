@@ -240,12 +240,51 @@ currentColor`, а не захардкоженный `--tr-text`, поэтому 
 - Загрузчик приложения, ошибка сервиса, переключатель пространства, модальные
   окна и тосты остаются отдельными корневыми состояниями.
 
+### Demo-цикл входа и выхода (Task A8.7)
+
+Кит замыкает навигационный demo auth-сценарий без бэкенда, сессии или
+токенов:
+
+- «Выйти» из user-menu (`Navbar.vue`, `.tr-dropdown-danger`) генерирует
+  событие `logout`, которое обрабатывает `App.vue` (`handleLogout`): вызывает
+  `useAuthStore().logout()` (фикстура — сбрасывает `pendingInvite`, без
+  сетевого запроса) и переводит на `auth-login`.
+- Успешный demo-login (`LoginView.vue`) уже возвращает на `dashboard` (сразу
+  или после `WorkspaceSelector`/`auth-invite`, если применимо) — это
+  поведение Task A5.10 не менялось.
+- Цикл «Войти → Выйти → Войти → …» и прямое открытие любого `/auth/*` URL
+  работают одинаково: `App.vue` определяет auth-маршрут той же проверкой
+  (`route.path.startsWith("/auth/")`) и рендерит минимальный `Navbar` без
+  `.tr-app-shell`/`Sidebar` независимо от того, как маршрут был открыт.
+- Кит не вводит понятие «залогинен/разлогинен» как состояние приложения —
+  нет флага сессии, охраняемых маршрутов или redirect-guard'ов. Это чисто
+  навигационная fixture-петля; реальная аутентификация, токены и
+  persistence остаются задачей `get.3xtr.im`.
+- Минимальный `Navbar` (`minimal`, только на `/auth/*`) рендерится без
+  фона/границы (`.tr-topbar--minimal`) — читается как часть auth-страницы, а
+  не отдельная панель продукта. Переключатель темы, который на кабинетных
+  маршрутах живёт внутри `.tr-user-dropdown` (недоступного в минимальном
+  режиме без user-меню), здесь вынесен в отдельный контрол в правом углу
+  (`.tr-topbar__auth-actions`), переиспользуя те же `.tr-theme-toggle`
+  классы и `v-model:is-dark`. По умолчанию (без сохранённого
+  `trickster-theme` в `localStorage`) тема берётся из
+  `prefers-color-scheme` — см. `App.vue`, `onMounted`.
+
 ### Режим ширины контента
 
 `route.meta.contentMode` принимает `contained` или `fluid`. Первый центрирует
 контент до `--tr-content-max-width`, второй использует полную доступную
 ширину. Если metadata отсутствует, применяется `contained`. Новый маршрут
 выбирает режим явно — для таблиц, split-view и полноширинных рабочих областей.
+
+Все внутренние вкладки детали агента (`agent`/песочница, `agent-settings`,
+`agent-channels`) и коллекции знаний (`knowledge-collection`/файлы,
+`knowledge-collection-settings`, `knowledge-collection-statistics`) — `contained`
+(Task A8.5): у этих рабочих поверхностей нет table/split-view обоснования для
+полной ширины, в отличие от каталогов `/agents/` и `/knowledge/` (без
+`meta.contentMode`, наследуют дефолт кабинета) и списочных/split-view
+маршрутов вроде `/conversations/**` (`fluid`), которые сохраняют свой режим
+без изменений.
 
 ### Навигация
 
@@ -255,6 +294,125 @@ resource links, меню пространства и меню пользоват
 иконки или URL пунктов. Resource menu не создаётся в DOM, когда его реестр
 пуст. Prefix-aware сравнение сохраняет активным родительский пункт на
 вложенных маршрутах.
+
+### Административные каталоги (Task A8.3)
+
+Группа «Администрирование» в Sidebar ведёт на пять реальных именованных
+маршрутов — `administration-users` (`/users`), `administration-providers`
+(`/providers`), `administration-models` (`/models`), `administration-tariffs`
+(`/tariffs`), `administration-requests` (`/requests`) — плюс существовавший
+ранее `/kit`. Первые четыре пути и `meta.contentMode: "fluid"` повторяют
+list-маршруты `get.3xtr.im` (`src/modules/{users,llms,tariffs}/routes.js`);
+`requests` — кит-only верхнеуровневый пункт: в кабинете лог запросов
+открывается только вложенно (`models/:id/requests`) и как деталь одного
+запроса (`/requests/:id`), без собственного списка на верхнем уровне.
+
+Каждый экран (`src/components/administration/{Users,Providers,Models,
+Tariffs,Requests}.vue`) — самостоятельный `Toolbar` + `b-table`
+(`mobile-cards`) каталог на общем демо-контракте `useDemoStore()`, но
+упрощённом по сравнению с `Agents.vue`/`Knowledge.vue`/`workspace/Members.vue`:
+только loading/empty/error через `ListAsyncState` и `partial` баннером — без
+ветки `permission-denied` (см. ниже), читающий свою часть единого
+fixture-стора `src/stores/administration.js`. Границы явно зафиксированы:
+
+- никаких внутренних форм создания/редактирования, permission-веток или
+  сетевых вызовов — только чтение fixture-списка и presentation-фильтрация
+  (поиск, выпадающий фильтр по статусу) на уже загруженных данных;
+- fixture-данные платформенные (не per-workspace) и не связаны с доменными
+  сторами того же имени, обслуживающими другие контракты — `stores/models.js`
+  (BYOK-каталог агента), `WorkspacePlans.vue`/`TariffSelector.vue` (выбор
+  тарифа пространством), `workspace/Members.vue` (участники пространства);
+- бизнес-логика этих экранов не переносится в `get.3xtr.im` как есть — там
+  уже есть полноценные операторские версии этих разделов с формами,
+  permissions и API (`src/modules/{users,llms,tariffs}/**`); кит фиксирует
+  только навигацию, ширину и общий UI-контракт таблицы/toolbar/async-состояний.
+
+### Маршрутные подразделы `/kit` (Task A8.6)
+
+Справочник UI Kit больше не одна длинная страница: `UiKit.vue` разделён на
+route-driven shell `components/kit/KitShell.vue` (мирует `ProfileShell.vue`/
+`Workspace.vue` — только `NavbarMenu`/`NavbarTabs` и `<RouterView>`) и пять
+адресуемых подразделов, каждый со своим именованным маршрутом и `PageHeader`:
+
+| Подраздел | URL | Route name | Компонент |
+| --- | --- | --- | --- |
+| Обзор | `/kit/overview` (алиас: `/kit`) | `kit` | `components/kit/Overview.vue` |
+| Формы | `/kit/forms` | `kit-forms` | `components/kit/Forms.vue` |
+| Таблицы | `/kit/tables` | `kit-tables` | `components/kit/Tables.vue` |
+| Навигация и состояния | `/kit/navigation-states` | `kit-navigation-states` | `components/kit/NavigationStates.vue` |
+| Диалоги и оверлеи | `/kit/dialogs-overlays` | `kit-dialogs-overlays` | `components/kit/DialogsOverlays.vue` |
+
+Совместимость: маршрут `overview` объявляет пустой `alias`, поэтому бare
+`/kit` рендерит его напрямую (без редиректа), а `navigation.js`'s
+`administrationNavigationItems` продолжает ссылаться на `{ name: "kit" }` —
+Sidebar-пункт «UI Kit» не менялся. Каждый прежний пример распределён ровно в
+один подраздел без копирования разметки: кнопки/теги/уведомления/лимиты/
+загрузчик/выбор тарифа/копируемый блок — в «Обзор»; поля формы и `b-upload` —
+в «Формы»; `b-table` (три модификатора) и `b-pagination` — в «Таблицы»;
+`Toolbar`, `b-tabs` и матрица demo-состояний (Task A7.6) — в «Навигация и
+состояния»; диалог подтверждения, тост, `b-loading`/`b-skeleton`, `b-sidebar`
+и `b-modal` — в «Диалоги и оверлеи». Единственное намеренное отличие от
+прежней единой страницы: в матрице demo-состояний кнопка `empty-action`
+демонстрирует сам слот `ListAsyncState` тостом вместо открытия модалки
+создания агента — тот же `b-modal` теперь на отдельном маршруте
+(`dialogs-overlays`) и был бы недостижим оттуда через общий `useModalStore()`
+без дублирования разметки модалки; в «Диалоги и оверлеи» у неё теперь и
+собственная кнопка-триггер.
+
+### Список и деталь диалогов (Task A8.4)
+
+`Conversations.vue` (`/conversations`, `/conversations/:agentId`) больше не
+рендерит только список: маршрут `conversation` вложен под её же
+`conversations-agent` (см. `router.js`) и открывается через собственный
+`<RouterView>` компонента, рядом со списком, на одном персистентном гриде
+`tr-conversations`. Список снова подсвечивает открытый диалог классом
+`is-active`, сверяя `route.params.conversationId` с элементом.
+
+Настройки диалога — третья колонка этого же грида, а не вкладка и не подмена
+тела: `Settings.vue` рендерится в `<aside class="tr-conversation-properties">`
+рядом с историей (`History.vue` остаётся видимой) через
+`conversationPropertiesKey` — состояние
+`propertiesOpen`/`openProperties`/`closeProperties` живёт в `Conversations.vue`
+(владельце грида, класс `is-properties-open`), а не в самом
+`ConversationDetail.vue`, который его только читает. Открыта **по
+умолчанию** для каждого выбранного диалога (`propertiesOpen` стартует
+`true` и сбрасывается на `true` при переключении диалога) — так же, как в
+песочнице агента (см. «Master-detail и рабочие области» ниже). На ширинах,
+где список+чат+настройки помещаются рядом, панель никак не закрывается —
+исчезает только на узком экране, где грид схлопывается в одну колонку за
+раз (`is-list-view`/`is-chat-view`/`is-properties-view`): там в шапке панели
+остаётся только стрелка влево (`tr-conversation-properties-action`, без
+крестика), а в шапке диалога появляется шестерёнка
+(`tr-conversation-settings-action`, класс `v-if="!propertiesOpen"` — не
+рендерится, пока панель видна). Отдельного `conversation-settings`-маршрута
+и вкладки `NavbarTabs` для этого нет — у диалога нет собственного меню в
+навбаре, только общая шапка со стрелкой назад слева. Структура повторяет
+`conversations/views/Conversation.vue` из get.3xtr.im (список + чат +
+properties-aside), только без роутинга настроек — там `/settings` остаётся
+собственным маршрутом (см. `docs/agent-migration-guide.md`, раздел 6).
+
+Ниже `1024px` (брейкпоинт совпадает с тем, на котором сворачивается
+Sidebar) модификатор `tr-conversation-split` на корневом `tr-conversations`
+переключает страницу в одноколоночный режим: виден либо список
+(`is-list-view`), либо открытый диалог (`is-chat-view`/`is-properties-view`)
+— тот же `is-${view}-view`-приём, что get.3xtr.im's ещё не портированный
+`Conversations.vue` уже переключает на синхронизируемой таблице стилей (см.
+`docs/agent-migration-guide.md`, раздел 6). Какой вид сейчас активен, решает
+сам URL — `mobileView` в `Conversations.vue` это просто `computed`, читающий
+`route.params.conversationId` (диалог выбран → `detail`, иначе → `list`), а
+не отдельное состояние. Кнопка "назад к списку" в шапке диалога — обычный
+`router-link` на `{ name: "conversations" }`: клик по ней **реально уходит
+на `/conversations/`**, снимая выбор диалога, а не просто скрывает панели
+CSS-правилом поверх всё ещё смонтированного и выбранного диалога, как было
+раньше (`conversationMobileViewKey`/`showList()` — этого provide/inject-пары
+и файла `src/composables/conversationMobileView.js` больше нет).
+
+`conversations/ConversationDetail.vue` несёт общую шапку (аватар, имя,
+`ConversationHeader`'s channel/status-теги, кнопка "назад") для истории
+(`History.vue`, всегда видна в `tr-conversation-detail-body` — скроллящийся
+сам по себе flex-блок) и настроек (`Settings.vue`, в отдельной колонке выше).
+`History.vue` не рендерит собственную шапку/грид — только фрагмент
+"сообщения + composer".
 
 ### Меню страницы в Navbar
 
@@ -330,7 +488,10 @@ Task A7.2. `Navbar.vue` рендерит компактную панель (`b-d
   (`ready | loading | empty | error | permission-denied | partial`) с
   человекочитаемыми подписями на русском;
 - два `b-switch` — «Длинные подписи» (`longLabels`) и «Много данных»
-  (`denseData`).
+  (`denseData`);
+- `b-select` «Resource-меню» со всеми тремя значениями `RESOURCE_MENU_SIZES`
+  (`none | compact | full`, Task A8.1) — см. «Опциональное resource-меню
+  Navbar» ниже.
 
 Переключение любого контрола сразу меняет `useDemoStore()` и переживает
 перезагрузку (persistence — контракт Task A7.1), без изменения маршрута и без
@@ -421,7 +582,10 @@ fixture-данных — `auth/InviteView.vue`'s найденное пригла
 нет async fixture-поверхности, только валидация демо-формы, которую
 demo-режим не должен подменять.
 
-**Матрица demo-состояний на `/kit` (Task A7.6).** `UiKit.vue` собирает
+**Матрица demo-состояний на `/kit/navigation-states` (Task A7.6; перенесена
+из единого `UiKit.vue` в `components/kit/NavigationStates.vue` при
+разделении `/kit` на маршрутные подразделы, Task A8.6).**
+`kit/NavigationStates.vue` собирает
 контракты Task A7.3–A7.5 в одном обозримом месте — не подборку ручных
 несвязанных примеров, а витрину всех шести значений `DEMO_MODES`, каждое из
 которых показано тем же реальным компонентом, который его рендерит на
@@ -444,7 +608,7 @@ demo-режим не должен подменять.
 `permissionDeniedState` (read-only проекция стора, без дублирования строк) и
 не подписаны на его текущий `mode` — карточки в пределах каждого раздела
 рендерятся одновременно, независимо от того, что выбрано в демо-панели
-навбара, поэтому открытие `/kit` не читает и не переписывает persisted
+навбара, поэтому открытие этого раздела не читает и не переписывает persisted
 `mode`. Сам текущий
 глобальный режим виден отдельной read-only строкой над матрицей
 (`demoStore.mode` через `b-tag`) только для справки. Старое демо приоритета
@@ -452,6 +616,71 @@ demo-режим не должен подменять.
 отдельным блоком со своими локальными переключателями — оно не входит в
 матрицу и не дублирует её разметку, а иллюстрирует то, что сама матрица не
 показывает: поведение компонента при одновременно включённых флагах.
+
+### Опциональное resource-меню Navbar (Task A8.1)
+
+Полный Navbar (не `minimal`) больше не содержит глобальную строку поиска —
+разметка и `ToolbarSearch` были удалены из `Navbar.vue`; `ToolbarSearch` сам
+остаётся общим компонентом и продолжает демонстрироваться на
+`/kit/navigation-states` (`components/kit/NavigationStates.vue`), это не
+касается его контракта.
+
+Resource links (`.tr-topbar__links` в desktop-виде, `.tr-user-resource*` в
+mobile/user-представлении) читаются из **одного** вычисляемого реестра
+`resourceLinks` в `Navbar.vue`, ключ которого — kit-only
+`useDemoStore().resourceMenuSize` (`none | compact | full`,
+`RESOURCE_MENU_SIZES`/`RESOURCE_MENU_SIZE_LABELS` в `src/stores/demo.js`,
+persisted тем же `trickster-demo-state`, невалидное/отсутствующее сохранённое
+значение нормализуется в `"compact"`):
+
+- `none` → пустой массив — `<nav class="tr-topbar__links">`, разделитель
+  `.tr-user-resource-separator` и сами пункты `.tr-user-resource` не
+  рендерятся вовсе (`v-if="resourceLinks.length"` в обоих местах разметки),
+  поэтому ни резервируемого зазора, ни пустого узла не остаётся в DOM ни в
+  одной проекции Navbar;
+- `compact` (значение по умолчанию) → базовый набор из трёх пунктов
+  («Новости», «API», «Документация»), совпадающий с прежним хардкодом;
+  `full` → тот же набор плюс «Поддержка» и «Сообщество», чтобы без правки
+  кода проверить более широкий Navbar.
+
+Второй, захардкоженный набор ссылок для desktop/mobile-user представлений не
+заводится — оба места разметки перебирают один и тот же `resourceLinks`.
+Маршрутные `NavbarTabs`/слот `menu` не зависят от размера resource-меню и
+продолжают отображаться независимо от него, в том числе при `none`.
+
+Это, как и остальная демо-панель, **не часть контракта кабинета** — kit-only
+переключатель для проверки дизайна на всех размерах реестра, не переносится в
+`get.3xtr.im`.
+
+### Уведомления Navbar (только кит, Task A8.2)
+
+Колокольчик `.tr-notifications-trigger` и его дропдаун
+`.tr-notifications-dropdown` — не всегда видимый элемент Navbar, а прямая
+проекция изолированного `useNotificationsStore()`
+(`src/stores/notifications.js`), keyed по активному `workspace` (id, который
+`Navbar.vue` получает как проп/`v-model` — сам стор про
+`useWorkspaceStore()` не знает, только принимает id аргументом):
+
+- `<b-dropdown class="tr-notifications-dropdown">` (desktop) и пункт
+  «События» в `tr-mobile-nav` рендерятся тогда и только тогда, когда
+  `notificationsStore.unreadCountFor(workspace)` больше нуля
+  (`hasUnreadNotifications` в `Navbar.vue`) — при пустом или неизвестном id
+  пространства (в т.ч. только что созданного `createWorkspace()`) фикстура
+  по умолчанию не несёт уведомлений, поэтому control не рендерится вовсе;
+- badge на триггере, aria-label («События: N непрочитанных») и заголовок
+  дропдауна («N новых») всегда показывают фактическое
+  `unreadCountFor(workspace)` — нулевое значение не подменяется статикой,
+  оно просто скрывает весь control;
+- клик по строке уведомления вызывает `markRead(workspace, id)`, а «Все
+  события» — `markAllRead(workspace)`; оба реактивно обновляют то же
+  fixture-состояние без перезагрузки, и когда непрочитанных становится 0,
+  колокольчик исчезает сам по следующему рендеру.
+
+Это kit-only fixture-контур: без API, polling, real-time транспорта и
+persistence — при перезагрузке кита фикстура возвращается к исходному
+набору. `docs/agent-migration-guide.md` не описывает этот store: реальные
+уведомления в `get.3xtr.im` остаются отдельной, не координированной здесь
+задачей (см. «Backend changes» в `CLAUDE.md`).
 
 ### Master-detail и рабочие области
 
@@ -461,10 +690,27 @@ demo-режим не должен подменять.
 открывается вместо списка; на мобильном list, content и properties доступны
 последовательно.
 
-Песочница агента повторяет ту же анатомию, что и диалог: панель чата и панель
-свойств внутри общего контейнера, одинаковые заголовки, иконки действий,
-оформление сообщений и composer. Закрытие панели свойств (стрелка, крестик,
-Escape) возвращает фокус на кнопку, которая её открыла.
+Песочница агента повторяет ту же анатомию, что и диалог — панель чата и
+панель свойств внутри общего контейнера, одинаковые заголовки, иконки
+действий, оформление сообщений и composer. Обе панели свойств (диалога и
+песочницы) открыты **по умолчанию** (`propertiesOpen` стартует `true`), а не
+по клику. На ширинах, где обе/все колонки помещаются, панель никак не
+закрывается — исчезает только на узком экране, где грид схлопывается в одну
+колонку за раз (`is-list-view`/`is-chat-view`/`is-properties-view`, см. раздел
+«Master-detail» выше): там в шапке панели остаётся только стрелка влево
+(`tr-conversation-properties-action`, без крестика — закрывать в этом виде
+нечего, только переключиться на чат/историю), а в шапке чата появляется
+шестерёнка (`tr-conversation-settings-action`, `v-if="!propertiesOpen"`),
+которая возвращает панель — и снова прячется сама, пока панель открыта.
+`AgentPlayground.vue` держит своё `propertiesOpen` локально (не через
+provide/inject, в отличие от диалога, где им владеет `Conversations.vue` —
+эта страница сама владеет своим гридом, делить его больше не с кем), и в её
+панели свойств — только температура и системная инструкция: поля, которые
+реально влияют на генерацию в текущей сессии песочницы. Остальные настройки
+агента (имя,
+статус, модель и BYOK-ключ) остаются во вкладке `NavbarTabs` «Настройки»
+(`AgentSettings.vue`) — они ничего не меняют в уже открытой песочнице,
+только в самом агенте.
 
 ### Navbar и Sidebar
 
@@ -531,7 +777,7 @@ Sidebar использует Buefy `b-menu` и общий реестр нави�
 | Компонент | Контракт | В ките |
 |---|---|---|
 | `PageHeader` | Title/subtitle, опциональная back-ссылка, слот действий, скелет на токенах | реализован (`src/components/common/PageHeader.vue`) |
-| `Toolbar` | Поиск, слот фильтров, слот действий, мобильные фильтры | реализован (`src/components/common/Toolbar.vue`, Task A4.7) — используется `Agents`, `Knowledge`, `Channels`, `Conversations`; `Navbar` рендерит `ToolbarSearch` напрямую (нет фильтров/действий) |
+| `Toolbar` | Поиск, слот фильтров, слот действий, мобильные фильтры | реализован (`src/components/common/Toolbar.vue`, Task A4.7) — используется `Agents`, `Knowledge`, `Channels`, `Conversations`; `Navbar` не рендерит `ToolbarSearch` — глобальный поиск убран из Navbar (Task A8.1), компонент демонстрируется только на `/kit` |
 | `ToolbarSearch` | Поле поиска с подсказкой `Ctrl K` / `⌘ K` и переводом фокуса | реализован (`src/components/common/ToolbarSearch.vue`) |
 | `ToolbarDropdown` | Пилюля-фильтр с пунктом «все» | реализован (`src/components/common/ToolbarDropdown.vue`) |
 | `MobileFilters` | Триггер и панель фильтров ниже брейкпоинта toolbar | реализован (`src/components/common/MobileFilters.vue`) |
@@ -608,19 +854,19 @@ Task A4.5. `src/stores/modal.js` (`useModalStore`) и `src/stores/toaster.js`
 Escape, focus-trap/return и scroll-lock обеспечивает сам Buefy; слои overlay
 согласованы с `--tr-z-modal`/`--tr-z-sidebar`/`--tr-z-toast` (см. «Z-index и
 stacking» выше) — сторы не вводят собственных значений `z-index`. Используется
-в `UiKit.vue` (демо-модалка, боковая панель, диалог подтверждения, тост),
-`Agents.vue` и `Knowledge.vue` (модалки создания).
+в `kit/DialogsOverlays.vue` (демо-модалка, боковая панель, диалог
+подтверждения, тост), `Agents.vue` и `Knowledge.vue` (модалки создания).
 
 ### Демо-поток загрузки файлов
 
-Task A4.6. Секция «Загрузка файлов» в `UiKit.vue` показывает очередь, прогресс,
+Task A4.6. Секция «Загрузка файлов» в `kit/Forms.vue` показывает очередь, прогресс,
 успех и ошибку на `b-upload` без сети и без собственного компонента загрузки —
 `FileUpload`/`FileList`/`FileListItem` из `get.3xtr.im` в ките не
 воспроизводятся.
 
 - `b-upload` (`drag-drop`, `expanded`) только принимает файл в очередь;
   сама загрузка — локальная fixture-state machine (`uploadQueue`,
-  `resetUploadDemo()`, `runUploadDemoStep()` в `UiKit.vue`), без `fetch`/`axios`
+  `resetUploadDemo()`, `runUploadDemoStep()` в `kit/Forms.vue`), без `fetch`/`axios`
   и без persistence.
 - Состояния очереди: `queued` → `uploading` (таймер увеличивает `progress` на
   25% каждые 400 мс) → `success` или `error` — воспроизводятся детерминированно
@@ -889,7 +1135,7 @@ context (`.copy-pre`) — это не отдельный слой шкалы, а
 `trickster-buefy.scss`; частные случаи — модификаторы на корневом
 `<b-table class="tr-table--compact">` / `<b-table class="tr-table--breakdown">`,
 а не новый компонент или ручная разметка. Эталон — таблицы в `Dashboard.vue`,
-`Knowledge.vue` и раздел «Таблица» в `UiKit.vue`.
+`Knowledge.vue` и раздел «Таблица» в `kit/Tables.vue`.
 
 Создание нового объекта в каталоге может рендериться последней карточкой
 грида (`tr-entity-card--create`) — это визуальный, а не структурный элемент;
@@ -948,7 +1194,7 @@ context (`.copy-pre`) — это не отдельный слой шкалы, а
 |---|---|---|
 | ~~43 `tr-*`-класса определены в `trickster-buefy.scss`~~ | ~~Не используются ни китом, ни приложением~~ — закрыто A2.4: 8 подтверждённо мёртвых классов удалены (`tr-kpi`, `tr-kpi__label`, `tr-kpi__value`, `tr-kpi__delta`, `tr-strong`, `tr-settings__tabs`, `tr-tariff-selector__label`, `tr-tariff-selector__name--accent`), остальные кандидаты из исходного аудита нашли потребителей в ходе A2.2/A2.3 | A2 |
 | ~~Шкала z-index~~ | ~~Токенов нет, значения — литералы, часть слоёв без CSS~~ — закрыто A3.2 в ките: `--tr-z-*` объявлены, `trickster-buefy.scss` и конфигурация Bulma не содержат литералов; `.sidebar-overlay`/`.sidebar-column`/`.app-loader` остаются без CSS (не входили в scope A3.2) — см. «Z-index и stacking». Потребляющее приложение всё ещё использует свои литералы — закрывается B2 | A3.2 (кит); B2 (приложение) |
-| ~~«Табличные данные — только `b-table`»~~ | ~~25 ручных `<table>` в 9 комбинациях классов~~ — закрыто A3.5 в ките: `Dashboard`/`Knowledge`/`UiKit` используют `b-table` + `mobile-cards`, добавлены модификаторы `--compact`/`--breakdown` (`trickster-buefy.scss`, раздел 6). Кабинет всё ещё держит 25 ручных `<table>` — закрывается B2 | A3.5 (кит); B2 (приложение) |
+| ~~«Табличные данные — только `b-table`»~~ | ~~25 ручных `<table>` в 9 комбинациях классов~~ — закрыто A3.5 в ките: `Dashboard`/`Knowledge`/`kit/Tables.vue` используют `b-table` + `mobile-cards`, добавлены модификаторы `--compact`/`--breakdown` (`trickster-buefy.scss`, раздел 6). Кабинет всё ещё держит 25 ручных `<table>` — закрывается B2 | A3.5 (кит); B2 (приложение) |
 | ~~Единый контракт вкладок~~ | ~~Три параллельные системы~~ — закрыто A3.6 в ките: маршрутные вкладки — только `NavbarTabs`, переключение контента — только `b-tabs`; ручного Bulma `.tabs` в `src/components` нет. Кабинет всё ещё держит собственные варианты — закрывается B2 | A3.6 (кит); B2 (приложение) |
 | ~~Единое пространство имён `tr-`~~ | ~~Сосуществуют `modal-form__*`, `request-detail__*`, `async-state__*`, `page-header__*` и ещё десяток семейств~~ — закрыто A3.3 в ките для `src/components/**`: все project-CSS-классы разметки начинаются с `tr-` (не считая штатных классов Bulma/Buefy: `modal-card*`, `dropdown-*`, `is-*` и т.п.). Осознанное исключение — пять семейств в `trickster-buefy.scss` (`page-header__*`, `pagination-controls*`, `progress-bar*`, `skeleton-loader*`, `copy-pre*`), намеренно оставленных без `tr-`-префикса, чтобы совпадать с одноимёнными компонентами `get.3xtr.im`; `page-header__*` и `copy-pre*` уже применены компонентами кита (`PageHeader`/`CopyPre`, Task A4.2), остальные три (`pagination-controls*`, `progress-bar*`, `skeleton-loader*`) остаются CSS-only фундаментом без кит-компонента — Stage A4 решил заменить `PaginationControls`/`ProgressBar`/`SkeletonLoader` в ките штатными `b-pagination`/`b-progress`/`b-skeleton` навсегда, а не перенести их, см. «Допустимые исключения» ниже. Переименование в `tr-*` откладывается до Stage B4, синхронизированно с `get.3xtr.im`, см. R2 в `.plan`. Кабинет всё ещё держит старые семейства в собственной разметке — закрывается B2 | A3.3 (кит); B2 (приложение) |
 | `.is-ellipsis`, `.is-decorative`, `has-fill-*` | Не определены нигде | A3, B1 |
@@ -1094,8 +1340,8 @@ Evidence Task A4.8 (2026-09-11): `npm.cmd run lint:style`,
 `src/components/common/**` и не дублируют Buefy; `Agents`, `Knowledge`,
 `Channels`, `Conversations`, `Navbar` используют `Toolbar`/`ToolbarSearch`,
 `SearchField.vue` в дереве `src/` отсутствует; `useModalStore`/
-`useToasterStore` подключены в `Agents`, `Knowledge`, `UiKit`; `b-upload`
-демо-поток — только в `UiKit.vue`. Таблица «Расхождения контракта и
+`useToasterStore` подключены в `Agents`, `Knowledge`, `kit/DialogsOverlays.vue`;
+`b-upload` демо-поток — только в `kit/Forms.vue`. Таблица «Расхождения контракта и
 реализации» и раздел «Допустимые исключения» приведены в соответствие
 решению Stage A4 не переносить `PaginationControls`/`SkeletonLoader`/
 `ProgressBar` в кит (комментарии `foundation` в `trickster-buefy.scss`

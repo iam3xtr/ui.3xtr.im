@@ -19,24 +19,6 @@
             </option>
           </b-select>
         </b-field>
-
-        <b-field label="Температура">
-          <b-slider
-            v-model="agent.temperature"
-            :min="0"
-            :max="1"
-            :step="0.1"
-            :tooltip="true"
-          />
-        </b-field>
-
-        <b-field label="Системная инструкция">
-          <b-input
-            v-model="agent.instructions"
-            type="textarea"
-            rows="7"
-          />
-        </b-field>
       </div>
     </div>
 
@@ -133,13 +115,20 @@ import PageHeader from "../common/PageHeader.vue";
 import ApiKeySelect from "./ApiKeySelect.vue";
 import ModelSelect from "./ModelSelect.vue";
 
-// Agent settings tab (Task A5.4), routed at `/agents/:id/settings`. The
-// name/status/temperature/instructions fields keep the immediate-apply
-// pattern the tab has used since Task A5.4 (same as `WorkspaceSettings.vue`'s
-// rename field) — there is no backend to save to, so there is no reason to
-// gate them behind a Save button. The model/BYOK section below is the one
-// exception: it can delete a stored key or `provider_model_id`, so it needs
-// an explicit draft, a Save step and — per Task A6.3 — a pre-save
+// Agent settings tab (Task A5.4), routed at `/agents/:id/settings`. Scoped
+// to fields that do not affect an in-progress sandbox session — name/status
+// keep the immediate-apply pattern the tab has used since Task A5.4 (same as
+// `WorkspaceSettings.vue`'s rename field) — there is no backend to save to,
+// so there is no reason to gate them behind a Save button. Temperature and
+// the system prompt moved out to `AgentPlayground.vue`'s own gear-opened
+// properties aside (this message's fix): both are live generation
+// parameters, so they belong with the sandbox that exercises them, mirroring
+// get.3xtr.im's own split between `agents/components/Settings.vue` (identity
+// only) and `Playground.vue`'s properties pane (model/prompt/temperature).
+// The model/BYOK section below stays here regardless — it provisions which
+// model/credentials the agent uses rather than tuning a live run, and unlike
+// the two moved fields it can delete a stored key or `provider_model_id`, so
+// it needs an explicit draft, a Save step and — per Task A6.3 — a pre-save
 // confirmation when that Save would actually clear something.
 const route = useRoute();
 const agentsStore = useAgentsStore();

@@ -23,16 +23,20 @@
    таблицы покрывает нужную часть разметки ЛК — используется штатный
    Buefy-компонент, а не ручной аналог; единственное документированное
    исключение — `NavbarTabs` (маршрутные вкладки, а не переключение
-   контента). Живые примеры каждого пункта — в разделе «Buefy-first
-   реестр» `UiKit.vue`.
+   контента). Живые примеры каждого пункта — в справочнике `components/kit/**`
+   (`/kit` и его подразделы, Task A8.6; ранее единый `UiKit.vue`).
 4. Эталонные файлы для сверки (в этом репозитории):
    `Agents.vue`, `Knowledge.vue`, `channels/ChannelsView.vue`,
    `Conversations.vue` + `conversations/{ConversationDetail,History,
    ConversationHeader,MessageDeliveryStatus,Settings}.vue`, `Dashboard.vue`,
-   `WorkspaceSettings.vue`, `UiKit.vue`, `NotFound.vue`.
+   `WorkspaceSettings.vue`, `kit/KitShell.vue` (+ его пять подразделов
+   `kit/{Overview,Forms,Tables,NavigationStates,DialogsOverlays}.vue`),
+   `NotFound.vue`.
    Перед правкой любой страницы ЛК — открыть страницу отсюда с максимально
-   похожей структурой и переносить разметку поэлементно. `UiKit.vue`
-   смонтирован на `/kit` (не `/ui-kit`) и в ките служит справочником
+   похожей структурой и переносить разметку поэлементно. `components/kit/**`
+   смонтирован на `/kit` и его подразделах (`/kit/overview`, `/kit/forms`,
+   `/kit/tables`, `/kit/navigation-states`, `/kit/dialogs-overlays`, Task
+   A8.6) и в ките служит справочником
    контрактов дизайн-системы, а не набором Buefy-демо — соответствующая
    страница ЛК должна переноситься с той же ролью, а не как отдельная
    демо-страница. Плитки `Dashboard.vue` (Task A5.3) — актуальный набор:
@@ -146,7 +150,7 @@
 ## 4. Табличные данные — только `b-table`
 
 Эталон: сводная таблица «Последние агенты» в `Dashboard.vue`, полная демо-
-таблица в `UiKit.vue`.
+таблица в `kit/Tables.vue`.
 
 ```html
 <article class="tr-card">
@@ -202,13 +206,13 @@
   (сводка «статья: значение» без шапки: разбивка стоимости, итоги). Класс,
   переданный на `<b-table>`, доходит до корневого `.b-table`, потому что
   Buefy 3 прокидывает `class`/`style`/`id` через `compatFallthrough`. Смотри
-  раздел «Таблица» в `UiKit.vue`. Новый визуальный вариант таблицы — это один
+  раздел «Таблица» в `kit/Tables.vue`. Новый визуальный вариант таблицы — это один
   из этих модификаторов или ещё один такой же, а не новый компонент.
 - Статус — всегда через `b-tag` с тем же тернарным паттерном
   `:type="row.<field> === '<активное значение>' ? 'is-primary' : undefined"`,
-  как во всех остальных местах кита (Agents/Conversations/Dashboard/UiKit).
+  как во всех остальных местах кита (Agents/Conversations/Dashboard/kit/Tables.vue).
 - Действия над строкой — через `b-dropdown` в последней колонке с
-  фиксированной шириной, как в `UiKit.vue`, а не через набор отдельных
+  фиксированной шириной, как в `kit/Tables.vue`, а не через набор отдельных
   кнопок в ряд.
 - Таблица оборачивается в `.tr-card`, заголовок — `.tr-card__title` внутри
   `.tr-row.tr-row--between`, как в примере. Не изобретать свой заголовок
@@ -274,64 +278,113 @@
 Эталон исторический (и всё ещё актуальный для ЛК до его портирования):
 единый `Conversations.vue` со внутренним `viewMode` ("список + чат +
 свойства" в одном компоненте, `is-${viewMode}-view`/`is-properties-open` на
-корневом `tr-conversations`). **С Task A5.7 кит больше не следует этому
-паттерну для диалогов** — картина ниже описывает новое устройство кита;
-раздел «Downstream sync» ниже объясняет, почему сам CSS-механизм
-`is-${viewMode}-view`/`is-properties-open` остаётся в `trickster-buefy.scss`
-несмотря на это.
+корневом `tr-conversations`). Task A5.7 временно развела список и деталь
+диалога по полностью независимым маршрутам (детальный экран не делил грид
+со списком вообще); **Task A8.4 вернула их на один персистентный грид**, но
+уже маршрутный, а не через внутренний `viewMode` — картина ниже описывает
+текущее устройство кита.
 
-**Устройство кита после Task A5.7** — список и деталь диалога разнесены по
-маршрутам вместо внутреннего режима:
+**Устройство кита после Task A8.4** — список и деталь диалога снова на
+одном гриде, но каждый со своим маршрутом:
 
-- `Conversations.vue` (`/conversations`, `/conversations/:agentId`) — только
-  список; открытие диалога — переход на отдельный маршрут, а не переключение
-  `viewMode`. Рендерит `tr-conversations` без класса `is-properties-open`
-  (получает готовое двухколоночное состояние `:not(.is-properties-open)` —
-  список + `tr-conversations-placeholder` — без своего override).
-- `components/conversations/ConversationDetail.vue`
-  (`/conversations/:agentId/:conversationId`) — route-driven shell по
-  паттерну `AgentDetail.vue`/`CollectionDetail.vue` (раздел 3): резолвит
-  диалог по `:agentId/:conversationId`, показывает `NavbarTabs` "Диалог" /
-  "Настройки", отдаёт `RouterView` дочерним маршрутам.
-- `components/conversations/History.vue` (маршрут `conversation`) —
-  переиспользует виджет "один диалог" (`tr-conversation-panel
-  tr-conversation-chat` + `tr-conversation-header`/`-messages`/`-composer`),
-  но рендерит его в новом одноколоночном режиме `tr-conversation-standalone`
-  (аналог `tr-agents__workbench` у `AgentPlayground.vue` — то же решение
-  "settings ушли на отдельную вкладку, третья колонка больше не нужна",
-  только для диалогов, а не для песочницы агента). Статус доставки исходящих
+- `Conversations.vue` (`/conversations`, `/conversations/:agentId`) —
+  владеет корневым `tr-conversations tr-conversation-split` и списком
+  (`tr-conversation-panel tr-conversations-list`); открытие диалога — переход
+  на вложенный маршрут `conversation` (см. `router.js`: он вложен под
+  `conversations-agent`, а не под отдельный верхнеуровневый путь), который
+  рендерится через собственный `<RouterView>` этого же компонента, рядом со
+  списком — а не полноэкранной заменой. Список подсвечивает открытый диалог
+  классом `is-active` (`route.params.conversationId === conversation.id`).
+  Этот же компонент владеет и панелью настроек как третьей колонкой того же
+  грида: `propertiesOpen`/`openProperties`/`closeProperties` из `provide`/
+  `conversationPropertiesKey` (`src/composables/conversationProperties.js`)
+  — `ConversationDetail.vue`'s кнопка-шестерёнка их читает/вызывает, не владея
+  состоянием сама. `is-properties-open` на корневом `tr-conversations`
+  разворачивает грид до 3 колонок (список/чат/настройки) — открыта по
+  умолчанию (`propertiesOpen` стартует `true`, как и в песочнице агента, см.
+  раздел 6) и возвращается к `true` при каждой смене выбранного диалога
+  (`watch` на `route.params.conversationId`), чтобы следующий открытый
+  диалог всегда начинался с видимой панели настроек, независимо от того,
+  что было у предыдущего. Ниже `1024px` `tr-conversation-split` вместо
+  этого показывает одну колонку за раз через
+  `is-list-view`/`is-chat-view`/`is-properties-view` — тем же приёмом,
+  который у ЛК ниже описан как всё ещё живой на синхронной таблице стилей,
+  только без маршрута `/settings` (см. следующий пункт). Какой вид активен,
+  включая на узких экранах, решает сам URL — `mobileView` здесь просто
+  `computed`, читающий `hasSelectedConversation`, а не отдельное
+  provide/inject-состояние: кнопка "назад" в шапке диалога — обычный
+  `router-link` на `{ name: "conversations" }`, клик по ней реально уходит
+  на `/conversations/` и снимает выбор диалога (этот фикс убрал прежний
+  `conversationMobileViewKey`/`showList()`/`src/composables/conversationMobileView.js`,
+  которые только скрывали панели CSS-правилом, оставляя диалог смонтированным
+  и выбранным под ними).
+- `components/conversations/ConversationDetail.vue` (маршрут `conversation`)
+  — route-driven shell по паттерну `AgentDetail.vue`/`CollectionDetail.vue`
+  (раздел 3): резолвит диалог по `:agentId/:conversationId`, рендерит ДВА
+  корневых узла (fragment-шаблон), оба — прямые дети грида `Conversations.vue`
+  через её `<RouterView>`: `<section class="tr-conversation-panel
+  tr-conversation-chat">` (виджет "один диалог": шапка с аватаром/именем,
+  `ConversationHeader`'s channel/status-тегами, кнопкой "назад"
+  (`tr-conversation-list-action`, видна только ниже `1024px`) слева и
+  кнопкой-шестерёнкой (`tr-conversation-settings-action`, `cog-outline`,
+  `v-if="!propertiesOpen"` — рендерится только пока панель закрыта) справа,
+  плюс `History.vue` в `tr-conversation-detail-body`) и `<aside
+  class="tr-conversation-panel tr-conversation-properties" v-if="isReady &&
+  propertiesOpen">` (своя шапка со стрелкой "назад к диалогу"
+  (`tr-conversation-properties-action`) — без крестика, закрывать в
+  открытом-по-умолчанию виде нечего, только переключиться на историю — +
+  `Settings.vue` в `tr-conversation-properties-body`). Настроек нет ни
+  отдельного маршрута, ни вкладки `NavbarTabs`/меню в навбаре — стрелка
+  дергает `closeProperties()`, шестерёнка — `openProperties()`, обе из
+  `conversationPropertiesKey`.
+- `components/conversations/History.vue` (тело чат-панели) — не несёт
+  собственную шапку/грид (они в `ConversationDetail.vue` выше): рендерит
+  только фрагмент `tr-conversation-messages` +
+  `tr-conversation-composer`/`-composer-input`. Статус доставки исходящих
   сообщений — `components/conversations/MessageDeliveryStatus.vue`
   (`tr-message-delivery`); канал/статус диалога под именем — отдельный
   `components/conversations/ConversationHeader.vue`
-  (`tr-conversation-channel-context`).
-- `components/conversations/Settings.vue` (маршрут `conversation-settings`)
-  — форма на контракте `tr-settings__panel`/`tr-form` (как у
-  `AgentSettings.vue`), а не панель `tr-conversation-properties` сбоку от
-  чата; обёрнута в `tr-conversation-settings` (ограничивает ширину панели на
-  fluid-маршруте).
+  (`tr-conversation-channel-context`), рендерится из `ConversationDetail.vue`.
+- `components/conversations/Settings.vue` (тело `<aside>`-панели, включаемой
+  шестерёнкой в шапке — не отдельный маршрут) — плоский `.tr-form` (как поля
+  `AgentSettings.vue`, но без обёртки `.tr-settings__panel` — тот же
+  бордер/тень уже даёт сама `.tr-conversation-properties`, вложенная
+  `.tr-settings__panel` внутри нее дублировала рамку), обёрнут в
+  `tr-conversation-settings` (ограничивает ширину панели внутри узкой
+  колонки `tr-conversation-properties`).
 
 Ключевые классы, всё ещё общие для обоих устройств (кита и ЛК):
 
 - **`tr-conversations-*`** (множественное число) — то, что принадлежит
   только странице-списку: `tr-conversations-list` (панель списка),
   `tr-conversations-list__items`, `tr-conversations-placeholder` (заглушка
-  "выберите диалог"). Состояние "поиск/фильтр ничего не нашёл" внутри списка
-  — не отдельный класс, а `.tr-async-state.tr-async-state--no-results`, см.
-  раздел 9.
+  "выберите диалог", видна только когда ничего не выбрано). Состояние
+  "поиск/фильтр ничего не нашёл" внутри списка — не отдельный класс, а
+  `.tr-async-state.tr-async-state--no-results`, см. раздел 9.
 - **`tr-conversation-*`** (единственное число) — переиспользуемый виджет
   "один диалог": `tr-conversation-panel`, `tr-conversation-chat`,
   `tr-conversation-header`, `tr-conversation-title`,
   `tr-conversation-identity`, `tr-conversation-messages`,
   `tr-conversation-composer`, `tr-conversation-composer-input`,
-  `tr-conversation-details`; кнопка "назад к списку" —
-  `tr-conversation-icon-action` + `tr-conversation-list-action`.
-  `tr-conversation-properties`, `tr-conversation-properties-body`,
-  `tr-conversation-profile`, `tr-conversation-profile-image`,
-  `tr-conversation-settings-action`, `tr-conversation-properties-action`,
-  `tr-conversation-properties-close` — свойства-панель сбоку от чата — в
-  ките с Task A5.7 больше не используются (см. `Settings.vue` выше), но
-  остаются в `trickster-buefy.scss` как цель `@extend` для алиасов раздела
-  13: ЛК ещё не портирован на вкладку настроек.
+  `tr-conversation-details`, `tr-conversation-detail-body`; кнопка "назад к
+  списку" — `tr-conversation-icon-action` + `tr-conversation-list-action`.
+  Панель настроек сбоку от чата — `tr-conversation-properties`,
+  `tr-conversation-properties-body`; её шестерёнка-триггер в шапке чата —
+  `tr-conversation-icon-action` + `tr-conversation-settings-action`,
+  `v-if="!propertiesOpen"` (не `is-active` — раз она рендерится только пока
+  панель закрыта, то всегда неактивна, пока видна); её собственная шапка
+  несёт только стрелку влево — `tr-conversation-icon-action` +
+  `tr-conversation-properties-action` ("назад к диалогу"/"к песочнице",
+  видна только ниже `1024px`/`768px`, где грид схлопывается в одну колонку
+  за раз — на более широких панель не закрывается вообще). И диалог, и
+  песочница (`agents/AgentPlayground.vue`, раздел 6 ниже) используют ровно
+  эти классы и это поведение — `propertiesOpen` стартует `true` в обоих.
+  `tr-conversation-properties-close` (`×`) в ките не рендерится нигде — ни
+  `Settings.vue`, ни песочница не дают панели закрываться на широких экранах
+  — и остаётся в `trickster-buefy.scss` только для ЛК (см. класс ниже).
+  `tr-conversation-profile`/`tr-conversation-profile-image` (аватар-блок
+  внутри панели) в ките тоже не используются — и остаются как цель
+  `@extend` для алиасов раздела 13: ЛК ещё не портирован с этих BEM-имён.
 
 Старые `tr-conversations__*`-имена (до Task A3.3) остаются только как
 `@deprecated`-алиасы — см. раздел 13.
@@ -339,18 +392,21 @@
 **Downstream sync (важно для Task B2/B4).** Только два файла синхронизируются
 в ЛК автоматически — `trickster-buefy.scss` и `_trickster-tokens.scss` (см.
 CLAUDE.md "Downstream sync"); Vue-компоненты кита переносятся вручную и
-отдельной задачей. Поэтому после Task A5.7 в `trickster-buefy.scss`
-одновременно живут два слоя для диалогов: новый (`tr-conversation-standalone`,
+отдельной задачей. С этим сообщением-фиксом кит и ЛК снова используют один и
+тот же слой классов для диалогов (3-колоночный грид `tr-conversations`/
+`--tr-conversation-main-column`/`is-properties-open`,
+`tr-conversation-properties*`, `tr-conversation-settings-action`,
+`is-${view}-view`, `tr-conversation-item.is-active`) — до этого кит держал
+параллельный слой (`tr-conversation-split`, `tr-conversation-detail-body`,
 `tr-conversation-channel-context`, `tr-conversation-settings`,
-`tr-message-delivery` — используются только компонентами кита) и старый
-(3-колоночный грид `tr-conversations`/`--tr-conversation-main-column`/
-`is-properties-open`, `tr-conversation-item.is-active`,
-`tr-conversation-properties*`, `tr-conversation-profile*`,
-`tr-conversation-settings-action` — используются только ещё не портированным
-`get.3xtr.im/src/modules/conversations/views/Conversation(s).vue`). Старый
-слой убирается из стилей только вместе с портированием этого view на новый
-маршрутный паттерн — самостоятельной задачей, а не попутно с любой другой
-правкой `trickster-buefy.scss`.
+`tr-message-delivery`), потому что Task A5.7 временно вынесла историю/
+настройки в отдельный маршрут-паттерн вместо properties-aside. Тот
+кит-only слой (`tr-conversation-split` и далее) остаётся — он всё ещё нужен
+для `1024px`-брейкпоинта и BEM-независимой кит-разметки — но теперь
+дополняет общий слой, а не подменяет его; `tr-conversation-profile*`
+остаётся единственным по-прежнему неиспользуемым в ките именем (только
+`get.3xtr.im/src/modules/conversations/views/Conversation(s).vue` рендерит
+профильный блок внутри панели — см. выше).
 
 Если у ЛК появляется новая master-detail страница (например, "заявки" со
 списком и деталями заявки) — переиспользовать этот набор классов целиком,
@@ -386,7 +442,7 @@ CLAUDE.md "Downstream sync"); Vue-компоненты кита перенося
 **Вкладки внутри страницы или модалки** — переключают контент на месте, а
 маршрут не меняют.
 
-Эталон: раздел «Вкладки» в `UiKit.vue`.
+Эталон: раздел «Вкладки» в `kit/NavigationStates.vue`.
 
 ```html
 <b-tabs v-model="activeTab" type="is-boxed">
@@ -747,7 +803,9 @@ Deprecated aliases» `trickster-buefy.scss`, кроме переименован
 
 - Каждое поле — `b-field label="..."` вокруг `b-input`/`b-select`/
   `b-checkbox`/`b-switch`; ошибка — `type="is-danger"` и `message` на
-  `b-field`, не отдельный `<span>` под контролом.
+  `b-field`, не отдельный `<span>` под контролом. Исключение — auth-формы
+  входа/регистрации (раздел 18): там `b-field` без `label`, имя поля только
+  на `aria-label` `b-input`.
 - Секретное поле — `b-input type="password" password-reveal`, свой
   toggle-глаз не рисуется.
 - Полноразмерная форма (не в модалке) использует `.tr-form` только как
@@ -757,7 +815,7 @@ Deprecated aliases» `trickster-buefy.scss`, кроме переименован
   — `WorkspaceSettings.vue` (Task A5.8): `.tr-form` с полями переименования
   пространства и `.tr-destructive-zone` с удалением пространства через
   программное подтверждение `useModalStore().confirm()` (`b-dialog`, тот же
-  API, что и в разделе «Диалог подтверждения» `UiKit.vue`).
+  API, что и в разделе «Диалог подтверждения» `kit/DialogsOverlays.vue`).
 - Форма не эмулирует контролы иконками (чекбокс/радио — только
   `b-checkbox`/`b-radio`, включая `indeterminate` для промежуточного
   состояния).
@@ -802,7 +860,7 @@ Stage A6 fix (post-review, по решению пользователя 2026-09-
 
 ## 15. Пагинация
 
-Эталон — раздел «Пагинация» в `UiKit.vue`.
+Эталон — раздел «Пагинация» в `kit/Tables.vue`.
 
 ```html
 <div class="tr-row tr-row--between mb-4">
@@ -831,8 +889,9 @@ Stage A6 fix (post-review, по решению пользователя 2026-09-
 
 ## 16. Оверлеи
 
-Эталон — разделы «Диалог подтверждения», «Боковая панель» и последняя модалка
-в `UiKit.vue`; рабочие модалки создания — `Agents.vue`, `Knowledge.vue`.
+Эталон — разделы «Диалог подтверждения», «Боковая панель» и «Модальное окно»
+в `kit/DialogsOverlays.vue`; рабочие модалки создания — `Agents.vue`,
+`Knowledge.vue`.
 
 ```html
 <!-- Модальное окно -->
@@ -890,12 +949,12 @@ toast.open({ message: "Сохранено", type: "is-success" });
   `modal-card-body`/`modal-card-foot` (классы самой Buefy/Bulma), кастомных
   `tr-modal__*`-классов нет.
 - Баннер (не всплывающий, встроенный в страницу) — `b-message`, это не
-  overlay и в данный раздел не входит (см. пример в `UiKit.vue`, «Баннер и
-  тост»).
+  overlay и в данный раздел не входит (см. пример в `kit/DialogsOverlays.vue`,
+  «Баннер и тост»).
 
 ## 16a. Загрузка файлов
 
-Task A4.6. Эталон — секция «Загрузка файлов» в `UiKit.vue`.
+Task A4.6. Эталон — секция «Загрузка файлов» в `kit/Forms.vue`.
 `src/modules/uploader/components/{FileUpload,FileList,FileListItem}.vue` в ЛК
 переносятся как **шаблон разметки поверх `b-upload`**, а не переносятся один в
 один: `b-upload` (`drag-drop`, `expanded`) закрывает дропзону, `b-progress` —
@@ -949,9 +1008,9 @@ Task A5.10. Эталон — `src/components/auth/**` (`AuthPage`, `LoginView`,
     <b-notification v-if="errorMessage" type="is-danger" :closable="false">
       {{ errorMessage }}
     </b-notification>
-    <b-field label="Email"><b-input v-model="form.email" type="email" required /></b-field>
-    <b-field label="Пароль">
-      <b-input v-model="form.password" type="password" password-reveal required />
+    <b-field><b-input v-model="form.email" type="email" placeholder="Введите email" aria-label="Email" required /></b-field>
+    <b-field>
+      <b-input v-model="form.password" type="password" password-reveal placeholder="Введите пароль" aria-label="Пароль" required />
     </b-field>
     <b-button native-type="submit" type="is-primary" expanded :loading="isSubmitting">
       Войти
@@ -970,6 +1029,15 @@ Task A5.10. Эталон — `src/components/auth/**` (`AuthPage`, `LoginView`,
   (раздел 14); отдельного `PasswordInput.vue` кит не заводит, ЛК может
   удалить свой при портировании или оставить как внутреннюю обёртку над тем
   же `password-reveal`.
+- В отличие от остальных форм кабинета (раздел 14 — `b-field label="..."`),
+  `LoginView`/`SignupView` подписей полей не показывают: `b-field` без
+  `label`, а имя поля для скринридеров — на `aria-label` самого `b-input`.
+  Это единственное исключение из правила «каждое поле — `b-field
+  label="..."`» (раздел 14), закреплённое явно, а не забытое при переносе.
+- `placeholder` на полях `LoginView`/`SignupView` — инструкция, что вводить
+  («Введите email», «Придумайте пароль (не короче 8 символов)»), а не
+  образец значения (`demo@3xtr.im`, `Иван Петров`); при переносе не
+  возвращать placeholder-примеры.
 - `GoogleButton.vue` в ките — `disabled`-заглушка без сетевого запроса; при
   портировании в ЛК реальная интеграция (`accounts.google.com/gsi/client`)
   остаётся как есть — переносится только визуальный контракт кнопки

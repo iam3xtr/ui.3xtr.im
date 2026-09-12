@@ -22,6 +22,7 @@
         :workspaces="workspaces"
         :user="user"
         @create-workspace="workspaceStore.createWorkspace"
+        @logout="handleLogout"
       >
         <template #menu>
           <div ref="navbarMenuTarget" class="tr-topbar__menu" />
@@ -51,11 +52,12 @@ import { storeToRefs } from "pinia";
 import {
   computed, onMounted, provide, ref, shallowRef, watch,
 } from "vue";
-import { RouterView, useRoute } from "vue-router";
+import { RouterView, useRoute, useRouter } from "vue-router";
 
 import Navbar from "./components/Navbar.vue";
 import Sidebar from "./components/Sidebar.vue";
 import { navbarMenuKey } from "./composables/navbarMenu";
+import { useAuthStore } from "./stores/auth";
 import { useWorkspaceStore } from "./stores/workspace";
 
 /** @typedef {"light" | "dark"} Theme */
@@ -71,8 +73,10 @@ const {
   workspaces,
   activeWorkspaceId: workspace,
 } = storeToRefs(workspaceStore);
+const authStore = useAuthStore();
 const isDark = ref(false);
 const route = useRoute();
+const router = useRouter();
 
 const navbarMenuTarget = shallowRef(null);
 provide(navbarMenuKey, navbarMenuTarget);
@@ -86,6 +90,17 @@ const isFluidContent = computed(
 // the cabinet instead of the full product shell (see docs/design-system.md,
 // "Application shell").
 const isAuthRoute = computed(() => route.path.startsWith("/auth/"));
+
+// Task A8.7: closes the demo auth loop — "Выйти" in the user menu has no
+// real session to invalidate (see stores/auth.js, `logout()`), it only
+// drops the in-memory continuation state and returns to the login screen;
+// a successful demo-login (`LoginView.vue`) already routes back to
+// `dashboard`, so the cycle (login → logout → login → ...) and direct
+// `/auth/*` URLs all resolve without a backend.
+function handleLogout() {
+  authStore.logout();
+  router.push({ name: "auth-login" });
+}
 
 /**
  * @param {Theme} theme

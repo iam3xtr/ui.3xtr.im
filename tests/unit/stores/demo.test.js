@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
-import { DEMO_MODES, useDemoStore } from "../../../src/stores/demo.js";
+import {
+  DEMO_MODES,
+  RESOURCE_MENU_SIZES,
+  useDemoStore,
+} from "../../../src/stores/demo.js";
 
 const STORAGE_KEY = "trickster-demo-state";
 
@@ -44,6 +48,12 @@ describe("stores/demo — default state", () => {
     expect(store.longLabels).toBe(false);
     expect(store.denseData).toBe(false);
     expect(store.isReady).toBe(true);
+  });
+
+  it("стартует с размером resource-меню compact по умолчанию", () => {
+    const store = useDemoStore();
+
+    expect(store.resourceMenuSize).toBe("compact");
   });
 
   it("проекция ListAsyncState в ready не поднимает ни один флаг", () => {
@@ -121,6 +131,22 @@ describe("stores/demo — переключатели и проекция", () =>
     expect(store.listAsyncState).toMatchObject({ loading: false, error: false, empty: false });
   });
 
+  it("setResourceMenuSize отклоняет неизвестное значение и оставляет compact", () => {
+    const store = useDemoStore();
+
+    store.setResourceMenuSize("gigantic");
+
+    expect(store.resourceMenuSize).toBe("compact");
+  });
+
+  it.each(RESOURCE_MENU_SIZES)("setResourceMenuSize(%s) переключает размер реактивно", (size) => {
+    const store = useDemoStore();
+
+    store.setResourceMenuSize(size);
+
+    expect(store.resourceMenuSize).toBe(size);
+  });
+
   it("toggleLongLabels/toggleDenseData инвертируют флаги независимо от режима", () => {
     const store = useDemoStore();
 
@@ -140,12 +166,14 @@ describe("stores/demo — переключатели и проекция", () =>
     store.setMode("error");
     store.setLongLabels(true);
     store.setDenseData(true);
+    store.setResourceMenuSize("full");
 
     store.reset();
 
     expect(store.mode).toBe("ready");
     expect(store.longLabels).toBe(false);
     expect(store.denseData).toBe(false);
+    expect(store.resourceMenuSize).toBe("compact");
   });
 });
 
@@ -164,19 +192,30 @@ describe("stores/demo — persistence", () => {
     store.setMode("empty");
     store.setLongLabels(true);
     store.setDenseData(true);
+    store.setResourceMenuSize("full");
 
     // watch — асинхронный по умолчанию; ждём flush перед чтением localStorage.
     await Promise.resolve();
     await new Promise((resolve) => { setTimeout(resolve, 0); });
 
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    expect(saved).toEqual({ mode: "empty", longLabels: true, denseData: true });
+    expect(saved).toEqual({
+      mode: "empty",
+      longLabels: true,
+      denseData: true,
+      resourceMenuSize: "full",
+    });
   });
 
   it("новый стор читает persisted режим и настройки при инициализации", () => {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ mode: "error", longLabels: true, denseData: false }),
+      JSON.stringify({
+        mode: "error",
+        longLabels: true,
+        denseData: false,
+        resourceMenuSize: "none",
+      }),
     );
     setActivePinia(createPinia());
 
@@ -185,6 +224,7 @@ describe("stores/demo — persistence", () => {
     expect(store.mode).toBe("error");
     expect(store.longLabels).toBe(true);
     expect(store.denseData).toBe(false);
+    expect(store.resourceMenuSize).toBe("none");
   });
 
   it("невалидный сохранённый режим заменяется на ready, флаги коэрсятся в boolean", () => {
@@ -199,6 +239,16 @@ describe("stores/demo — persistence", () => {
     expect(store.mode).toBe("ready");
     expect(store.longLabels).toBe(true);
     expect(store.denseData).toBe(false);
+  });
+
+  it("отсутствующее или невалидное сохранённое resourceMenuSize заменяется на compact", () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ mode: "ready", longLabels: false, denseData: false, resourceMenuSize: "huge" }),
+    );
+    setActivePinia(createPinia());
+
+    expect(useDemoStore().resourceMenuSize).toBe("compact");
   });
 
   it("повреждённый JSON в localStorage не роняет инициализацию стора", () => {

@@ -2,11 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { createMemoryHistory, createRouter } from "vue-router";
+import { ref } from "vue";
 import Buefy from "buefy";
 
+import { conversationPropertiesKey } from "../../../../src/composables/conversationProperties.js";
 import ConversationDetail from "../../../../src/components/conversations/ConversationDetail.vue";
 import History from "../../../../src/components/conversations/History.vue";
-import ConversationSettings from "../../../../src/components/conversations/Settings.vue";
+import Settings from "../../../../src/components/conversations/Settings.vue";
 import { useDemoStore } from "../../../../src/stores/demo.js";
 import { useWorkspaceStore } from "../../../../src/stores/workspace.js";
 
@@ -28,6 +30,13 @@ if (typeof window.matchMedia !== "function") {
 // подключён к глобальному demo-режиму тем же приёмом, что
 // `agents/AgentDetail.vue`/`knowledge/CollectionDetail.vue` (Task A7.4) —
 // route-валидация всегда побеждает над demo-режимом.
+//
+// Task A8.4: `ConversationDetail.vue` is nested under `conversations-agent`
+// now (see `router.js`); mounted standalone here (without the real
+// `Conversations.vue` parent), so the test router still needs the plain
+// `conversations` route its "back to list" button navigates to, and its own
+// stub for `conversationPropertiesKey` (`Conversations.vue`'s provide) the
+// same way the app's `Conversations.vue` would supply it.
 async function mountConversationDetail({ agentId = "1", conversationId = "1", demoMode } = {}) {
   const pinia = createPinia();
   setActivePinia(pinia);
@@ -42,19 +51,25 @@ async function mountConversationDetail({ agentId = "1", conversationId = "1", de
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
+      { path: "/conversations", name: "conversations", component: { template: "<div />" } },
       { path: "/conversations/:agentId", name: "conversations-agent", component: { template: "<div />" } },
       {
         path: "/conversations/:agentId/:conversationId",
+        name: "conversation",
         component: ConversationDetail,
-        children: [
-          { path: "", name: "conversation", component: History },
-          { path: "settings", name: "conversation-settings", component: ConversationSettings },
-        ],
       },
     ],
   });
   router.push(`/conversations/${agentId}/${conversationId}`);
   await router.isReady();
+
+  const propertiesOpen = ref(true);
+  const openProperties = vi.fn(() => {
+    propertiesOpen.value = true;
+  });
+  const closeProperties = vi.fn(() => {
+    propertiesOpen.value = false;
+  });
 
   // See `agents/AgentDetail.test.js` for why this needs
   // `advanceTimersByTimeAsync(2000)` rather than one delay window: mounting
@@ -64,13 +79,18 @@ async function mountConversationDetail({ agentId = "1", conversationId = "1", de
   const wrapper = mount(ConversationDetail, {
     global: {
       plugins: [pinia, router, Buefy],
+      provide: {
+        [conversationPropertiesKey]: { propertiesOpen, openProperties, closeProperties },
+      },
     },
   });
   await vi.advanceTimersByTimeAsync(2000);
   vi.useRealTimers();
   await flushPromises();
 
-  return { wrapper };
+  return {
+    wrapper, router, propertiesOpen, openProperties, closeProperties,
+  };
 }
 
 describe("ConversationDetail.vue — demo-состояния (Task A7.5)", () => {
@@ -109,5 +129,76 @@ describe("ConversationDetail.vue — demo-состояния (Task A7.5)", () =>
 
     expect(wrapper.find(".message.is-warning").exists()).toBe(true);
     expect(wrapper.find(".tr-conversation-messages").exists()).toBe(true);
+  });
+});
+
+describe("ConversationDetail.vue — общая шапка и «назад к списку» (Task A8.4)", () => {
+  it("шапка показывает имя контакта и канал/статус на обеих вкладках", async () => {
+    const { wrapper } = await mountConversationDetail();
+
+    expect(wrapper.find(".tr-conversation-identity").text()).toContain("Анна Смирнова");
+    expect(wrapper.find(".tr-conversation-channel-context").exists()).toBe(true);
+  });
+
+  it("кнопка «назад» переходит на /conversations/, а не только скрывает панели", async () => {
+    const { wrapper, router } = await mountConversationDetail();
+
+    // A plain `dispatchEvent`, not `wrapper.trigger("click")`: this suite
+    // switches from fake to real timers before interacting (see
+    // `mountConversationDetail` above), and Vue's own event-timestamp guard
+    // (https://github.com/vuejs/test-utils/issues/1854) then discards
+    // `trigger`'s synthetic event as stale even with test-utils' `_vts`
+    // workaround, so the click never reaches the handler.
+    wrapper.find(".tr-conversation-list-action").element
+      .dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    await flushPromises();
+
+    expect(router.currentRoute.value.name).toBe("conversations");
+    expect(router.currentRoute.value.params.conversationId).toBeUndefined();
+  });
+});
+
+describe("ConversationDetail.vue — настройки третьей колонкой открыты по умолчанию, без маршрута/NavbarTabs", () => {
+  it("по умолчанию показывает историю и настройки одновременно, без шестерёнки и без NavbarTabs/меню в навбаре", async () => {
+    const { wrapper } = await mountConversationDetail();
+
+    expect(wrapper.findComponent(History).exists()).toBe(true);
+    expect(wrapper.findComponent(Settings).exists()).toBe(true);
+    expect(wrapper.find(".tr-conversation-properties").exists()).toBe(true);
+    expect(wrapper.find(".tr-conversation-settings-action").exists()).toBe(false);
+    expect(wrapper.find(".tr-conversation-properties-close").exists()).toBe(false);
+    expect(wrapper.find(".tr-navbar-tabs").exists()).toBe(false);
+  });
+
+  it("стрелка влево в шапке панели вызывает closeProperties(), после чего появляется шестерёнка", async () => {
+    const { wrapper, propertiesOpen, closeProperties } = await mountConversationDetail();
+
+    // Plain `dispatchEvent`, not `wrapper.trigger("click")` — see the
+    // "назад" test above for why (Vue's event-timestamp guard discards
+    // `trigger`'s synthetic event once this suite is on real timers).
+    wrapper.find(".tr-conversation-properties-action").element
+      .dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    await flushPromises();
+
+    expect(closeProperties).toHaveBeenCalledOnce();
+
+    propertiesOpen.value = false;
+    await flushPromises();
+
+    expect(wrapper.find(".tr-conversation-properties").exists()).toBe(false);
+    expect(wrapper.find(".tr-conversation-settings-action").exists()).toBe(true);
+  });
+
+  it("клик по шестерёнке вызывает openProperties() из conversationPropertiesKey", async () => {
+    const { wrapper, propertiesOpen, openProperties } = await mountConversationDetail();
+
+    propertiesOpen.value = false;
+    await flushPromises();
+
+    wrapper.find(".tr-conversation-settings-action").element
+      .dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    await flushPromises();
+
+    expect(openProperties).toHaveBeenCalledOnce();
   });
 });

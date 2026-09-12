@@ -22,7 +22,7 @@ export const DEMO_MODES = Object.freeze([
 
 /**
  * Единый источник русских подписей режимов — переиспользуется demo-панелью
- * навбара (`Navbar.vue`) и матрицей состояний на `/kit` (`UiKit.vue`, Task
+ * навбара (`Navbar.vue`) и матрицей состояний на `/kit` (`components/kit/NavigationStates.vue`, Task
  * A7.6), чтобы обе поверхности всегда показывали один и тот же текст без
  * дублирования словаря.
  * @type {Record<DemoMode, string>}
@@ -36,6 +36,30 @@ export const DEMO_MODE_LABELS = Object.freeze({
   partial: "Частично",
 });
 
+/**
+ * @typedef {"none" | "compact" | "full"} ResourceMenuSize
+ */
+
+/**
+ * Единственные допустимые значения размера resource-меню Navbar (Task
+ * A8.1) — kit-only настройка, не входящая в продуктовый контракт. Любое
+ * иное сохранённое/переданное значение нормализуется в `"compact"` — см.
+ * `normalizeResourceMenuSize`.
+ * @type {ResourceMenuSize[]}
+ */
+export const RESOURCE_MENU_SIZES = Object.freeze(["none", "compact", "full"]);
+
+/**
+ * Русские подписи размеров resource-меню, переиспользуемые demo-панелью
+ * навбара (`Navbar.vue`).
+ * @type {Record<ResourceMenuSize, string>}
+ */
+export const RESOURCE_MENU_SIZE_LABELS = Object.freeze({
+  none: "Нет",
+  compact: "Сокращённое",
+  full: "Полное",
+});
+
 /** Namespaced-ключ `localStorage`, как `trickster-theme` в `App.vue`. */
 const STORAGE_KEY = "trickster-demo-state";
 
@@ -43,6 +67,7 @@ const DEFAULTS = Object.freeze({
   mode: /** @type {DemoMode} */ ("ready"),
   longLabels: false,
   denseData: false,
+  resourceMenuSize: /** @type {ResourceMenuSize} */ ("compact"),
 });
 
 /**
@@ -51,6 +76,16 @@ const DEFAULTS = Object.freeze({
  */
 function normalizeMode(value) {
   return DEMO_MODES.includes(/** @type {DemoMode} */ (value)) ? /** @type {DemoMode} */ (value) : DEFAULTS.mode;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {ResourceMenuSize}
+ */
+function normalizeResourceMenuSize(value) {
+  return RESOURCE_MENU_SIZES.includes(/** @type {ResourceMenuSize} */ (value))
+    ? /** @type {ResourceMenuSize} */ (value)
+    : DEFAULTS.resourceMenuSize;
 }
 
 /**
@@ -88,10 +123,12 @@ function writePersisted(value) {
  * Единый реактивный источник demo-состояний кита (Stage A7, Task A7.1):
  * глобальный режим отображения (`ready | loading | empty | error |
  * permission-denied | partial`) и два presentation-only флага («длинные
- * подписи», «много данных»), persisted в `localStorage` кита. Не выполняет
- * сетевых вызовов и не трогает fixture-данные доменных stores
- * (`src/stores/agents.js` и т.д.) — экраны читают режим и решают, что
- * показать, сами.
+ * подписи», «много данных»), persisted в `localStorage` кита. Также несёт
+ * kit-only размер resource-меню Navbar (`none | compact | full`, Task A8.1) —
+ * это не часть контракта кабинета, см. `docs/design-system.md`, «Демо-панель
+ * навбара (только кит)». Не выполняет сетевых вызовов и не трогает
+ * fixture-данные доменных stores (`src/stores/agents.js` и т.д.) — экраны
+ * читают режим и решают, что показать, сами.
  */
 export const useDemoStore = defineStore("demo", () => {
   const persisted = readPersisted();
@@ -99,10 +136,19 @@ export const useDemoStore = defineStore("demo", () => {
   const mode = ref(normalizeMode(persisted?.mode));
   const longLabels = ref(Boolean(persisted?.longLabels));
   const denseData = ref(Boolean(persisted?.denseData));
+  const resourceMenuSize = ref(normalizeResourceMenuSize(persisted?.resourceMenuSize));
 
-  watch([mode, longLabels, denseData], ([nextMode, nextLongLabels, nextDenseData]) => {
-    writePersisted({ mode: nextMode, longLabels: nextLongLabels, denseData: nextDenseData });
-  });
+  watch(
+    [mode, longLabels, denseData, resourceMenuSize],
+    ([nextMode, nextLongLabels, nextDenseData, nextResourceMenuSize]) => {
+      writePersisted({
+        mode: nextMode,
+        longLabels: nextLongLabels,
+        denseData: nextDenseData,
+        resourceMenuSize: nextResourceMenuSize,
+      });
+    },
+  );
 
   /** @param {DemoMode} value */
   function setMode(value) {
@@ -119,6 +165,11 @@ export const useDemoStore = defineStore("demo", () => {
     denseData.value = Boolean(value);
   }
 
+  /** @param {ResourceMenuSize} value */
+  function setResourceMenuSize(value) {
+    resourceMenuSize.value = normalizeResourceMenuSize(value);
+  }
+
   function toggleLongLabels() {
     longLabels.value = !longLabels.value;
   }
@@ -131,6 +182,7 @@ export const useDemoStore = defineStore("demo", () => {
     mode.value = DEFAULTS.mode;
     longLabels.value = DEFAULTS.longLabels;
     denseData.value = DEFAULTS.denseData;
+    resourceMenuSize.value = DEFAULTS.resourceMenuSize;
   }
 
   const isReady = computed(() => mode.value === "ready");
@@ -167,7 +219,7 @@ export const useDemoStore = defineStore("demo", () => {
   /**
    * Текст/иконка для прямого рендера `<AsyncState variant="permission-denied">`
    * (см. `isPermissionDenied` выше), в тех же формулировках, что и демо на
-   * `/kit` (`src/components/UiKit.vue`).
+   * `/kit` (`src/components/kit/NavigationStates.vue`).
    */
   const permissionDeniedState = computed(() => ({
     icon: "lock-outline",
@@ -179,9 +231,11 @@ export const useDemoStore = defineStore("demo", () => {
     mode,
     longLabels,
     denseData,
+    resourceMenuSize,
     setMode,
     setLongLabels,
     setDenseData,
+    setResourceMenuSize,
     toggleLongLabels,
     toggleDenseData,
     reset,

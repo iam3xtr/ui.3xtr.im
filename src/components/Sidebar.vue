@@ -21,7 +21,7 @@
           :to="{ name: item.routeName }"
           :icon="item.icon"
           :label="item.label"
-          :model-value="route.name === item.routeName"
+          :model-value="isAdministrationItemActive(item.routeName)"
         />
       </b-menu-list>
     </b-menu>
@@ -55,5 +55,21 @@ const { activeWorkspaceTariff } = storeToRefs(workspaceStore);
  */
 function isNavigationItemActive(routeName) {
   return route.path.startsWith(`/${routeName}`);
+}
+
+/**
+ * Administration items are exact-name matches, except `kit` (Task A8.6):
+ * its route family's non-default tabs are named `kit-forms`/`kit-tables`/…,
+ * so this also matches on that name prefix — the same family-active idea as
+ * `isNavigationItemActive` above, applied by route name instead of path
+ * since administration route names and paths diverge (e.g.
+ * `administration-users` → `/users`).
+ * @param {string} routeName
+ */
+function isAdministrationItemActive(routeName) {
+  return (
+    route.name === routeName ||
+    (typeof route.name === "string" && route.name.startsWith(`${routeName}-`))
+  );
 }
 </script>

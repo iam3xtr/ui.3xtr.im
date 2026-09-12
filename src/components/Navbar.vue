@@ -1,5 +1,5 @@
 <template>
-  <header class="tr-topbar">
+  <header class="tr-topbar" :class="{ 'tr-topbar--minimal': minimal }">
     <b-dropdown
       v-if="!minimal"
       ref="mobileNavDropdown"
@@ -97,17 +97,19 @@
         </span>
       </b-dropdown-item>
 
-      <b-dropdown-item separator />
+      <template v-if="hasUnreadNotifications">
+        <b-dropdown-item separator />
 
-      <b-dropdown-item aria-role="menuitem">
-        <span class="tr-dropdown-item-row">
-          <span class="tr-dropdown-action">
-            <b-icon icon="bell-outline" size="is-small" />
-            События
+        <b-dropdown-item aria-role="menuitem">
+          <span class="tr-dropdown-item-row">
+            <span class="tr-dropdown-action">
+              <b-icon icon="bell-outline" size="is-small" />
+              События
+            </span>
+            <b-tag size="is-small">{{ unreadNotificationsCount }}</b-tag>
           </span>
-          <b-tag size="is-small">3</b-tag>
-        </span>
-      </b-dropdown-item>
+        </b-dropdown-item>
+      </template>
     </b-dropdown>
 
     <Logo />
@@ -115,15 +117,11 @@
     <template v-if="!minimal">
       <slot name="menu" />
 
-      <ToolbarSearch
-        class="tr-search-field--navbar"
-        priority="navbar"
-        placeholder="Поиск"
-        aria-label="Поиск"
-        v-model="searchQuery"
-      />
-
-      <nav class="tr-topbar__links" aria-label="Дополнительная навигация">
+      <nav
+        v-if="resourceLinks.length"
+        class="tr-topbar__links"
+        aria-label="Дополнительная навигация"
+      >
         <a
           v-for="item in resourceLinks"
           :key="item.label"
@@ -134,6 +132,32 @@
         </a>
       </nav>
     </template>
+
+    <!--
+      Auth screens (Task A8.7/`isAuthRoute`) render `<Navbar minimal>` — no
+      workspace switcher/resource menu/notifications/user menu, so the theme
+      switch (normally inside `.tr-user-dropdown`) gets its own top-right
+      control here instead, since there is no user menu to hold it.
+    -->
+    <div v-if="minimal" class="tr-topbar__auth-actions">
+      <span class="tr-theme-toggle">
+        <b-icon
+          class="tr-theme-toggle__icon"
+          icon="weather-sunny"
+          size="is-small"
+        />
+        <b-switch
+          v-model="isDark"
+          size="is-small"
+          aria-label="Переключить тему"
+        />
+        <b-icon
+          class="tr-theme-toggle__icon"
+          icon="weather-night"
+          size="is-small"
+        />
+      </span>
+    </div>
 
     <div v-if="!minimal" class="tr-topbar__actions">
       <b-dropdown
@@ -203,6 +227,29 @@
               size="is-small"
               aria-label="Большой набор демо-данных"
             />
+          </div>
+        </b-dropdown-item>
+
+        <b-dropdown-item custom :focusable="false">
+          <div class="tr-demo-panel__field">
+            <label class="tr-demo-panel__label" for="tr-demo-panel-resource-menu-size">
+              Resource-меню
+            </label>
+            <b-select
+              id="tr-demo-panel-resource-menu-size"
+              v-model="demoResourceMenuSize"
+              size="is-small"
+              expanded
+              aria-label="Размер resource-меню Navbar"
+            >
+              <option
+                v-for="item in resourceMenuSizeOptions"
+                :key="item.value"
+                :value="item.value"
+              >
+                {{ item.label }}
+              </option>
+            </b-select>
           </div>
         </b-dropdown-item>
       </b-dropdown>
@@ -282,6 +329,7 @@
       </b-dropdown>
 
       <b-dropdown
+        v-if="hasUnreadNotifications"
         class="tr-dropdown tr-notifications-dropdown"
         position="is-bottom-left"
         aria-role="menu"
@@ -290,11 +338,11 @@
           <button
             class="tr-navbar-trigger tr-notifications-trigger"
             type="button"
-            aria-label="События: 3 непрочитанных"
+            :aria-label="`События: ${unreadNotificationsCount} непрочитанных`"
           >
             <b-icon icon="bell-outline" size="is-small" />
             <span class="tr-notifications-trigger__badge" aria-hidden="true">
-              3
+              {{ unreadNotificationsCount }}
             </span>
           </button>
         </template>
@@ -302,7 +350,7 @@
         <b-dropdown-item custom :focusable="false">
           <div class="tr-notifications-heading">
             <strong>События</strong>
-            <span>3 новых</span>
+            <span>{{ unreadNotificationsCount }} новых</span>
           </div>
         </b-dropdown-item>
 
@@ -310,13 +358,14 @@
 
         <b-dropdown-item
           v-for="event in notificationEvents"
-          :key="event.title"
+          :key="event.id"
           aria-role="menuitem"
+          @click="markNotificationRead(event.id)"
         >
           <span class="tr-notification">
             <span
               class="tr-notification__marker"
-              :class="{ 'is-read': event.isRead }"
+              :class="{ 'is-read': event.read }"
               aria-hidden="true"
             />
             <span class="tr-notification__copy">
@@ -329,7 +378,7 @@
 
         <b-dropdown-item separator />
 
-        <b-dropdown-item>
+        <b-dropdown-item @click="markAllNotificationsRead">
           <span class="tr-notifications-all">Все события</span>
         </b-dropdown-item>
       </b-dropdown>
@@ -447,18 +496,20 @@
           </span>
         </b-dropdown-item>
 
-        <b-dropdown-item
-          class="tr-user-resource-separator"
-          separator
-        />
+        <template v-if="resourceLinks.length">
+          <b-dropdown-item
+            class="tr-user-resource-separator"
+            separator
+          />
 
-        <b-dropdown-item
-          v-for="item in resourceLinks"
-          :key="item.label"
-          class="tr-user-resource"
-        >
-          {{ item.label }}
-        </b-dropdown-item>
+          <b-dropdown-item
+            v-for="item in resourceLinks"
+            :key="item.label"
+            class="tr-user-resource"
+          >
+            {{ item.label }}
+          </b-dropdown-item>
+        </template>
       </b-dropdown>
     </div>
   </header>
@@ -474,9 +525,15 @@ import {
   mainNavigationItems,
 } from "../navigation";
 import { useFocusTrap } from "../composables/useFocusTrap";
-import { DEMO_MODE_LABELS, DEMO_MODES, useDemoStore } from "../stores/demo";
+import {
+  DEMO_MODE_LABELS,
+  DEMO_MODES,
+  RESOURCE_MENU_SIZE_LABELS,
+  RESOURCE_MENU_SIZES,
+  useDemoStore,
+} from "../stores/demo";
+import { useNotificationsStore } from "../stores/notifications";
 import Logo from "./Logo.vue";
-import ToolbarSearch from "./common/ToolbarSearch.vue";
 
 /**
  * @typedef {Object} Workspace
@@ -491,14 +548,6 @@ import ToolbarSearch from "./common/ToolbarSearch.vue";
  * @property {string} firstName
  * @property {string} lastName
  * @property {string} role
- */
-
-/**
- * @typedef {Object} NotificationEvent
- * @property {string} title
- * @property {string} description
- * @property {string} time
- * @property {boolean} [isRead]
  */
 
 /**
@@ -534,7 +583,6 @@ const emit = defineEmits(["create-workspace", "logout"]);
 const workspace = defineModel("workspace", { required: true });
 const isDark = defineModel("isDark", { required: true });
 const locale = ref("ru");
-const searchQuery = ref("");
 const mobileNavDropdown = ref(null);
 const userDropdown = ref(null);
 const route = useRoute();
@@ -548,11 +596,17 @@ const {
   mode: demoMode,
   longLabels: demoLongLabels,
   denseData: demoDenseData,
+  resourceMenuSize: demoResourceMenuSize,
 } = storeToRefs(demoStore);
 
 const demoModeOptions = DEMO_MODES.map((value) => ({
   value,
   label: DEMO_MODE_LABELS[value],
+}));
+
+const resourceMenuSizeOptions = RESOURCE_MENU_SIZES.map((value) => ({
+  value,
+  label: RESOURCE_MENU_SIZE_LABELS[value],
 }));
 
 // Buefy's `mobile-modal` dropdowns already trap Tab (`trap-focus` directive)
@@ -572,32 +626,57 @@ const userMenuEl = computed(
 useFocusTrap(mobileNavMenuEl, isMobileNavActive);
 useFocusTrap(userMenuEl, isUserMenuActive);
 
-/** @type {ResourceLink[]} */
-const resourceLinks = [
-  { label: "Новости" },
-  { label: "API" },
-  { label: "Документация" },
-];
+// Kit-only resource-menu registry by demo-store size (Task A8.1): "compact"
+// is the base set, "full" extends it to demonstrate a wider Navbar without a
+// second hardcoded markup branch — see `resourceLinks` below and
+// `docs/design-system.md`, "Демо-панель навбара (только кит)".
+/** @type {Record<import("../stores/demo").ResourceMenuSize, ResourceLink[]>} */
+const RESOURCE_LINKS_BY_SIZE = {
+  none: [],
+  compact: [
+    { label: "Новости" },
+    { label: "API" },
+    { label: "Документация" },
+  ],
+  full: [
+    { label: "Новости" },
+    { label: "API" },
+    { label: "Документация" },
+    { label: "Поддержка" },
+    { label: "Сообщество" },
+  ],
+};
 
-/** @type {NotificationEvent[]} */
-const notificationEvents = [
-  {
-    title: "Новый диалог",
-    description: "Анна начала диалог с агентом «Консультант».",
-    time: "5 минут назад",
-  },
-  {
-    title: "Агент обновлён",
-    description: "Настройки агента «Sales Assistant» сохранены.",
-    time: "1 час назад",
-  },
-  {
-    title: "Участник приглашён",
-    description: "В пространство отправлено новое приглашение.",
-    time: "Вчера",
-    isRead: true,
-  },
-];
+/** @type {import("vue").ComputedRef<ResourceLink[]>} */
+const resourceLinks = computed(
+  () => RESOURCE_LINKS_BY_SIZE[demoResourceMenuSize.value] ?? RESOURCE_LINKS_BY_SIZE.compact,
+);
+
+// Kit-only fixture-уведомления Navbar (Task A8.2): изолированный
+// `useNotificationsStore()`, keyed по активному `workspace` (само значение
+// приходит из `useWorkspaceStore().activeWorkspaceId` через App.vue —
+// `Navbar.vue` про это не знает, только читает переданный id). Колокольчик
+// существует только пока `hasUnreadNotifications` истинно — см.
+// `docs/design-system.md`, «Уведомления Navbar (только кит)».
+const notificationsStore = useNotificationsStore();
+const notificationEvents = computed(
+  () => notificationsStore.notificationsFor(workspace.value),
+);
+const unreadNotificationsCount = computed(
+  () => notificationsStore.unreadCountFor(workspace.value),
+);
+const hasUnreadNotifications = computed(
+  () => unreadNotificationsCount.value > 0,
+);
+
+/** @param {string} notificationId */
+function markNotificationRead(notificationId) {
+  notificationsStore.markRead(workspace.value, notificationId);
+}
+
+function markAllNotificationsRead() {
+  notificationsStore.markAllRead(workspace.value);
+}
 
 const activeWorkspace = computed(
   () => props.workspaces.find((item) => item.id === workspace.value)

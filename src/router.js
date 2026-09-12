@@ -4,6 +4,11 @@ import {
   createWebHistory,
 } from "vue-router";
 
+import AdminModels from "./components/administration/Models.vue";
+import AdminProviders from "./components/administration/Providers.vue";
+import AdminRequests from "./components/administration/Requests.vue";
+import AdminTariffs from "./components/administration/Tariffs.vue";
+import AdminUsers from "./components/administration/Users.vue";
 import AgentDetail from "./components/agents/AgentDetail.vue";
 import AgentPlayground from "./components/agents/AgentPlayground.vue";
 import AgentSettings from "./components/agents/AgentSettings.vue";
@@ -16,19 +21,22 @@ import VerifyView from "./components/auth/VerifyView.vue";
 import ChannelsView from "./components/channels/ChannelsView.vue";
 import Conversations from "./components/Conversations.vue";
 import ConversationDetail from "./components/conversations/ConversationDetail.vue";
-import ConversationHistory from "./components/conversations/History.vue";
-import ConversationSettings from "./components/conversations/Settings.vue";
 import Dashboard from "./components/Dashboard.vue";
 import Knowledge from "./components/Knowledge.vue";
 import CollectionDetail from "./components/knowledge/CollectionDetail.vue";
 import CollectionFiles from "./components/knowledge/Files.vue";
 import CollectionSettings from "./components/knowledge/Settings.vue";
 import CollectionStatistics from "./components/knowledge/Statistics.vue";
+import DialogsOverlays from "./components/kit/DialogsOverlays.vue";
+import Forms from "./components/kit/Forms.vue";
+import KitShell from "./components/kit/KitShell.vue";
+import NavigationStates from "./components/kit/NavigationStates.vue";
+import Overview from "./components/kit/Overview.vue";
+import Tables from "./components/kit/Tables.vue";
 import NotFound from "./components/NotFound.vue";
 import ProfileSecurity from "./components/profile/Security.vue";
 import ProfileSettings from "./components/profile/Settings.vue";
 import ProfileShell from "./components/profile/ProfileShell.vue";
-import UiKit from "./components/UiKit.vue";
 import Workspace from "./components/Workspace.vue";
 import WorkspacePlans from "./components/WorkspacePlans.vue";
 import WorkspaceSettings from "./components/WorkspaceSettings.vue";
@@ -44,7 +52,11 @@ import WorkspaceUsage from "./components/workspace/Usage.vue";
 // settings split (Task A5.7), all five workspace tabs (Task A5.8),
 // profile/security (Task A5.9) and auth (Task A5.10) are all built; the
 // generic `SectionPlaceholder.vue` that used to stand in for auth screens has
-// no remaining consumer and is removed with this change.
+// no remaining consumer and is removed with this change. Five lightweight
+// administration catalogs (Task A8.3) were added later, mirroring the
+// cabinet's own `/users/`, `/providers/`, `/models/`, `/tariffs/` list-route
+// paths and width (`requests` is a kit-only top-level addition — see the
+// route block below).
 const router = createRouter({
   history:
     import.meta.env.VITE_ROUTER_MODE === "hash"
@@ -75,15 +87,18 @@ const router = createRouter({
     {
       path: "/agents/:id",
       component: AgentDetail,
-      // No meta here: children set their own contentMode (playground fluid,
-      // settings contained, channels fluid), matching get.3xtr.im's
-      // `agents/routes.js` + `channels/routes.js`.
+      // No meta here: children set their own contentMode. Task A8.5 makes
+      // every `/agents/:id/**` tab (playground, settings, channels)
+      // `contained` — the earlier `fluid` playground/channels was leftover
+      // from a pre-A8 draft of get.3xtr.im's own contract and let the detail
+      // surface stretch full-width without a documented reason; the catalog
+      // route above is untouched.
       children: [
         {
           path: "",
           name: "agent",
           component: AgentPlayground,
-          meta: { contentMode: "fluid" },
+          meta: { contentMode: "contained" },
         },
         {
           path: "settings",
@@ -95,12 +110,28 @@ const router = createRouter({
           path: "channels",
           name: "agent-channels",
           component: ChannelsView,
-          meta: { contentMode: "fluid" },
+          meta: { contentMode: "contained" },
         },
       ],
     },
 
-    // Conversations: list, agent-scoped list, detail and its settings tab.
+    // Conversations: list, and the open-dialog detail nested under a
+    // `:agentId` parent path. Task A8.4 nests the detail route this way
+    // (same path/name as before — `conversations-agent` keeps its own bare
+    // `/conversations/:agentId` match since the child's path isn't empty) so
+    // `Conversations.vue` can render the open dialog through its own nested
+    // `<RouterView>` next to the still-visible list, instead of the two
+    // being unrelated route trees. `:agentId` here only identifies which
+    // agent's conversation to look up (`ConversationDetail.vue`'s own
+    // lookup) — it does not scope the visible list to that agent; the list
+    // page's own agent filter is a plain, route-independent ref
+    // (`Conversations.vue`'s `agentFilter`), precisely so that opening a
+    // dialog never drags the filter along with it. History and its
+    // settings pane are no longer separate routed tabs (dropped along with
+    // the `conversation-settings` route/NavbarTabs) — `ConversationDetail.vue`
+    // toggles between them itself via the gear button in its header,
+    // matching get.3xtr.im's own single-component + internal
+    // properties-panel-toggle contract.
     {
       path: "/conversations",
       name: "conversations",
@@ -112,26 +143,11 @@ const router = createRouter({
       name: "conversations-agent",
       component: Conversations,
       meta: { contentMode: "fluid" },
-    },
-    {
-      path: "/conversations/:agentId/:conversationId",
-      component: ConversationDetail,
-      // No meta here: children set their own contentMode — both fluid, per
-      // Task A5.7 ("`/conversations`, detail и settings имеют
-      // `meta.contentMode: fluid`") — matching the `AgentDetail.vue`/
-      // `CollectionDetail.vue` convention of the parent shell staying
-      // meta-less while children declare their own mode.
       children: [
         {
-          path: "",
+          path: ":conversationId",
           name: "conversation",
-          component: ConversationHistory,
-          meta: { contentMode: "fluid" },
-        },
-        {
-          path: "settings",
-          name: "conversation-settings",
-          component: ConversationSettings,
+          component: ConversationDetail,
           meta: { contentMode: "fluid" },
         },
       ],
@@ -143,6 +159,9 @@ const router = createRouter({
     // (Task A5.4) — the cabinet's own `Collection.vue` instead re-derives the
     // active tab from `route.path` inside one component, which the kit does
     // not need since it already has this nested-route + NavbarMenu pattern.
+    // Task A8.5 makes every `/knowledge/:id/**` tab (files, settings,
+    // statistics) `contained` for the same reason as the agent detail tabs
+    // above; the catalog route is untouched.
     {
       path: "/knowledge/",
       name: "knowledge",
@@ -156,7 +175,7 @@ const router = createRouter({
           path: "",
           name: "knowledge-collection",
           component: CollectionFiles,
-          meta: { contentMode: "fluid" },
+          meta: { contentMode: "contained" },
         },
         {
           path: "settings",
@@ -168,7 +187,7 @@ const router = createRouter({
           path: "statistics",
           name: "knowledge-collection-statistics",
           component: CollectionStatistics,
-          meta: { contentMode: "fluid" },
+          meta: { contentMode: "contained" },
         },
       ],
     },
@@ -229,15 +248,54 @@ const router = createRouter({
       ],
     },
 
+    // Administration (Task A8.3): five lightweight reference catalogs behind
+    // the Sidebar "Администрирование" group — real named routes and
+    // `contentMode`, but no forms/permissions/network, matching
+    // get.3xtr.im's own list-route width (`fluid`, see `llms/routes.js`,
+    // `users/routes.js`, `tariffs/routes.js`). Each screen is a standalone
+    // component with its own fixture data (`src/stores/administration.js`);
+    // there is no shared parent shell to keep — none of the five carries
+    // nested tabs. `requests` has no top-level list route upstream (only
+    // `/requests/:id` and `models/:id/requests`) — a kit-only addition
+    // documented in `docs/design-system.md`, "Route families".
+    {
+      path: "/users",
+      name: "administration-users",
+      component: AdminUsers,
+      meta: { contentMode: "fluid" },
+    },
+    {
+      path: "/providers",
+      name: "administration-providers",
+      component: AdminProviders,
+      meta: { contentMode: "fluid" },
+    },
+    {
+      path: "/models",
+      name: "administration-models",
+      component: AdminModels,
+      meta: { contentMode: "fluid" },
+    },
+    {
+      path: "/tariffs",
+      name: "administration-tariffs",
+      component: AdminTariffs,
+      meta: { contentMode: "fluid" },
+    },
+    {
+      path: "/requests",
+      name: "administration-requests",
+      component: AdminRequests,
+      meta: { contentMode: "fluid" },
+    },
+
     // Auth (Task A5.10): fixture login/signup/forgot/verify/invite forms
     // sharing the `AuthPage` container (`src/components/auth/AuthPage.vue`).
     // The cabinet keeps auth routes outside `.tr-app-shell` entirely (no
     // Sidebar/Navbar, see `get.3xtr.im/src/App.vue`); the kit's `App.vue`
-    // is out of this task's scope (see `.todo`/`.plan`, "Область" — only
-    // `src/{router.js,stores/**,styles/trickster-buefy.scss}` and
-    // `src/components/auth/**`), so these routes still render inside the
-    // shared shell like every other kit screen — `AuthPage` itself centers
-    // the form regardless. Documented as an open gap in
+    // matches that with its own `isAuthRoute` check
+    // (`route.path.startsWith("/auth/")`, Task A8.7) and renders a minimal
+    // `Navbar` with no Sidebar/`.tr-app-shell` for these routes — see
     // `docs/design-system.md`, "Application shell".
     {
       path: "/auth/login",
@@ -270,11 +328,45 @@ const router = createRouter({
       meta: { contentMode: "contained" },
     },
 
-    // Contract showcase (not a cabinet route).
+    // Contract showcase (not a cabinet route). Task A8.6 splits the former
+    // single-file `/kit` into a route-driven shell (`KitShell.vue`, mirroring
+    // `ProfileShell.vue`/`Workspace.vue`) with five addressable sections.
+    // The "overview" child keeps the pre-A8.6 route name `kit` (so the
+    // Sidebar's existing `{ name: "kit" }` link and prefix-based active
+    // check keep working unchanged) and its path carries an empty-path
+    // `alias`, so the bare `/kit` URL still renders it directly — the
+    // required backward-compatible entry point — without a redirect.
     {
       path: "/kit",
-      name: "kit",
-      component: UiKit,
+      component: KitShell,
+      children: [
+        {
+          path: "overview",
+          alias: "",
+          name: "kit",
+          component: Overview,
+        },
+        {
+          path: "forms",
+          name: "kit-forms",
+          component: Forms,
+        },
+        {
+          path: "tables",
+          name: "kit-tables",
+          component: Tables,
+        },
+        {
+          path: "navigation-states",
+          name: "kit-navigation-states",
+          component: NavigationStates,
+        },
+        {
+          path: "dialogs-overlays",
+          name: "kit-dialogs-overlays",
+          component: DialogsOverlays,
+        },
+      ],
     },
 
     {

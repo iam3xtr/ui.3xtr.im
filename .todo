@@ -1,319 +1,406 @@
-# TODO: Stage A7 — Демо-переключатель состояний
+# TODO: Stage A8 — Донастройка UI Kit перед установкой
 
-Дата актуализации: 2026-09-11
+Дата актуализации: 2026-09-12
 
-Статус: Stage A7 завершён; все задачи проверены и закрыты 2026-09-11.
+Статус: done — Stage A8 закрыт 2026-09-12 после stage-review и устранения findings.
 
 ## Назначение
 
-Этот файл декомпозирует только Stage A7: глобальный режим демонстрационных
-состояний, применение его на маршрутах кита и матрицу контрактов на `/kit`.
-Вне scope — сетевые запросы, продуктовая панель в `get.3xtr.im`, screenshot
-visual-regression (deferred backlog) и контракт синхронизации Stage A8.
+Этот файл декомпозирует только Stage A8: финальную настройку глобальной
+оболочки, навигации, диалогов, ширины detail-маршрутов, справочника `/kit` и
+сквозного демо-auth сценария. Вне scope — API, реальная авторизация,
+permissions, операторские формы и бизнес-логика, сетевые вызовы, изменение
+downstream sync-контракта и работа в `get.3xtr.im`.
 
-Открытые Issues `iam3xtr/ui.3xtr.im` проверены 2026-09-11: Issue #1 о
-версионированных release-артефактах не пересекается с этим этапом.
+Проверка открытых Issues `iam3xtr/ui.3xtr.im` pending: 2026-09-11 `gh api`
+не получил доступ к GitHub API из-за сетевого ограничения. Перед началом
+реализации повторно проверить Issues и перенести в GitHub только найденный
+долгосрочный или cross-repo backlog; новых Issues в ходе декомпозиции не
+создавалось.
 
-## Demo state
+## Application shell
 
-### Store and persistence
+### Navbar and demo configuration
 
-### [P2] Task A7.1. Ввести persisted demo-store и контракт проекций состояния
+### [P1] Task A8.1. Сделать resource-меню Navbar опциональным и управляемым в demo-store
 
 Статус: done
 
-Источник: Stage A7 `.plan`; контракты `AsyncState`/`ListAsyncState`;
-`src/stores/*.js`.
+Источник: Stage A8 `.plan`; `src/components/Navbar.vue`,
+`src/components/common/NavbarMenu.vue`, `src/stores/demo.js`.
 
-Описание: Кит должен иметь единый реактивный источник демонстрационных
-состояний, чтобы переход между маршрутами немедленно показывал одинаковый
-режим без API и без локальных условных цепочек.
+Описание: Полный Navbar не должен содержать глобальный поиск. Дополнительные
+resource links должны появляться только при непустом реестре, а разработчик
+должен переключать размер этого реестра в kit-only demo-панели без правки
+кода и без влияния на маршрутные вкладки.
 
 Уточнённые требования:
 
-- Допустимы только режимы `ready`, `loading`, `empty`, `error`,
-  `permission-denied`, `partial`; неизвестное сохранённое значение заменяется
-  на `ready`.
-- Отдельные булевы настройки «длинные подписи» и «много данных» сохраняются
-  вместе с режимом в namespaced ключе `localStorage` кита.
-- Store предоставляет одно нормализованное представление флагов и текстов для
-  `ListAsyncState`; приоритет самого компонента не меняется.
-- Store не выполняет сетевых вызовов, не изменяет fixture-данные доменных
-  stores и безопасно работает при недоступном `localStorage` в unit-тестах.
+- Допустимы и persisted в namespaced demo-state только значения размера меню
+  `none`, `compact`, `full`; отсутствующее или невалидное сохранённое значение
+  нормализуется в безопасное значение по умолчанию.
+- При `none` resource-меню, его разделители и резервируемый зазор отсутствуют
+  из DOM в desktop- и mobile/user-представлениях.
+- При `compact` и `full` используется один вычисляемый реестр resource links;
+  никакой разметки меню с захардкоженным вторым набором ссылок не появляется.
+- Глобальная строка поиска удалена, а `NavbarMenu`/`NavbarTabs` продолжают
+  независимо отображать маршрутные вкладки.
+- Новые классы demo-панели остаются kit-only и отмечаются как не входящие в
+  downstream product-contract.
 
 План реализации:
 
-1. Добавить `src/stores/demo.js` с валидацией, actions переключателей и
-   загрузкой/сохранением параметров.
-2. Добавить компактный helper/composable для передачи нормализованных props в
-   `ListAsyncState`, если без него экран вынужден дублировать mapping режимов.
-3. Добавить unit-тесты сценариев default, persistence и invalid persisted value.
+1. Расширить контракт и persistence `src/stores/demo.js` значением размера
+   resource-меню и добавить контрол в существующую demo-панель Navbar.
+2. Перевести resource links и условные разделители `Navbar.vue` на единый
+   вычисляемый реестр, удалить markup глобального поиска.
+3. Внести минимальные общие стили, обновить описание Navbar/demo-исключения в
+   design-system и покрыть default, persistence, empty и populated варианты
+   store/component-тестами.
 
 Область:
 
 - `src/stores/demo.js`
-- `src/composables/**`
-- `tests/unit/stores/**`
+- `src/components/Navbar.vue`
+- `src/components/common/NavbarMenu.vue`
+- `src/styles/trickster-buefy.scss`
+- `docs/design-system.md`
+- `tests/unit/stores/demo.test.js`
+- `tests/unit/components/Navbar.test.js`
 
 Критерии приёмки:
 
-- Режим и обе настройки изменяются реактивно, переживают reload и не допускают
-  невалидного состояния.
-- Единая проекция корректно выражает `loading`, `empty`, `error` и
-  `permission-denied` через существующий async-контракт.
-- Узкие unit-тесты проходят без сети.
+- В Navbar нет глобального поиска; при пустом resource-реестре не рендерятся
+  меню, разделитель и занимающий место зазор ни в одной проекции Navbar.
+- Переключатель `none | compact | full` изменяет ресурсные ссылки реактивно,
+  переживает reload и не меняет маршрутные NavbarTabs.
+- Узкие unit/component-тесты и `npm run lint:style` проходят.
 
-### Navbar control panel
-
-### [P2] Task A7.2. Добавить изолированную панель управления demo-режимом
+### [P1] Task A8.2. Связать уведомления Navbar с fixture-состоянием активного пространства
 
 Статус: done
 
-Источник: Stage A7 `.plan`; `src/components/Navbar.vue`; Task A7.1.
+Источник: Stage A8 `.plan`; `src/components/Navbar.vue`, workspace fixtures.
 
-Описание: Разработчик должен переключать сценарий, объём и длину подписей из
-глобальной навигации кита, не меняя маршрута и не затрагивая контракт кабинета.
+Описание: Колокольчик уведомлений должен быть данными активного demo-space, а
+не всегда видимым элементом. Пользователь видит актуальный счётчик и
+доступную подпись, а после прочтения последнего уведомления control исчезает.
 
 Уточнённые требования:
 
-- Панель доступна только в ките и не отображается на auth-маршрутах с
-  минимальным `Navbar`.
-- Контролы используют Buefy-компоненты, имеют доступные подписи и двусторонне
-  связаны с `useDemoStore()`.
-- Селектор режима включает все шесть значений; переключатели управляют
-  длинными подписями и большим набором данных.
-- Все новые классы имеют явный demo-префикс и stylesheet-комментарий о том,
-  что они не являются продуктовым контрактом для downstream sync.
+- Колокольчик рендерится тогда и только тогда, когда у активного пространства
+  есть хотя бы одно непрочитанное fixture-уведомление.
+- Badge и accessible label используют фактическое число непрочитанных
+  уведомлений; нулевое значение не маскируется статическим счётчиком.
+- Действие прочтения обновляет reactive fixture-state без reload; пустое
+  пространство изначально не рендерит control.
+- Реализуются только kit fixtures: без API, polling, real-time транспорта или
+  persistence пользовательских уведомлений.
 
 План реализации:
 
-1. Подключить demo-store к `Navbar.vue` и разместить компактную панель в
-   существующей навигационной поверхности.
-2. Добавить только необходимые изолированные правила в
-   `trickster-buefy.scss`.
-3. Зафиксировать назначение панели и её исключение из продуктового контракта в
-   `docs/design-system.md`.
+1. Добавить минимальный изолированный fixture-store/состояние уведомлений,
+   привязанное к выбранному demo-пространству.
+2. Подключить условный bell, счётчик, подпись и действие прочтения к Navbar.
+3. Зафиксировать fixture-границу в contract docs и добавить тесты visible,
+   read-last и empty-workspace сценариев.
 
 Область:
 
 - `src/components/Navbar.vue`
+- `src/stores/**`
 - `src/styles/trickster-buefy.scss`
 - `docs/design-system.md`
-- `tests/unit/components/**`
+- `tests/unit/components/Navbar.test.js`
+- `tests/unit/stores/**`
 
 Критерии приёмки:
 
-- Переключение из navbar меняет demo-store без перезагрузки и сохраняется.
-- Минимальный navbar auth-экранов не содержит demo-панели.
-- Нет `<style>` в `.vue`; component-тест и `npm run lint:style` проходят.
+- Колокольчик, badge и подпись соответствуют числу непрочитанных уведомлений.
+- Прочтение последнего и выбор пустого пространства скрывают control без
+  перезагрузки.
+- Новая fixture-логика не содержит сетевого кода; релевантные тесты проходят.
 
-## Catalog and conversation domains
+## Administration catalog
 
-### State projection on main catalogs
+### Navigation and lightweight reference screens
 
-### [P2] Task A7.3. Подключить demo-состояния к каталогам агентов, каналов и диалогов
-
-Статус: done
-
-Источник: Stage A7 `.plan`; `Agents.vue`, `channels/ChannelsView.vue`,
-`Conversations.vue`; Task A7.1.
-
-Описание: Основные списки агентов, каналов и диалогов должны показывать один
-и тот же выбранный сценарий, включая длинные названия и плотный fixture-набор.
-
-Уточнённые требования:
-
-- `ready` сохраняет существующую интерактивность и fixture-поведение экранов.
-- `loading`, `empty`, `error` и `permission-denied` выводятся только через
-  `ListAsyncState`, без новых локальных компонентов состояний.
-- `partial` использует существующий контракт `PartialDataBanner` вместе с
-  доступным контентом, а не заменяет его ошибкой.
-- «Много данных» расширяет только отображаемый набор fixture-объектов, а
-  «длинные подписи» не меняют исходные данные stores.
-
-План реализации:
-
-1. Подключить demo-store/projection к `Agents.vue`, `ChannelsView.vue` и
-   `Conversations.vue`.
-2. Добавить route-local presentation fixtures для длинных подписей и больших
-   списков без записи в доменные stores.
-3. Добавить узкие component-тесты приоритетных состояний и partial-баннера.
-
-Область:
-
-- `src/components/Agents.vue`
-- `src/components/channels/ChannelsView.vue`
-- `src/components/Conversations.vue`
-- `tests/unit/components/**`
-
-Критерии приёмки:
-
-- Каждый из трёх каталогов немедленно отражает все шесть demo-режимов.
-- `partial` оставляет доступный контент и показывает единый banner-контракт.
-- Узкие component-тесты и `npm run test:unit` проходят.
-
-### [P2] Task A7.4. Подключить demo-состояния к knowledge-маршрутам
+### [P1] Task A8.3. Добавить административные маршруты и облегчённые каталоги
 
 Статус: done
 
-Источник: Stage A7 `.plan`; `Knowledge.vue`, `knowledge/**`; Task A7.1.
+Источник: Stage A8 `.plan`; `src/navigation.js`, `src/router.js`,
+`src/components/Sidebar.vue`; маршруты кабинета пользователей, моделей,
+провайдеров, тарифов и запросов.
 
-Описание: Каталог знаний, карточка коллекции, файлы, статистика и настройки
-должны быть проверяемы в тех же глобальных состояниях, что и остальные
-данные кита.
-
-Уточнённые требования:
-
-- Не найденная route-сущность продолжает показывать свой корректный fallback;
-  глобальный demo-режим не маскирует route validation.
-- Для списков и detail-shell используется `ListAsyncState`; форма не получает
-  отдельную несовместимую систему заглушек.
-- `partial` на файловых и статистических представлениях использует только
-  существующий `PartialDataBanner`-контракт.
-- Длинные подписи и большой набор применяются к presentation-данным knowledge,
-  без mutation `useKnowledgeStore()`.
-
-План реализации:
-
-1. Подключить projection к каталогу и detail-shell коллекции.
-2. Распространить единый сценарий на Files, Statistics и Settings там, где
-   экран отображает асинхронные fixture-данные.
-3. Добавить component-тесты для empty/error/detail fallback и partial.
-
-Область:
-
-- `src/components/Knowledge.vue`
-- `src/components/knowledge/**`
-- `tests/unit/components/**`
-
-Критерии приёмки:
-
-- Все knowledge-маршруты воспроизводимо показывают релевантный выбранный
-  demo-сценарий.
-- Ошибка маршрута и глобальный demo-режим не смешиваются.
-- `npm run test:unit` проходит.
-
-## Remaining application routes
-
-### [P2] Task A7.5. Подключить demo-состояния к detail, workspace, profile и auth-экранам
-
-Статус: done
-
-Источник: Stage A7 `.plan`; `agents/**`, `conversations/**`, `workspace/**`,
-`profile/**`, `auth/**`, `Dashboard.vue`; Task A7.1.
-
-Описание: Все оставшиеся маршруты согласованного охвата должны участвовать в
-одном demo-режиме, чтобы редизайн не проверялся только на каталогах.
+Описание: Группа «Администрирование» должна вести на эталонные облегчённые
+каталоги users, models, providers, tariffs и requests, чтобы kit покрывал
+согласованный операторский навигационный контур без обещания настоящей
+операторской функциональности.
 
 Уточнённые требования:
 
-- Detail-shell агентов и диалогов сохраняют navbar-вкладки и route fallback в
-  каждом применимом состоянии.
-- Workspace, profile и dashboard используют `ListAsyncState` либо уже
-  существующий эквивалентный async-контракт; новые частные state-блоки не
-  создаются.
-- Auth-формы не симулируют ложные permissions: режим влияет только на
-  асинхронно загружаемые fixture-поверхности и не ломает отправку демо-форм.
-- `ready` не меняет существующие CRUD/overlay fixtures; большие данные и
-  длинные подписи остаются presentation-only.
-
-**Статические исключения (зафиксировано по итогам review 2026-09-11, решение
-пользователя).** «Каждый маршрут согласованного Stage A5 охвата» относится
-только к маршрутам, у которых есть собственная async fixture-поверхность
-(список/детали, которые в реальном кабинете подгружаются с сервера). У
-перечисленных ниже маршрутов такой поверхности нет вовсе — это чисто
-синхронные формы редактирования (читают/пишут стор напрямую, без состояния
-загрузки в принципе) или auth-формы, которым запрещено симулировать ложные
-permissions самим этим же критерием выше. Подключать к ним `useDemoStore()`
-означало бы конструировать incoherent loading/error-состояние, которого в
-реальном поведении экрана никогда не бывает — это намеренно не делается:
-
-- `src/components/agents/AgentSettings.vue` (`/agents/:id/settings`);
-- `src/components/conversations/Settings.vue` (`/conversations/:agentId/:conversationId/settings`);
-- `src/components/knowledge/Settings.vue` (`/knowledge/:id/settings`);
-- `src/components/profile/Settings.vue` (`/profile`);
-- `src/components/WorkspaceSettings.vue` (`/workspace/settings`);
-- `src/components/workspace/WorkspaceBilling.vue` (`/workspace/billing`) —
-  уже статичный `AsyncState` «скоро будет» без fixture-данных; demo-режим
-  ничего не добавил бы к единственному состоянию, которое экран умеет
-  показывать;
-- `src/components/auth/{LoginView,SignupView,ForgotView,VerifyView}.vue`
-  (`/auth/{login,signup,forgot,verify}`) — синхронная валидация формы, никакой
-  fixture-загрузки; `auth/InviteView.vue` (`/auth/invite`) — исключение из
-  исключения: у него есть реальная async-поверхность (проверка токена
-  приглашения) и он подключён к demo-режиму.
+- Для каждой из пяти сущностей существует реальный именованный маршрут,
+  элемент Sidebar и самостоятельный лёгкий экран с общими table, toolbar и
+  async-state контрактами.
+- Экран использует только статические/Pinia fixtures и presentation actions;
+  внутренних форм, API, permissions, сетевых вызовов и операторской
+  бизнес-логики нет.
+- Маршрутная мета явно выбирает существующий режим ширины и не создаёт новый
+  локальный shell или частный стилевой контракт.
+- Граница упрощённых страниц и отсутствие переносимости их бизнес-логики в
+  downstream фиксируются в документации.
 
 План реализации:
 
-1. Подключить projection к agent/conversation detail shells и дочерним
-   представлениям с данными.
-2. Подключить workspace, profile и dashboard в границах их существующих
-   async-поверхностей.
-3. Обработать применимые auth-fixtures без подмены сценариев валидации и
-   добавить регрессионные component-тесты.
+1. Добавить registry-пункты Sidebar, imports и именованные маршруты для пяти
+   административных каталогов.
+2. Создать `administration/**` reference screens и необходимые fixture-stores,
+   переиспользуя существующие common-компоненты и классы.
+3. Добавить общие стили только при необходимости, обновить документацию и
+   route/component-тесты доступности каталогов и их async-поверхностей.
 
 Область:
 
-- `src/components/Dashboard.vue`
-- `src/components/agents/**`
-- `src/components/conversations/**`
-- `src/components/workspace/**`
-- `src/components/Workspace*.vue`
-- `src/components/profile/**`
-- `src/components/auth/**`
-- `tests/unit/**`
-
-Критерии приёмки:
-
-- Каждый маршрут согласованного Stage A5 охвата, у которого есть собственная
-  async fixture-поверхность, реагирует на demo-режим без полного reload;
-  маршруты из списка «Статические исключения» выше документированно не
-  подключены.
-- Вкладки, route fallback и auth validation сохраняют существующее поведение.
-- Релевантные unit/component-тесты и `npm run test:unit` проходят.
-
-## UI Kit reference
-
-### State matrix
-
-### [P2] Task A7.6. Собрать матрицу demo-состояний на `/kit`
-
-Статус: done
-
-Источник: Stage A7 `.plan`; `UiKit.vue`; контракты Stage A3 и A4.
-
-Описание: Страница `/kit` должна давать в одном месте обозримую эталонную
-матрицу состояний всех контрактов, а не только ручные несвязанные примеры.
-
-Уточнённые требования:
-
-- Матрица показывает `ready`, `loading`, `empty`, `error`,
-  `permission-denied` и `partial` для применимых контрактов Stage A3/A4.
-- Демонстрации используют те же `AsyncState`, `ListAsyncState` и
-  `PartialDataBanner`, что и маршруты, без дублирующей разметки состояния.
-- Локальные переключатели старой async-демонстрации либо заменяются глобальным
-  demo-store, либо остаются только для демонстрации документированного
-  приоритета `ListAsyncState`.
-- Матрица не меняет глобальный demo-режим неожиданно при открытии `/kit`.
-
-План реализации:
-
-1. Перестроить async-раздел `UiKit.vue` в матрицу контрактов и режимов.
-2. Подключить read-only представление demo-store и сохранить отдельный пример
-   приоритета, если он нужен для справочника.
-3. Обновить `docs/design-system.md` и README по фактическому назначению `/kit`.
-
-Область:
-
-- `src/components/UiKit.vue`
+- `src/navigation.js`
+- `src/router.js`
+- `src/components/Sidebar.vue`
+- `src/components/administration/**`
+- `src/stores/**`
+- `src/styles/trickster-buefy.scss`
 - `docs/design-system.md`
 - `README.md`
 - `tests/unit/components/**`
 
 Критерии приёмки:
 
-- `/kit` показывает все применимые состояния и использует общие контракты.
-- Глобальный выбранный режим виден в матрице, но переход на страницу не
-  перезаписывает persisted настройки.
-- Component-тесты, `npm run lint:style`, `npm run guard:no-component-styles`,
-  `npm run build` и `git diff --check` проходят.
+- Sidebar содержит пять рабочих административных пунктов, и каждый открывает
+  свой упрощённый каталог на общем UI-контракте.
+- Экраны не содержат сетевых вызовов, permission-веток или внутренних форм.
+- Маршрутные/component-тесты и `npm run guard:no-component-styles` проходят.
+
+## Conversations
+
+### Responsive split view
+
+### [P1] Task A8.4. Восстановить адаптивный split-view списка и detail диалога
+
+Статус: done
+
+Источник: Stage A8 `.plan`; `src/components/Conversations.vue`,
+`src/components/conversations/**`, conversation route contracts.
+
+Описание: На широком экране список диалогов должен оставаться рядом с
+выбранной перепиской. На узком экране интерфейс должен переходить к одному
+основному представлению с явным возвратом к списку и сохранением выбранного
+диалога.
+
+Уточнённые требования:
+
+- При ширине `>= 1024px` одновременно видны selected conversation и список;
+  detail/settings не теряют route-driven вкладки и validation fallback.
+- Ниже breakpoint отображается одно основное представление, а control
+  возврата ведёт к списку, не очищая выбранный `conversationId`.
+- Layout не создаёт horizontal overflow страницы; breakpoint и классы остаются
+  общими правилами design-system, а не demo-only override.
+- Demo-state projection и существующие fixture interactions диалогов
+  продолжают работать в обеих компоновках.
+
+План реализации:
+
+1. Перестроить conversation shell/list/detail anatomy вокруг одного
+   responsive split-view и сохранить существующую маршрутизацию.
+2. Добавить mobile back control и общие stylesheet-правила breakpoint/overflow.
+3. Обновить contract documentation и написать component-тесты desktop split,
+   mobile return и сохранения выбранного маршрута.
+
+Область:
+
+- `src/components/Conversations.vue`
+- `src/components/conversations/**`
+- `src/router.js`
+- `src/styles/trickster-buefy.scss`
+- `docs/design-system.md`
+- `tests/unit/components/Conversations.test.js`
+- `tests/unit/components/conversations/**`
+
+Критерии приёмки:
+
+- При `>= 1024px` список и выбранный диалог видны одновременно; ниже доступен
+  работающий возврат к списку без потери выбора.
+- Страница не имеет горизонтального overflow, а существующие tabs, fallback и
+  demo-state не регрессируют.
+- Релевантные component-тесты проходят.
+
+## Detail route geometry
+
+### Contained agents and knowledge
+
+### [P1] Task A8.5. Установить contained-ширину для всех внутренних маршрутов агентов и знаний
+
+Статус: done
+
+Источник: Stage A8 `.plan`; `src/router.js`, `src/App.vue`, `agents/**`,
+`knowledge/**`.
+
+Описание: Detail-поверхности агентов и коллекций знаний не должны
+необоснованно растягиваться на весь экран. Все их внутренние маршруты должны
+использовать единый contained-контейнер, сохраняя осознанно выбранную ширину
+списочных и специализированных рабочих экранов.
+
+Уточнённые требования:
+
+- Каждый `/agents/:id/**` и `/knowledge/:id/**` route имеет эффективный
+  `contentMode: "contained"`, включая playground, channels, files,
+  settings и statistics.
+- Каталоги `/agents/` и `/knowledge/`, а также другие отдельные рабочие
+  области не меняют режим ширины без отдельного обоснования в контракте.
+- Изменение использует существующий App/router contract и не вводит частный
+  container-class в дочерних `.vue` компонентах.
+
+План реализации:
+
+1. Актуализировать route meta/родительские shell contracts для agent и
+   collection children.
+2. Убрать противоречившие комментарии и проверить наследование mode в `App`.
+3. Обновить route-family документацию и добавить/скорректировать тесты
+   маршрутов и detail-shells.
+
+Область:
+
+- `src/router.js`
+- `src/App.vue`
+- `src/components/agents/**`
+- `src/components/knowledge/**`
+- `docs/design-system.md`
+- `tests/unit/agents/**`
+- `tests/unit/components/knowledge/**`
+
+Критерии приёмки:
+
+- Все перечисленные agent/knowledge detail URLs рендерятся в contained-mode.
+- Списочные маршруты сохраняют свой прежний явно документированный режим.
+- Route/detail component-тесты проходят.
+
+## UI Kit reference
+
+### Routed contract sections
+
+### [P1] Task A8.6. Разделить `/kit` на маршрутные подразделы контрактов
+
+Статус: done
+
+Источник: Stage A8 `.plan`; `src/components/UiKit.vue`,
+`src/components/common/NavbarMenu.vue`, `src/components/common/NavbarTabs.vue`.
+
+Описание: Справочник UI Kit должен открываться как набор адресуемых разделов,
+а не одна длинная страница. Обзор, формы, таблицы, навигация и состояния,
+диалоги и оверлеи должны иметь собственные URL и активную navbar-вкладку,
+сохраняя все ранее созданные примеры и матрицу Stage A7.
+
+Уточнённые требования:
+
+- Существуют именованные маршруты и отдельные URL для `overview`, `forms`,
+  `tables`, `navigation-states`, `dialogs-overlays` (с предусмотренным
+  совместимым входом `/kit`).
+- На одном маршруте существует ровно один владелец зарегистрированного
+  NavbarMenu; NavbarTabs корректно показывает активный подраздел.
+- Каждый прежний пример UI Kit и матрица demo-state доступны ровно в одном
+  логичном подразделе, без копирования контрактной разметки.
+- Открытие подраздела не перезаписывает persisted demo-state.
+
+План реализации:
+
+1. Вынести разделы справочника в route-driven components и добавить nested
+   routes/совместимый redirect в router.
+2. Подключить NavbarMenu и NavbarTabs к shell справочника, распределив текущие
+   примеры и матрицу без дублирования.
+3. Обновить docs/README и покрыть route, active-tab и demo-state preservation
+   component-тестами.
+
+Область:
+
+- `src/router.js`
+- `src/components/UiKit.vue`
+- `src/components/kit/**`
+- `src/components/common/NavbarMenu.vue`
+- `src/components/common/NavbarTabs.vue`
+- `docs/design-system.md`
+- `README.md`
+- `tests/unit/components/UiKit.test.js`
+- `tests/unit/components/kit/**`
+
+Критерии приёмки:
+
+- Каждый подраздел `/kit` имеет собственный URL и активную вкладку Navbar.
+- Все прежние примеры, включая матрицу Stage A7, доступны и не продублированы.
+- Переходы по `/kit` не меняют сохранённые demo-настройки; route/component
+  тесты проходят.
+
+## Demo authentication
+
+### Login and logout loop
+
+### [P1] Task A8.7. Замкнуть kit-only цикл входа и выхода
+
+Статус: done
+
+Источник: Stage A8 `.plan`; `src/App.vue`, `src/components/Navbar.vue`,
+`src/components/auth/**`, `src/stores/auth.js`.
+
+Описание: Демонстрационная навигация должна позволять закончить auth-сценарий:
+«Выйти» из пользовательского меню переводит на auth-экран, а «Войти»
+возвращает в демо-кабинет. Это навигационная fixture, а не реальная сессия.
+
+Уточнённые требования:
+
+- Logout доступен из существующего user-menu и переводит на выбранный
+  login/signup entry route без вызова API.
+- Успешное demo-login действие возвращает на стартовый маршрут кабинета;
+  повторный login/logout цикл и прямое открытие auth URLs работают.
+- Auth-маршруты используют минимальную auth-оболочку без кабинета Navbar и
+  Sidebar, если это требуется текущим contract shell; кабинетные маршруты
+  сохраняют оболочку.
+- Не добавляются реальная аутентификация, токены, backend persistence или
+  ложные permission-режимы auth-форм.
+- Retroactive-уточнение (по итогам post-review доработки, зафиксировано
+  задним числом): минимальный Navbar на `/auth/*` отображается без фона и
+  границы (читается как часть auth-страницы, а не отдельная панель), а
+  переключатель темы (светлая/тёмная, по умолчанию — системная) вынесен в
+  правый угол отдельным контролом, раз в этом режиме нет user-меню, где он
+  обычно живёт. Плейсхолдеры полей входа/регистрации — инструкция, что
+  вводить («Введите email», «Придумайте пароль…»), а не образец значения.
+
+План реализации:
+
+1. Уточнить fixture action в auth-store и навигационные обработчики Navbar/
+   auth-форм.
+2. Разделить application/auth shell по route meta, используя существующие
+   компоненты, без второго независимого layout-contract.
+3. Документировать границу demo-auth и добавить component-тесты logout, login,
+   direct auth URL и повторного цикла.
+
+Область:
+
+- `src/App.vue`
+- `src/router.js`
+- `src/components/Navbar.vue`
+- `src/components/auth/**`
+- `src/stores/auth.js`
+- `src/styles/trickster-buefy.scss`
+- `docs/design-system.md`
+- `tests/unit/components/Navbar.test.js`
+- `tests/unit/components/auth/**`
+
+Критерии приёмки:
+
+- «Выйти» ведёт на auth-экран, «Войти» — на dashboard; прямые auth URLs и
+  повторный цикл работают без backend.
+- Auth-экраны не показывают кабинетные Navbar/Sidebar, а кабинетные маршруты
+  сохраняют их.
+- Минимальный Navbar на auth-экранах — без фона/границы, с переключателем
+  темы в правом углу (системная тема по умолчанию); плейсхолдеры полей входа
+  и регистрации — инструктивные, не примерные значения.
+- Релевантные unit/component-тесты, `npm run test:unit`, `npm run lint:style`,
+  `npm run guard:no-component-styles`, `npm run build` и `git diff --check`
+  проходят после выполнения всех задач этапа.

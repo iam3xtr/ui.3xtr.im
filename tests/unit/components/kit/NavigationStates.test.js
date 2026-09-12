@@ -3,8 +3,8 @@ import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import Buefy from "buefy";
 
-import UiKit from "../../../src/components/UiKit.vue";
-import { useDemoStore } from "../../../src/stores/demo.js";
+import NavigationStates from "../../../../src/components/kit/NavigationStates.vue";
+import { useDemoStore } from "../../../../src/stores/demo.js";
 
 // jsdom has no `matchMedia` — `Loader.vue` (mounted in the matrix's
 // "loading" cards below) reads it on mount to pick the reduced-motion
@@ -21,11 +21,11 @@ if (typeof window.matchMedia !== "function") {
   });
 }
 
-function mountUiKit() {
+function mountNavigationStates() {
   const pinia = createPinia();
   setActivePinia(pinia);
 
-  const wrapper = mount(UiKit, {
+  const wrapper = mount(NavigationStates, {
     global: {
       plugins: [pinia, Buefy],
     },
@@ -34,13 +34,13 @@ function mountUiKit() {
   return { wrapper, pinia };
 }
 
-// Task A7.6: `/kit` показывает эталонную матрицу всех шести значений
-// `DEMO_MODES` для контрактов ListAsyncState/AsyncState/partial-баннера,
-// не только текущий выбранный глобальный demo-режим, и не перезаписывает
-// persisted demo-режим при открытии.
-describe("UiKit.vue — матрица demo-состояний (Task A7.6)", () => {
+// Task A7.6, moved to `/kit/navigation-states` by Task A8.6: this section
+// shows the reference matrix of all six `DEMO_MODES` values for the
+// ListAsyncState/AsyncState/partial-banner contracts, not only the currently
+// selected global demo mode, and does not overwrite the persisted demo mode.
+describe("kit/NavigationStates.vue — матрица demo-состояний (Task A7.6)", () => {
   it("показывает каталожный контракт (ListAsyncState) для ready/loading/empty/error", () => {
-    const { wrapper } = mountUiKit();
+    const { wrapper } = mountNavigationStates();
 
     expect(wrapper.find(".tr-async-state--loading").exists()).toBe(true);
     expect(wrapper.find(".tr-async-state--empty").exists()).toBe(true);
@@ -48,7 +48,7 @@ describe("UiKit.vue — матрица demo-состояний (Task A7.6)", () 
   });
 
   it("показывает detail-контракт (прямой AsyncState) для error и permission-denied", () => {
-    const { wrapper } = mountUiKit();
+    const { wrapper } = mountNavigationStates();
 
     const errorStates = wrapper.findAll(".tr-async-state--error");
     const permissionDeniedStates = wrapper.findAll(".tr-async-state--permission-denied");
@@ -60,13 +60,13 @@ describe("UiKit.vue — матрица demo-состояний (Task A7.6)", () 
   });
 
   it("показывает partial-баннер поверх контента тем же b-message-контрактом", () => {
-    const { wrapper } = mountUiKit();
+    const { wrapper } = mountNavigationStates();
 
     expect(wrapper.find(".message.is-warning").exists()).toBe(true);
   });
 
-  it("открытие /kit не читает и не переписывает persisted demo-режим", () => {
-    const { wrapper } = mountUiKit();
+  it("открытие раздела не читает и не переписывает persisted demo-режим", () => {
+    const { wrapper } = mountNavigationStates();
     const demoStore = useDemoStore();
 
     expect(demoStore.mode).toBe("ready");
@@ -74,7 +74,7 @@ describe("UiKit.vue — матрица demo-состояний (Task A7.6)", () 
   });
 
   it("матрица отражает глобальный demo-режим только в read-only строке, не в самих карточках", () => {
-    const { wrapper } = mountUiKit();
+    const { wrapper } = mountNavigationStates();
     const demoStore = useDemoStore();
     demoStore.setMode("error");
 
