@@ -39,7 +39,8 @@
 //  12. Conversations       — workbench layout, conversation list/chat/properties
 //  13. Utilities           — layout helpers, settings screen, theme toggle, auth
 //  14. Responsive          — breakpoint overrides for the sections above
-//  15. Deprecated aliases  — transitional `@deprecated` selectors, see below
+//  15. Wizard              — agent creation wizard shell, progress, scenario picker, hints
+//  16. Deprecated aliases  — transitional `@deprecated` selectors, see below
 // -----------------------------------------------------------------------------
 
 @use "./trickster-tokens" as tr;
@@ -4039,8 +4040,434 @@ button.dropdown-item:hover {
   }
 }
 
+// `.tr-wizard-telegram-qr`/`.tr-wizard-telegram-open-mobile` (Task A9.7,
+// section 15 below): T1 shows the QR mock on desktop and swaps to the
+// "Открыть Telegram" mock button below this same 768px cutoff used
+// everywhere else above.
+@media (max-width: 768px) {
+  .tr-wizard-telegram-qr,
+  .tr-wizard-telegram-qr__caption {
+    display: none;
+  }
+
+  .tr-wizard-telegram-open-mobile {
+    display: inline-flex;
+  }
+}
+
+// `.tr-wizard-review-summary__row` (Task A9.8, section 15 below): the
+// "Проверка и запуск" audit's two-column label/value row collapses to one
+// column narrow, same cutoff as the rest of this section.
+@media (max-width: 768px) {
+  .tr-wizard-review-summary__row {
+    grid-template-columns: 1fr;
+  }
+}
+
 // =============================================================================
-// 15. Deprecated aliases
+// 15. Wizard
+// =============================================================================
+// Agent creation wizard shell + guided steps (Task A9.3, Stage A9 `.plan`).
+// `.tr-wizard-progress` is a non-interactive list of the semantic steps
+// (`AgentWizard.vue`) — deliberately not a Buefy `b-steps`/clickable control,
+// so a step can never be skipped by clicking ahead; navigation stays through
+// "Назад"/"Далее" only. `.tr-wizard-scenario*` reuses the `.tr-card` surface
+// (see "8. Cards and catalogs") for the "Боль" step's scenario picker, same
+// selected/disabled visual language as `.tr-tariff-selector__card` (see
+// "11. Tariffs"). `.tr-wizard-hint*` is `WizardHint.vue`'s expanded/compact
+// contextual hint box, shared by all three steps this task ships.
+// `.tr-wizard-source*` (Task A9.4) is the "Знания" step's own add/list
+// surface — see the comment above `.tr-wizard-source-add` below.
+// `.tr-wizard-model-class*` (Task A9.5) is the "Правила" step's main-path
+// model-class picker — reuses `.tr-wizard-scenario-grid`/`.tr-wizard-scenario`
+// card styling above verbatim (same selection language), only its own
+// price/availability meta row is new. `.tr-wizard-expert*` is the secondary
+// "Расширенные параметры" disclosure (`ExpertParameters.vue`): a low-contrast
+// text toggle (deliberately less prominent than the step's CTAs, `.plan`
+// "малозаметна относительно CTA") that reveals a bordered panel with
+// temperature/instruction/model catalog/BYOK. `.tr-wizard-sandbox-messages`
+// (Task A9.6) is the "Песочница" step's own bounded transcript — see its own
+// comment below for why it can't just reuse `.tr-conversation-messages`'s
+// `flex: 1` as-is. `.tr-wizard-telegram*` (Task A9.7) is the "Telegram" step's
+// two-card T1/T2 layout — see its own comment below for the QR mock/mobile
+// swap, whose responsive rule lives in "14. Responsive" above instead.
+// `.tr-wizard-review-summary*` (Task A9.8) is the "Проверка и запуск" step's
+// launch audit `<dl>` — its own narrow-screen column collapse also lives in
+// "14. Responsive" above, same convention as the Telegram step.
+
+.tr-wizard-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: tr.$space-2 tr.$space-5;
+  margin: 0 0 tr.$space-4;
+  padding: 0;
+  list-style: none;
+}
+
+.tr-wizard-progress__item {
+  display: flex;
+  align-items: center;
+  gap: tr.$space-2;
+  color: var(--tr-text-muted);
+  font-size: tr.$font-size-sm;
+}
+
+.tr-wizard-progress__marker {
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--tr-text-muted);
+  background: var(--tr-surface-2);
+  border: 1px solid var(--tr-border);
+  border-radius: 50%;
+  font-size: tr.$font-size-xs;
+  font-weight: tr.$font-weight-medium;
+}
+
+.tr-wizard-progress__item--current {
+  color: var(--tr-text-strong);
+  font-weight: tr.$font-weight-medium;
+}
+
+.tr-wizard-progress__item--current .tr-wizard-progress__marker {
+  color: var(--tr-text-on-primary);
+  background: var(--tr-primary);
+  border-color: var(--tr-primary);
+}
+
+.tr-wizard-progress__item--done .tr-wizard-progress__marker {
+  color: var(--tr-primary);
+  background: var(--tr-primary-soft);
+  border-color: var(--tr-primary-border);
+}
+
+.tr-wizard__intro {
+  align-items: flex-start;
+  gap: tr.$space-4;
+  margin-bottom: tr.$space-4;
+}
+
+.tr-wizard__hints-toggle {
+  flex: 0 0 auto;
+  color: var(--tr-primary);
+  background: none;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.tr-wizard__hints-toggle:hover,
+.tr-wizard__hints-toggle:focus-visible {
+  text-decoration: underline;
+}
+
+.tr-wizard__hints-toggle:focus-visible {
+  outline: 2px solid var(--tr-primary);
+  outline-offset: 2px;
+}
+
+.tr-wizard-step + .tr-wizard-step {
+  margin-top: tr.$space-5;
+}
+
+.tr-wizard-hint {
+  display: flex;
+  gap: tr.$space-3;
+  align-items: flex-start;
+  margin: tr.$space-2 0 tr.$space-4;
+  padding: tr.$space-3 tr.$space-4;
+  color: var(--tr-text);
+  background: var(--tr-surface-2);
+  border: 1px solid var(--tr-border);
+  border-radius: tr.$radius;
+  font-size: tr.$font-size-sm;
+}
+
+.tr-wizard-hint--compact {
+  align-items: center;
+  color: var(--tr-text-muted);
+  background: transparent;
+  border: 0;
+  padding: 0 0 tr.$space-4;
+}
+
+.tr-wizard-hint__body {
+  min-width: 0;
+}
+
+.tr-wizard-scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: tr.$space-4;
+  margin-bottom: tr.$space-2;
+}
+
+.tr-wizard-scenario {
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: tr.$space-2;
+  text-align: start;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.tr-wizard-scenario--selected {
+  border-color: var(--tr-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tr-primary) 18%, transparent);
+}
+
+.tr-wizard-scenario__title {
+  color: var(--tr-text-strong);
+}
+
+.tr-wizard-scenario__description {
+  margin: 0;
+  color: var(--tr-text-muted);
+  font-size: tr.$font-size-sm;
+}
+
+.tr-wizard-scenario__example {
+  margin: tr.$space-2 0 0;
+  font-size: tr.$font-size-xs;
+}
+
+.tr-wizard-scenario__example dt {
+  color: var(--tr-text-muted);
+}
+
+.tr-wizard-scenario__example dd {
+  margin: 0 0 tr.$space-2;
+  color: var(--tr-text);
+}
+
+// `.tr-wizard-source*` — «Знания» step (Task A9.4): the shared
+// add-source/list surface for `KnowledgeStep.vue`. No collection name/type
+// picker on purpose — the wizard's personal collection stays an implementation
+// detail, not something to choose or name here (`.plan`: «скрыв название/тип
+// контейнера и ручную привязку»).
+.tr-wizard-source-add {
+  margin-bottom: tr.$space-4;
+}
+
+.tr-wizard-source-add__upload {
+  margin-bottom: tr.$space-3;
+}
+
+.tr-wizard-source-add__actions {
+  flex-wrap: wrap;
+  gap: tr.$space-2;
+}
+
+.tr-wizard-source-form {
+  margin-bottom: tr.$space-4;
+  padding: tr.$space-4;
+  background: var(--tr-surface-2);
+  border: 1px solid var(--tr-border);
+  border-radius: tr.$radius;
+}
+
+.tr-wizard-source-list {
+  display: flex;
+  flex-direction: column;
+  gap: tr.$space-2;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tr-wizard-source {
+  display: flex;
+  align-items: center;
+  gap: tr.$space-3;
+  padding: tr.$space-3;
+  background: var(--tr-surface);
+  border: 1px solid var(--tr-border);
+  border-radius: tr.$radius;
+}
+
+.tr-wizard-source--loading {
+  opacity: 0.7;
+}
+
+.tr-wizard-source__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tr-wizard-source__actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: tr.$space-1;
+}
+
+.tr-wizard-model-class {
+  margin: tr.$space-4 0;
+}
+
+.tr-wizard-model-class__meta {
+  display: flex;
+  gap: tr.$space-3;
+  margin: tr.$space-2 0 0;
+  color: var(--tr-text-muted);
+  font-size: tr.$font-size-xs;
+}
+
+// `.tr-wizard-sandbox-messages` (Task A9.6) — the "Песочница" step's
+// transcript reuses `.tr-conversation-messages`/`.tr-chat-message` verbatim
+// (section 9 "Conversations", `AgentPlayground.vue`'s same fixed-viewport
+// chat) but sits inside a scrollable step card instead of a full-height
+// grid pane, so it needs its own bounded height instead of `flex: 1`
+// stretching to a parent that never constrains it.
+.tr-wizard-sandbox-messages {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--tr-border);
+  border-radius: tr.$radius;
+}
+
+.tr-wizard-expert {
+  margin-top: tr.$space-4;
+}
+
+.tr-wizard-expert__toggle {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--tr-text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}
+
+.tr-wizard-expert__toggle:hover,
+.tr-wizard-expert__toggle:focus-visible {
+  color: var(--tr-primary);
+}
+
+.tr-wizard-expert__toggle:focus-visible {
+  outline: 2px solid var(--tr-primary);
+  outline-offset: 2px;
+}
+
+.tr-wizard-expert__panel {
+  margin-top: tr.$space-3;
+  padding: tr.$space-4;
+  background: var(--tr-surface-2);
+  border: 1px solid var(--tr-border);
+  border-radius: tr.$radius;
+}
+
+.tr-wizard-expert__locale {
+  min-width: 160px;
+}
+
+// `.tr-wizard-telegram*` (Task A9.7) — the "Telegram" step's two side-by-side
+// method cards (`.tr-wizard-telegram-methods` reuses `.tr-wizard-scenario-grid`
+// verbatim for the same responsive two-column/stack behavior). T1's QR
+// placeholder (`.tr-wizard-telegram-qr`) is a plain bordered box with a
+// centered icon — never a real generated code, so nothing here can be
+// mistaken for a working scan target; its "14. Responsive" swap to
+// `.tr-wizard-telegram-open-mobile` on mobile lives with the rest of that
+// section's breakpoint overrides, above.
+.tr-wizard-telegram-method {
+  display: flex;
+  flex-direction: column;
+  gap: tr.$space-3;
+}
+
+.tr-wizard-telegram-qr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 160px;
+  border: 1px dashed var(--tr-border);
+  border-radius: tr.$radius;
+  color: var(--tr-text-muted);
+}
+
+.tr-wizard-telegram-qr__caption {
+  font-size: tr.$font-size-xs;
+}
+
+.tr-wizard-telegram-open-mobile {
+  display: none;
+}
+
+.tr-wizard-telegram-states {
+  margin: 0;
+  padding-left: tr.$space-4;
+  color: var(--tr-text-muted);
+  font-size: tr.$font-size-sm;
+}
+
+.tr-wizard-telegram-fallback {
+  display: flex;
+  align-items: center;
+  gap: tr.$space-2;
+  margin: 0;
+  color: var(--tr-text-muted);
+  font-size: tr.$font-size-sm;
+}
+
+.tr-wizard-telegram-steps {
+  padding-left: tr.$space-4;
+  color: var(--tr-text);
+  font-size: tr.$font-size-sm;
+}
+
+// `.tr-wizard-review-summary*` (Task A9.8) is the "Проверка и запуск" step's
+// launch audit — a plain definition list (`<dl>`), not a card grid, since
+// every row is a single labeled fact rather than a selectable option like
+// `.tr-wizard-scenario-grid`'s cards above.
+.tr-wizard-review-summary {
+  display: grid;
+  gap: tr.$space-3;
+  margin: tr.$space-4 0;
+}
+
+.tr-wizard-review-summary__row {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) 1fr;
+  gap: tr.$space-3;
+  padding-block: tr.$space-2;
+  border-bottom: 1px solid var(--tr-border);
+
+  dt {
+    color: var(--tr-text-muted);
+    font-size: tr.$font-size-sm;
+    font-weight: tr.$font-weight-medium;
+  }
+
+  dd {
+    margin: 0;
+    color: var(--tr-text);
+  }
+
+  p {
+    margin: 0 0 tr.$space-1;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+.tr-wizard-review-limits {
+  margin: 0;
+  padding-left: tr.$space-4;
+  color: var(--tr-text);
+  font-size: tr.$font-size-sm;
+}
+
+// =============================================================================
+// 16. Deprecated aliases
 // =============================================================================
 // A class renamed for A3 naming/consistency reasons (Task A3.3+) keeps its
 // old selector here as a transitional alias, so a cabinet consumer that has

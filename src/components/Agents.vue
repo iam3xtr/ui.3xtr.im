@@ -52,7 +52,7 @@
       -->
       <ListAsyncState v-bind="demoStore.listAsyncState" :loading="false">
         <template #empty-action>
-          <b-button type="is-primary" @click="openCreateModal">
+          <b-button type="is-primary" @click="openAgentWizard">
             Создать нового агента
           </b-button>
         </template>
@@ -71,16 +71,28 @@
                   <b-icon icon="robot-outline" size="is-medium" />
                 </span>
                 <b-tag
-                  :type="agent.status === 'Активен' ? 'is-primary' : undefined"
+                  :type="statusProjection(agent).badgeType"
                   size="is-small"
                 >
-                  {{ agent.status }}
+                  {{ statusProjection(agent).badgeLabel }}
                 </b-tag>
               </span>
 
               <strong class="tr-entity-card__title">{{ agent.name }}</strong>
               <span class="tr-entity-card__description">
                 {{ agent.description }}
+              </span>
+
+              <!--
+                S2 (Task A9.6, `.plan` "Система статусов"): сбой одного канала
+                не подменяет основной статус — только поясняет его отдельной
+                строкой, не только цветом бейджа.
+              -->
+              <span
+                v-if="statusProjection(agent).needsAttention"
+                class="tr-entity-card__description tr-muted"
+              >
+                {{ statusProjection(agent).attentionMessage }}
               </span>
 
               <span class="tr-entity-card__footer">
@@ -99,7 +111,7 @@
             <button
               class="tr-card tr-card--interactive tr-entity-card tr-entity-card--interactive tr-entity-card--create"
               type="button"
-              @click="openCreateModal"
+              @click="openAgentWizard"
             >
               <span class="tr-icon-tile tr-icon-tile--plain tr-entity-card__create-icon">
                 <b-icon icon="plus" size="is-medium" />
@@ -108,47 +120,21 @@
               <span>Настройте инструкции и протестируйте агента в песочнице.</span>
             </button>
           </div>
+
+          <!--
+            Лимит/capability не скрывает вход, а только поясняет его — Stage
+            A9 `.plan`, «Общий вход и жизненный цикл мастера». Presentation
+            only: сам тариф ничего не блокирует, реального permission API кит
+            не имитирует (see docs/design-system.md, "Мастер создания
+            агента").
+          -->
+          <p v-if="createLimitNote" class="tr-muted">
+            {{ createLimitNote }}
+          </p>
         </section>
       </ListAsyncState>
     </template>
   </section>
-
-  <b-modal
-    :model-value="modalStore.isOpen('agents-create')"
-    has-modal-card
-    @update:model-value="(value) => (value ? modalStore.open('agents-create') : modalStore.close('agents-create'))"
-  >
-    <form class="modal-card" @submit.prevent="createAgent">
-      <header class="modal-card-head">
-        <p class="modal-card-title">Новый агент</p>
-        <button
-          class="delete"
-          type="button"
-          aria-label="Закрыть"
-          @click="modalStore.close('agents-create')"
-        />
-      </header>
-
-      <section class="modal-card-body">
-        <b-field label="Название">
-          <b-input
-            v-model="newAgentName"
-            placeholder="Например, Консультант"
-            required
-          />
-        </b-field>
-      </section>
-
-      <footer class="modal-card-foot">
-        <b-button @click="modalStore.close('agents-create')">
-          Отмена
-        </b-button>
-        <b-button native-type="submit" type="is-primary">
-          Создать
-        </b-button>
-      </footer>
-    </form>
-  </b-modal>
 </template>
 
 <script setup>
@@ -157,10 +143,10 @@ import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import { useSimulatedLoading } from "../composables/useSimulatedLoading";
-import { AGENT_STATUSES, getAgentModelId, useAgentsStore } from "../stores/agents";
+import { AGENT_STATUSES, getAgentModelId, getAgentStatusProjection, useAgentsStore } from "../stores/agents";
+import { useChannelsStore } from "../stores/channels";
 import { useDemoStore } from "../stores/demo";
-import { useModalStore } from "../stores/modal";
-import { useModelsStore } from "../stores/models";
+import { getModelClassLabel, MODEL_CLASS_IDS, useModelsStore } from "../stores/models";
 import { useWorkspaceStore } from "../stores/workspace";
 import AsyncState from "./common/AsyncState.vue";
 import ListAsyncState from "./common/ListAsyncState.vue";
@@ -178,11 +164,11 @@ import ToolbarDropdown from "./common/ToolbarDropdown.vue";
 // «длинные подписи» — только в `displayAgents`, presentation-only.
 const { isLoading } = useSimulatedLoading();
 const demoStore = useDemoStore();
-const modalStore = useModalStore();
 const agentsStore = useAgentsStore();
+const channelsStore = useChannelsStore();
 const modelsStore = useModelsStore();
 const workspaceStore = useWorkspaceStore();
-const { activeWorkspaceId } = storeToRefs(workspaceStore);
+const { activeWorkspaceId, activeWorkspaceTariff } = storeToRefs(workspaceStore);
 const route = useRoute();
 const router = useRouter();
 
@@ -191,14 +177,16 @@ const loading = computed(() => isLoading.value || demoStore.isLoading);
 const query = ref("");
 const statusFilter = ref("");
 const modelFilter = ref("");
-const newAgentName = ref("");
 
 const agentStatuses = AGENT_STATUSES;
-// Фильтр строится из реального каталога моделей (`src/stores/models.js`,
-// Task A6.1), а не из устаревшего списка отображаемых имён — value остаётся
-// каталожным UID (сравнимым с `getAgentModelId`), label — читаемым именем.
+// Фильтр строится по классам модели (`src/stores/models.js`, Task A9.5), а не
+// по сырому каталогу моделей — младший тариф не должен заново узнавать
+// конкретные модели на этом экране, раз мастер уже прячет их за классами
+// (Stage A9 `.plan` decision 4, post-review fix). value — classId (сравнимый
+// с `getModel(...)?.classId`), label — тот же короткий русский лейбл класса,
+// что показывает каталог агента ниже.
 const agentModels = computed(
-  () => modelsStore.models.map((model) => ({ value: model.id, label: model.name })),
+  () => MODEL_CLASS_IDS.map((classId) => ({ value: classId, label: getModelClassLabel(classId) })),
 );
 
 const agents = computed(
@@ -210,10 +198,14 @@ const hasActiveAgentFilters = computed(
 );
 
 /**
- * Читаемое имя эффективной модели агента (обычной или BYOK — см.
- * `getAgentModelId`) для карточки каталога и полнотекстового поиска.
- * Свободный BYOK-идентификатор (`vendor/model`) не резолвится каталогом —
- * показывается как есть, а не как пустая строка/`undefined`.
+ * Подпись эффективной модели агента (обычной или BYOK — см.
+ * `getAgentModelId`) для карточки каталога и полнотекстового поиска — класс
+ * модели (Task A9.5), не сырое каталожное имя (post-review fix, тот же
+ * `.plan` decision 4, что и `agentModels`): каталог/фильтр не должны
+ * заставлять узнавать конкретные модели там, где мастер их уже прячет.
+ * Свободный BYOK-идентификатор (`vendor/model`) не резолвится каталогом и не
+ * относится ни к одному классу — показывается как есть, а не как пустая
+ * строка/`undefined`.
  *
  * @param {import("../stores/agents").Agent} agent
  * @returns {string}
@@ -224,7 +216,25 @@ function agentModelLabel(agent) {
     return "";
   }
 
-  return modelsStore.getModel(modelId)?.name ?? modelId;
+  const model = modelsStore.getModel(modelId);
+  return model ? getModelClassLabel(model.classId) : modelId;
+}
+
+/**
+ * S2 card projection (Task A9.6): derived from the agent's own lifecycle and
+ * its channels, not a second source of truth — see
+ * `stores/agents.js#getAgentStatusProjection`. Demo density clones
+ * (`displayAgents`, `_demoKey`) keep the original numeric `id`, so this still
+ * resolves the same real channel list as the entity they clone.
+ *
+ * @param {import("../stores/agents").Agent} agent
+ * @returns {import("../stores/agents").AgentStatusProjection}
+ */
+function statusProjection(agent) {
+  return getAgentStatusProjection(
+    agent,
+    channelsStore.listByAgent(activeWorkspaceId.value, agent.id),
+  );
 }
 
 const filteredAgents = computed(() => {
@@ -239,8 +249,11 @@ const filteredAgents = computed(() => {
     ].some((value) => value.toLocaleLowerCase().includes(search));
     const matchesStatus = !statusFilter.value
       || agent.status === statusFilter.value;
+    // Фильтр сравнивает по классу модели, не по сырому id (post-review fix,
+    // см. `agentModels`/`agentModelLabel`) — BYOK-модель вне каталога не
+    // относится ни к одному классу и просто не совпадёт ни с одним фильтром.
     const matchesModel = !modelFilter.value
-      || getAgentModelId(agent) === modelFilter.value;
+      || modelsStore.getModel(getAgentModelId(agent))?.classId === modelFilter.value;
 
     return matchesSearch && matchesStatus && matchesModel;
   });
@@ -293,36 +306,36 @@ function openAgent(id) {
   router.push({ name: "agent", params: { id } });
 }
 
-function openCreateModal() {
-  newAgentName.value = "";
-  modalStore.open("agents-create");
+// Единственная точка входа в создание агента (Stage A9, Task A9.2): все
+// триггеры каталога ведут в общий route-driven мастер вместо отдельной
+// локальной формы — см. `src/components/agents/AgentWizard.vue`.
+function openAgentWizard() {
+  router.push({ name: "agent-wizard" });
 }
 
-function createAgent() {
-  const name = newAgentName.value.trim();
-
-  if (!name) {
-    return;
-  }
-
-  const agent = agentsStore.createAgent(activeWorkspaceId.value, name);
-
-  modalStore.close("agents-create");
-  openAgent(agent.id);
-}
+// Лимит/capability не скрывает вход, а поясняет его (Stage A9 `.plan`) — по
+// текущему fixture-контракту нет отдельного лимита на число агентов, только
+// общая осведомлённость о тарифе; presentation-only, ничего не блокирует.
+const createLimitNote = computed(() => (
+  activeWorkspaceTariff.value.displayName === "Free"
+    ? "Тариф Free ограничивает часть возможностей агентов — подробности в разделе «Тариф»."
+    : ""
+));
 
 watch(activeWorkspaceId, () => {
   query.value = "";
   statusFilter.value = "";
   modelFilter.value = "";
-  modalStore.close("agents-create");
 });
 
+// `/agents?create=1` — тот же общий вход, что и остальные триггеры каталога:
+// вместо локальной модалки редиректит в мастер, не оставляя query-параметр
+// висеть после перехода.
 watch(
   () => route.query.create,
   (create) => {
     if (create === "1") {
-      openCreateModal();
+      router.replace({ name: "agent-wizard" });
     }
   },
   { immediate: true },

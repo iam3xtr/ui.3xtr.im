@@ -123,6 +123,12 @@ const STATUS_LABELS = {
   paused: "Приостановлен",
   error: "Ошибка",
   displaced: "Перехвачен",
+  // "checking" (Task A9.7) — переходный статус мастера подключения Telegram
+  // между отправкой токена и явным подтверждением/ошибкой. Обычный экран
+  // каналов почти никогда его не застаёт (мастер сбрасывает его при любом
+  // выходе без подтверждения), но карточка не должна показывать сырой
+  // ключ статуса, если всё же встретит его.
+  checking: "Проверяется",
 };
 
 const STATUS_TAG_TYPES = {
@@ -131,6 +137,7 @@ const STATUS_TAG_TYPES = {
   paused: undefined,
   error: "is-danger",
   displaced: "is-warning",
+  checking: "is-info",
 };
 
 const statusLabel = computed(() => STATUS_LABELS[props.channel.status] ?? props.channel.status);

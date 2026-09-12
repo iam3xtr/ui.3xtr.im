@@ -2,7 +2,13 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 
 /**
- * @typedef {"active" | "inactive" | "paused" | "error" | "displaced"} ChannelRuntimeStatus
+ * @typedef {"active" | "inactive" | "paused" | "error" | "displaced" | "checking"} ChannelRuntimeStatus
+ *   `"checking"` (Task A9.7) is the transient fixture status a channel holds
+ *   while the Telegram wizard step is verifying a T1/T2 attempt — it never
+ *   settles into `"active"` on its own (only the explicit launch/activation
+ *   in Task A9.8 does that); it resolves to `"error"` (invalid token,
+ *   connection conflict) or back to `"inactive"` with the bot identity now
+ *   populated (confirmed but not yet enabled).
  */
 
 /**
@@ -136,6 +142,84 @@ const initialChannelsByWorkspaceAndAgent = {
   empty: {},
 };
 
+/**
+ * S2 per-channel connection-state projection (Task A9.6, `.plan` "Система
+ * статусов" S2 row: "отдельно знания и каждый канал: не подключён,
+ * проверяется, подключён, ошибка/конфликт"). A pure derivation of the
+ * fixture's own `ChannelRuntimeStatus` — does not rename or replace it, only
+ * how the wizard/catalog present it on this one dimension.
+ *
+ * @typedef {"not_connected" | "checking" | "connected" | "error"} ChannelConnectionState
+ */
+export const CHANNEL_CONNECTION_STATES = Object.freeze([
+  "not_connected",
+  "checking",
+  "connected",
+  "error",
+]);
+
+/**
+ * @param {Channel | undefined | null} channel
+ * @returns {ChannelConnectionState}
+ */
+export function getChannelConnectionState(channel) {
+  if (!channel) {
+    return "not_connected";
+  }
+
+  switch (channel.status) {
+    case "active":
+      return "connected";
+    case "checking":
+      return "checking";
+    case "error":
+    case "displaced":
+      return "error";
+    default:
+      // "inactive" (never connected yet) and "paused" (user explicitly
+      // stopped it) both read as "not connected" on this dimension — the S2
+      // main agent status keeps a user's own pause separate from a channel
+      // failure (see `getAgentStatusProjection` in `stores/agents.js`); this
+      // projection only tracks whether the channel itself can deliver.
+      return "not_connected";
+  }
+}
+
+/**
+ * @param {Channel[]} channels
+ * @returns {boolean} true when at least one of the agent's channels can
+ *   currently deliver a response.
+ */
+export function hasWorkingChannel(channels) {
+  return channels.some((channel) => getChannelConnectionState(channel) === "connected");
+}
+
+/**
+ * @param {Channel[]} channels
+ * @returns {Channel[]} channels currently in the `error` connection state —
+ *   used to name the specific failing channel without hiding the rest
+ *   (`.plan`: "сбой одного канала не скрывает работу остальных").
+ */
+export function getChannelsNeedingAttention(channels) {
+  return channels.filter((channel) => getChannelConnectionState(channel) === "error");
+}
+
+/**
+ * Fixture bot identity derived from a name — same slug convention as
+ * `applyActivation`'s own auto-naming below, factored out for the Telegram
+ * wizard step (Task A9.7) so a T2 "confirmed" identity and a real activation
+ * read the same way without duplicating the slug rule. Never includes a
+ * token/secret — only the public `@username`/link a confirmed bot would show.
+ *
+ * @param {string} seed
+ * @returns {{ username: string, url: string }}
+ */
+export function buildTelegramIdentity(seed) {
+  const slug = String(seed ?? "").trim().toLocaleLowerCase().replace(/\s+/g, "_") || "agent";
+
+  return { username: `@${slug}_bot`, url: `https://t.me/${slug}_bot` };
+}
+
 export const useChannelsStore = defineStore("channels", () => {
   /** @type {import("vue").Ref<Record<string, Record<string, Channel[]>>>} */
   const channelsByWorkspaceAndAgent = ref(
@@ -205,9 +289,12 @@ export const useChannelsStore = defineStore("channels", () => {
     channel.name = data.name;
 
     // Заменённый токен чинит канал, ушедший в ошибку (демо-эквивалент
-    // повторной проверки credentials на сервере) — только если токен
+    // повторной проверки credentials на сервере), а также разрешает канал,
+    // застрявший в переходном `"checking"` (Task A9.7 T2, если он всё же
+    // пережил уход из мастера, не будучи подтверждённым или отклонённым
+    // никаким другим путём) — в обоих случаях только если токен
     // действительно передан в этом сохранении, а не оставлен пустым.
-    if (channel.status === "error" && data.token) {
+    if ((channel.status === "error" || channel.status === "checking") && data.token) {
       channel.status = "inactive";
       channel.runtimeReason = null;
     }
@@ -328,6 +415,96 @@ export const useChannelsStore = defineStore("channels", () => {
     }
   }
 
+  /**
+   * Marks a channel as mid-verification for a Telegram wizard attempt (Task
+   * A9.7, T1 "ожидание действия в Telegram" / T2 "проверка токена") — the
+   * transient `"checking"` status. Does not touch `providerIdentity` — the
+   * caller only knows an identity once verification resolves.
+   *
+   * @param {string} workspaceId
+   * @param {string | number} agentId
+   * @param {string} id
+   */
+  function startChannelCheck(workspaceId, agentId, id) {
+    const channel = listByAgent(workspaceId, agentId).find((item) => item.id === id);
+
+    if (!channel) {
+      return;
+    }
+
+    channel.status = "checking";
+    channel.runtimeReason = null;
+  }
+
+  /**
+   * Resolves a `"checking"` attempt back to `"inactive"` without a result —
+   * cancel/back out of the T2 form, or leaving the identity shown at the
+   * "confirm" stage without confirming it. Never touches `providerIdentity`,
+   * so a previously confirmed bot (from an earlier attempt) is not erased by
+   * simply reopening the form.
+   *
+   * @param {string} workspaceId
+   * @param {string | number} agentId
+   * @param {string} id
+   */
+  function resetChannelStatus(workspaceId, agentId, id) {
+    const channel = listByAgent(workspaceId, agentId).find((item) => item.id === id);
+
+    if (!channel) {
+      return;
+    }
+
+    channel.status = "inactive";
+    channel.runtimeReason = null;
+  }
+
+  /**
+   * Resolves a `"checking"` attempt to a fixture failure — invalid token or
+   * a connection conflict (Task A9.7). Never `"active"`: a failed T1/T2
+   * attempt is exactly the case the acceptance criteria call out as never
+   * producing an active status.
+   *
+   * @param {string} workspaceId
+   * @param {string | number} agentId
+   * @param {string} id
+   * @param {string} message
+   */
+  function failChannelCheck(workspaceId, agentId, id, message) {
+    const channel = listByAgent(workspaceId, agentId).find((item) => item.id === id);
+
+    if (!channel) {
+      return;
+    }
+
+    channel.status = "error";
+    channel.runtimeReason = message;
+  }
+
+  /**
+   * Confirms the bot identity shown after a successful T1/T2 verification —
+   * back to `"inactive"`, not `"active"` (Task A9.7 acceptance: connecting
+   * never enables responses on its own; that is Task A9.8's explicit
+   * "Включить ответы в Telegram"). Only the public identity is recorded —
+   * no token/secret ever reaches the store from this path.
+   *
+   * @param {string} workspaceId
+   * @param {string | number} agentId
+   * @param {string} id
+   * @param {{ username: string, url: string }} identity
+   */
+  function confirmChannelIdentity(workspaceId, agentId, id, identity) {
+    const channel = listByAgent(workspaceId, agentId).find((item) => item.id === id);
+
+    if (!channel) {
+      return;
+    }
+
+    channel.status = "inactive";
+    channel.runtimeReason = null;
+    channel.providerIdentity = identity.username;
+    channel.providerPublicUrl = identity.url;
+  }
+
   return {
     channelsByWorkspaceAndAgent,
     listByAgent,
@@ -338,5 +515,9 @@ export const useChannelsStore = defineStore("channels", () => {
     confirmTakeover,
     deactivateChannel,
     updateLimits,
+    startChannelCheck,
+    resetChannelStatus,
+    failChannelCheck,
+    confirmChannelIdentity,
   };
 });

@@ -26,3 +26,28 @@ describe("router — content width contract (Task A8.5)", () => {
     expect(router.resolve("/knowledge/").meta.contentMode).toBeUndefined();
   });
 });
+
+// Task A9.2: the agent creation wizard's one named entry route. `/agents/new`
+// must resolve to it — not be swallowed by the dynamic `/agents/:id` detail
+// route declared right after it — and the optional `:step` segment must stay
+// optional so a bare direct URL still resolves.
+describe("router — agent-wizard entry route (Task A9.2)", () => {
+  it("/agents/new resolves to the wizard, not the agent detail route", () => {
+    const resolved = router.resolve("/agents/new");
+
+    expect(resolved.name).toBe("agent-wizard");
+    expect(resolved.meta.contentMode).toBe("contained");
+  });
+
+  it("/agents/new/:step resolves with the step param, same contentMode", () => {
+    const resolved = router.resolve("/agents/new/context");
+
+    expect(resolved.name).toBe("agent-wizard");
+    expect(resolved.params.step).toBe("context");
+    expect(resolved.meta.contentMode).toBe("contained");
+  });
+
+  it("/agents/1 still resolves to the agent detail route, unaffected by the wizard route", () => {
+    expect(router.resolve("/agents/1").name).toBe("agent");
+  });
+});

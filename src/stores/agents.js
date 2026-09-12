@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useApiKeysStore } from "./apiKeys.js";
+import { getChannelsNeedingAttention, hasWorkingChannel } from "./channels.js";
 
 /**
  * @typedef {Object} SandboxMessage
@@ -199,6 +200,125 @@ const initialAgentsByWorkspace = {
   ],
   empty: [],
 };
+
+/**
+ * S2 presentation lifecycle (Task A9.6, `.plan` "Система статусов" S2 row):
+ * derived from the fixture's own `agent.status` string plus draft
+ * completeness — never a replacement for it, and never renamed into a new
+ * server-shaped enum (`.plan`: "не переименовывать серверные enum"). There is
+ * no `AGENT_STATUSES` entry for `"ready"`: it is a "Черновик" agent whose
+ * task/rules are already filled in, shown apart from "nothing set up yet"
+ * (`.plan`: "«Черновик» — обязательные условия ещё не выполнены... «Готов к
+ * запуску» — задача и правила заданы... запуск ещё не выполнен").
+ *
+ * @typedef {"draft" | "ready" | "active" | "paused"} AgentLifecycleState
+ */
+export const AGENT_LIFECYCLE_STATES = Object.freeze(["draft", "ready", "active", "paused"]);
+
+/**
+ * Fixture proxy for "task and rules are filled in" — the kit has no separate
+ * launch-readiness flag on `Agent`, and `instructions` is the one field every
+ * agent (wizard-created or fixture) already carries that reflects it.
+ *
+ * @param {Agent} agent
+ * @returns {boolean}
+ */
+export function isAgentReadyToLaunch(agent) {
+  return Boolean(String(agent?.instructions ?? "").trim());
+}
+
+/**
+ * @param {Agent} agent
+ * @returns {AgentLifecycleState}
+ */
+export function getAgentLifecycle(agent) {
+  if (agent.status === "Активен") {
+    return "active";
+  }
+  if (agent.status === "Приостановлен") {
+    return "paused";
+  }
+
+  return isAgentReadyToLaunch(agent) ? "ready" : "draft";
+}
+
+/**
+ * @typedef {Object} AgentStatusProjection
+ * @property {AgentLifecycleState} lifecycle
+ * @property {string} badgeLabel Основная подпись карточки/детали.
+ * @property {"is-primary" | "is-danger" | undefined} badgeType
+ * @property {boolean} needsAttention true, когда есть существенная проблема
+ *   подключения, о которой стоит явно сказать (не кодируется только цветом —
+ *   `.plan`: "статус не кодируется только цветом").
+ * @property {string | null} attentionMessage
+ */
+
+/** @type {Record<AgentLifecycleState, { label: string, type?: "is-primary" }>} */
+const LIFECYCLE_BADGES = Object.freeze({
+  draft: { label: "Черновик" },
+  ready: { label: "Готов к запуску" },
+  active: { label: "Активен", type: "is-primary" },
+  paused: { label: "Приостановлен" },
+});
+
+/**
+ * Derives the S2 card/detail projection for one agent from its own lifecycle
+ * and its channels' connection state (`stores/channels.js`) — the single
+ * place `.plan`'s "Система статусов" rules live, so every screen that shows
+ * an agent's status reads the same decision instead of re-deriving it.
+ * Never reports "Активен" as fully healthy when nothing can actually deliver
+ * a response, and never hides a working lifecycle behind one channel's own
+ * failure (`.plan`: "сбой одного канала не скрывает работу остальных").
+ *
+ * @param {Agent} agent
+ * @param {import("./channels.js").Channel[]} channels
+ * @returns {AgentStatusProjection}
+ */
+export function getAgentStatusProjection(agent, channels) {
+  const lifecycle = getAgentLifecycle(agent);
+  const badge = LIFECYCLE_BADGES[lifecycle];
+
+  if (lifecycle !== "active") {
+    return {
+      lifecycle,
+      badgeLabel: badge.label,
+      badgeType: badge.type,
+      needsAttention: false,
+      attentionMessage: null,
+    };
+  }
+
+  const failing = getChannelsNeedingAttention(channels);
+
+  if (channels.length > 0 && !hasWorkingChannel(channels)) {
+    return {
+      lifecycle,
+      badgeLabel: "Не отвечает: ошибка подключения",
+      badgeType: "is-danger",
+      needsAttention: true,
+      attentionMessage: failing[0]?.runtimeReason ?? "Ни один канал сейчас не может доставить ответ.",
+    };
+  }
+
+  if (failing.length > 0) {
+    return {
+      lifecycle,
+      badgeLabel: badge.label,
+      badgeType: badge.type,
+      needsAttention: true,
+      attentionMessage: `Канал «${failing[0].name}» требует внимания`
+        + `${failing[0].runtimeReason ? `: ${failing[0].runtimeReason}` : "."}`,
+    };
+  }
+
+  return {
+    lifecycle,
+    badgeLabel: badge.label,
+    badgeType: badge.type,
+    needsAttention: false,
+    attentionMessage: null,
+  };
+}
 
 export const useAgentsStore = defineStore("agents", () => {
   /** @type {import("vue").Ref<Record<string, Agent[]>>} */

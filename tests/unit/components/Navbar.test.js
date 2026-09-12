@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mount } from "@vue/test-utils";
+import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { createMemoryHistory, createRouter } from "vue-router";
 import Buefy from "buefy";
@@ -26,6 +26,7 @@ async function mountNavbar({ minimal = false } = {}) {
     routes: [
       { path: "/", name: "dashboard", component: { template: "<div />" } },
       { path: "/conversations", name: "conversations", component: { template: "<div />" } },
+      { path: "/agents/new/:step?", name: "agent-wizard", component: { template: "<div />" } },
     ],
   });
   router.push("/");
@@ -44,7 +45,7 @@ async function mountNavbar({ minimal = false } = {}) {
     },
   });
 
-  return { wrapper, pinia };
+  return { wrapper, pinia, router };
 }
 
 describe("Navbar.vue — демо-панель (Task A7.2)", () => {
@@ -178,6 +179,39 @@ describe("Navbar.vue — опциональное resource-меню (Task A8.1)"
     demoStore.setResourceMenuSize("full");
     await wrapper.vm.$nextTick();
     expect(select.element.value).toBe("full");
+  });
+});
+
+// Task A9.2: постоянное действие «Создать агента» — доступно на любом
+// кабинетном экране (полный Navbar), отсутствует на auth/служебных
+// маршрутах (минимальный Navbar), ведёт в общий route-driven мастер.
+describe("Navbar.vue — постоянный вход в мастер создания агента (Task A9.2)", () => {
+  it("действие присутствует на полном (кабинетном) navbar", async () => {
+    const { wrapper } = await mountNavbar();
+
+    const button = wrapper.findAll(".tr-topbar__actions button")
+      .find((btn) => btn.text().includes("Создать агента"));
+    expect(button).toBeTruthy();
+  });
+
+  it("действие отсутствует на минимальном (auth) navbar", async () => {
+    const { wrapper } = await mountNavbar({ minimal: true });
+
+    expect(wrapper.find(".tr-topbar__actions").exists()).toBe(false);
+    const button = wrapper.findAll("button")
+      .find((btn) => btn.text().includes("Создать агента"));
+    expect(button).toBeFalsy();
+  });
+
+  it("клик по действию открывает общий мастер, а не отдельную форму", async () => {
+    const { wrapper, router } = await mountNavbar();
+
+    const button = wrapper.findAll(".tr-topbar__actions button")
+      .find((btn) => btn.text().includes("Создать агента"));
+    await button.trigger("click");
+    await flushPromises();
+
+    expect(router.currentRoute.value.name).toBe("agent-wizard");
   });
 });
 

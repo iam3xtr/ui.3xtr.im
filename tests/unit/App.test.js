@@ -54,6 +54,7 @@ async function mountApp(initialPath = "/") {
     routes: [
       { path: "/", name: "dashboard", component: { template: "<div class=\"dashboard-stub\" />" } },
       { path: "/agents/", name: "agents", component: { template: "<div />" } },
+      { path: "/agents/new/:step?", name: "agent-wizard", component: { template: "<div />" } },
       { path: "/conversations", name: "conversations", component: { template: "<div />" } },
       { path: "/knowledge/", name: "knowledge", component: { template: "<div />" } },
       { path: "/workspace/", name: "workspace", component: { template: "<div />" } },

@@ -18,7 +18,7 @@
 
     <RouterLink
       v-else-if="agents.length === 0 || demoStore.isEmpty"
-      :to="{ name: 'agents', query: { create: '1' } }"
+      :to="{ name: 'agent-wizard' }"
       class="tr-card tr-card--interactive tr-dashboard-create"
     >
       <span class="tr-icon-tile tr-icon-tile--plain tr-dashboard-create__icon">

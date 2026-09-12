@@ -1,406 +1,331 @@
-# TODO: Stage A8 — Донастройка UI Kit перед установкой
+# TODO: Stage A9 — Мастер первого и последующих агентов для клиентов
 
-Дата актуализации: 2026-09-12
+Дата актуализации: 2026-09-13
 
-Статус: done — Stage A8 закрыт 2026-09-12 после stage-review и устранения findings.
+Статус: Stage A9 закрыт 2026-09-13; все задачи проверены и завершены.
 
 ## Назначение
 
-Этот файл декомпозирует только Stage A8: финальную настройку глобальной
-оболочки, навигации, диалогов, ширины detail-маршрутов, справочника `/kit` и
-сквозного демо-auth сценария. Вне scope — API, реальная авторизация,
-permissions, операторские формы и бизнес-логика, сетевые вызовы, изменение
-downstream sync-контракта и работа в `get.3xtr.im`.
+Этот файл декомпозирует только Stage A9: backend-less мастер создания агента для клиентов, его fixture-жизненный цикл, знания, песочницу, подключение Telegram, review/запуск и локализованный основной UX. Вне scope — API, реальный Telegram, QR-привязка, серверное persistence, изменение API enum, продуктовые тарифы и перенос в `get.3xtr.im`.
 
-Проверка открытых Issues `iam3xtr/ui.3xtr.im` pending: 2026-09-11 `gh api`
-не получил доступ к GitHub API из-за сетевого ограничения. Перед началом
-реализации повторно проверить Issues и перенести в GitHub только найденный
-долгосрочный или cross-repo backlog; новых Issues в ходе декомпозиции не
-создавалось.
+Проверка дублей 2026-09-12: открыты только Issues #1 (release artifact) и #2 (сбор UI-багов) `iam3xtr/ui.3xtr.im`; задачи A9 не дублируют их. API-зависимости #17/#87/#114–#118 остаются внешним workstream, новых Issues здесь не создаётся.
 
-## Application shell
+## Wizard state and entry points
 
-### Navbar and demo configuration
+### Draft lifecycle
 
-### [P1] Task A8.1. Сделать resource-меню Navbar опциональным и управляемым в demo-store
+### [P0] Task A9.1. Создать изолированный in-memory store мастера
 
 Статус: done
 
-Источник: Stage A8 `.plan`; `src/components/Navbar.vue`,
-`src/components/common/NavbarMenu.vue`, `src/stores/demo.js`.
+Источник: Stage A9 `.plan`, «Общий вход и жизненный цикл мастера» и «Знания без внутренних структур».
 
-Описание: Полный Navbar не должен содержать глобальный поиск. Дополнительные
-resource links должны появляться только при непустом реестре, а разработчик
-должен переключать размер этого реестра в kit-only demo-панели без правки
-кода и без влияния на маршрутные вкладки.
+Описание: Один draft должен принадлежать одному workspace, переживать переходы в пределах сессии и не создавать повторные fixture-ресурсы при повторе шага или submit.
 
 Уточнённые требования:
 
-- Допустимы и persisted в namespaced demo-state только значения размера меню
-  `none`, `compact`, `full`; отсутствующее или невалидное сохранённое значение
-  нормализуется в безопасное значение по умолчанию.
-- При `none` resource-меню, его разделители и резервируемый зазор отсутствуют
-  из DOM в desktop- и mobile/user-представлениях.
-- При `compact` и `full` используется один вычисляемый реестр resource links;
-  никакой разметки меню с захардкоженным вторым набором ссылок не появляется.
-- Глобальная строка поиска удалена, а `NavbarMenu`/`NavbarTabs` продолжают
-  независимо отображать маршрутные вкладки.
-- Новые классы demo-панели остаются kit-only и отмечаются как не входящие в
-  downstream product-contract.
+- `wizardId`, draft и созданные им resource IDs изолированы по `workspaceId`; reload не восстанавливает их.
+- Продолжение, новый draft, отмена, back/forward и невалидный шаг имеют явный результат; отмена не трогает общие или завершённые данные.
+- Создание agent, collection и source идемпотентно внутри одного draft; partial failure сохраняет уже созданные ID.
 
 План реализации:
 
-1. Расширить контракт и persistence `src/stores/demo.js` значением размера
-   resource-меню и добавить контрол в существующую demo-панель Navbar.
-2. Перевести resource links и условные разделители `Navbar.vue` на единый
-   вычисляемый реестр, удалить markup глобального поиска.
-3. Внести минимальные общие стили, обновить описание Navbar/demo-исключения в
-   design-system и покрыть default, persistence, empty и populated варианты
-   store/component-тестами.
+1. Добавить Pinia fixture-store мастера с состояниями draft, step, ресурсами и явными действиями lifecycle.
+2. Связать его с workspace fixture без localStorage и без сетевого кода.
+3. Покрыть isolation, retry, cancel и duplicate-submit store-тестами.
 
 Область:
 
-- `src/stores/demo.js`
-- `src/components/Navbar.vue`
-- `src/components/common/NavbarMenu.vue`
-- `src/styles/trickster-buefy.scss`
-- `docs/design-system.md`
-- `tests/unit/stores/demo.test.js`
-- `tests/unit/components/Navbar.test.js`
+- `src/stores/wizard.js`
+- `src/stores/{agents,knowledge,workspace}.js`
+- `tests/unit/stores/wizard.test.js`
 
 Критерии приёмки:
 
-- В Navbar нет глобального поиска; при пустом resource-реестре не рендерятся
-  меню, разделитель и занимающий место зазор ни в одной проекции Navbar.
-- Переключатель `none | compact | full` изменяет ресурсные ссылки реактивно,
-  переживает reload и не меняет маршрутные NavbarTabs.
-- Узкие unit/component-тесты и `npm run lint:style` проходят.
+- Draft одного пространства недоступен в другом, а reload начинается с чистых fixtures.
+- Повтор действия не дублирует связанные fixture-сущности; отмена безопасна.
+- Узкие store-тесты проходят.
 
-### [P1] Task A8.2. Связать уведомления Navbar с fixture-состоянием активного пространства
+### [P0] Task A9.2. Добавить единый route-driven вход в мастер
 
 Статус: done
 
-Источник: Stage A8 `.plan`; `src/components/Navbar.vue`, workspace fixtures.
+Источник: Stage A9 `.plan`, «Общий вход и жизненный цикл мастера».
 
-Описание: Колокольчик уведомлений должен быть данными активного demo-space, а
-не всегда видимым элементом. Пользователь видит актуальный счётчик и
-доступную подпись, а после прочтения последнего уведомления control исчезает.
+Описание: Все точки создания должны открыть один мастер, включая `/agents?create=1`, отдельный contained URL, пустой dashboard и постоянное действие на кабинетных экранах.
 
 Уточнённые требования:
 
-- Колокольчик рендерится тогда и только тогда, когда у активного пространства
-  есть хотя бы одно непрочитанное fixture-уведомление.
-- Badge и accessible label используют фактическое число непрочитанных
-  уведомлений; нулевое значение не маскируется статическим счётчиком.
-- Действие прочтения обновляет reactive fixture-state без reload; пустое
-  пространство изначально не рендерит control.
-- Реализуются только kit fixtures: без API, polling, real-time транспорта или
-  persistence пользовательских уведомлений.
+- Auth и служебные маршруты не показывают create action; остальные входы не зависят от фильтра, пагинации, empty/error списка или viewport.
+- Direct URL, browser back/forward и невалидный step используют один controller и fallback, не сбрасывая валидный draft.
+- Лимит/capability не скрывает вход, а показывает presentation-only объяснение без имитации permission API.
 
 План реализации:
 
-1. Добавить минимальный изолированный fixture-store/состояние уведомлений,
-   привязанное к выбранному demo-пространству.
-2. Подключить условный bell, счётчик, подпись и действие прочтения к Navbar.
-3. Зафиксировать fixture-границу в contract docs и добавить тесты visible,
-   read-last и empty-workspace сценариев.
-
-Область:
-
-- `src/components/Navbar.vue`
-- `src/stores/**`
-- `src/styles/trickster-buefy.scss`
-- `docs/design-system.md`
-- `tests/unit/components/Navbar.test.js`
-- `tests/unit/stores/**`
-
-Критерии приёмки:
-
-- Колокольчик, badge и подпись соответствуют числу непрочитанных уведомлений.
-- Прочтение последнего и выбор пустого пространства скрывают control без
-  перезагрузки.
-- Новая fixture-логика не содержит сетевого кода; релевантные тесты проходят.
-
-## Administration catalog
-
-### Navigation and lightweight reference screens
-
-### [P1] Task A8.3. Добавить административные маршруты и облегчённые каталоги
-
-Статус: done
-
-Источник: Stage A8 `.plan`; `src/navigation.js`, `src/router.js`,
-`src/components/Sidebar.vue`; маршруты кабинета пользователей, моделей,
-провайдеров, тарифов и запросов.
-
-Описание: Группа «Администрирование» должна вести на эталонные облегчённые
-каталоги users, models, providers, tariffs и requests, чтобы kit покрывал
-согласованный операторский навигационный контур без обещания настоящей
-операторской функциональности.
-
-Уточнённые требования:
-
-- Для каждой из пяти сущностей существует реальный именованный маршрут,
-  элемент Sidebar и самостоятельный лёгкий экран с общими table, toolbar и
-  async-state контрактами.
-- Экран использует только статические/Pinia fixtures и presentation actions;
-  внутренних форм, API, permissions, сетевых вызовов и операторской
-  бизнес-логики нет.
-- Маршрутная мета явно выбирает существующий режим ширины и не создаёт новый
-  локальный shell или частный стилевой контракт.
-- Граница упрощённых страниц и отсутствие переносимости их бизнес-логики в
-  downstream фиксируются в документации.
-
-План реализации:
-
-1. Добавить registry-пункты Sidebar, imports и именованные маршруты для пяти
-   административных каталогов.
-2. Создать `administration/**` reference screens и необходимые fixture-stores,
-   переиспользуя существующие common-компоненты и классы.
-3. Добавить общие стили только при необходимости, обновить документацию и
-   route/component-тесты доступности каталогов и их async-поверхностей.
-
-Область:
-
-- `src/navigation.js`
-- `src/router.js`
-- `src/components/Sidebar.vue`
-- `src/components/administration/**`
-- `src/stores/**`
-- `src/styles/trickster-buefy.scss`
-- `docs/design-system.md`
-- `README.md`
-- `tests/unit/components/**`
-
-Критерии приёмки:
-
-- Sidebar содержит пять рабочих административных пунктов, и каждый открывает
-  свой упрощённый каталог на общем UI-контракте.
-- Экраны не содержат сетевых вызовов, permission-веток или внутренних форм.
-- Маршрутные/component-тесты и `npm run guard:no-component-styles` проходят.
-
-## Conversations
-
-### Responsive split view
-
-### [P1] Task A8.4. Восстановить адаптивный split-view списка и detail диалога
-
-Статус: done
-
-Источник: Stage A8 `.plan`; `src/components/Conversations.vue`,
-`src/components/conversations/**`, conversation route contracts.
-
-Описание: На широком экране список диалогов должен оставаться рядом с
-выбранной перепиской. На узком экране интерфейс должен переходить к одному
-основному представлению с явным возвратом к списку и сохранением выбранного
-диалога.
-
-Уточнённые требования:
-
-- При ширине `>= 1024px` одновременно видны selected conversation и список;
-  detail/settings не теряют route-driven вкладки и validation fallback.
-- Ниже breakpoint отображается одно основное представление, а control
-  возврата ведёт к списку, не очищая выбранный `conversationId`.
-- Layout не создаёт horizontal overflow страницы; breakpoint и классы остаются
-  общими правилами design-system, а не demo-only override.
-- Demo-state projection и существующие fixture interactions диалогов
-  продолжают работать в обеих компоновках.
-
-План реализации:
-
-1. Перестроить conversation shell/list/detail anatomy вокруг одного
-   responsive split-view и сохранить существующую маршрутизацию.
-2. Добавить mobile back control и общие stylesheet-правила breakpoint/overflow.
-3. Обновить contract documentation и написать component-тесты desktop split,
-   mobile return и сохранения выбранного маршрута.
-
-Область:
-
-- `src/components/Conversations.vue`
-- `src/components/conversations/**`
-- `src/router.js`
-- `src/styles/trickster-buefy.scss`
-- `docs/design-system.md`
-- `tests/unit/components/Conversations.test.js`
-- `tests/unit/components/conversations/**`
-
-Критерии приёмки:
-
-- При `>= 1024px` список и выбранный диалог видны одновременно; ниже доступен
-  работающий возврат к списку без потери выбора.
-- Страница не имеет горизонтального overflow, а существующие tabs, fallback и
-  demo-state не регрессируют.
-- Релевантные component-тесты проходят.
-
-## Detail route geometry
-
-### Contained agents and knowledge
-
-### [P1] Task A8.5. Установить contained-ширину для всех внутренних маршрутов агентов и знаний
-
-Статус: done
-
-Источник: Stage A8 `.plan`; `src/router.js`, `src/App.vue`, `agents/**`,
-`knowledge/**`.
-
-Описание: Detail-поверхности агентов и коллекций знаний не должны
-необоснованно растягиваться на весь экран. Все их внутренние маршруты должны
-использовать единый contained-контейнер, сохраняя осознанно выбранную ширину
-списочных и специализированных рабочих экранов.
-
-Уточнённые требования:
-
-- Каждый `/agents/:id/**` и `/knowledge/:id/**` route имеет эффективный
-  `contentMode: "contained"`, включая playground, channels, files,
-  settings и statistics.
-- Каталоги `/agents/` и `/knowledge/`, а также другие отдельные рабочие
-  области не меняют режим ширины без отдельного обоснования в контракте.
-- Изменение использует существующий App/router contract и не вводит частный
-  container-class в дочерних `.vue` компонентах.
-
-План реализации:
-
-1. Актуализировать route meta/родительские shell contracts для agent и
-   collection children.
-2. Убрать противоречившие комментарии и проверить наследование mode в `App`.
-3. Обновить route-family документацию и добавить/скорректировать тесты
-   маршрутов и detail-shells.
+1. Добавить именованные wizard routes и их `contentMode` в router.
+2. Подключить общий trigger в shell/dashboard/catalog и query-entry `/agents?create=1`.
+3. Добавить route/component-тесты точек входа и fallback.
 
 Область:
 
 - `src/router.js`
 - `src/App.vue`
+- `src/components/{Dashboard,Agents,Navbar}.vue`
 - `src/components/agents/**`
-- `src/components/knowledge/**`
-- `docs/design-system.md`
-- `tests/unit/agents/**`
-- `tests/unit/components/knowledge/**`
+- `tests/unit/{router,components}/**`
 
 Критерии приёмки:
 
-- Все перечисленные agent/knowledge detail URLs рендерятся в contained-mode.
-- Списочные маршруты сохраняют свой прежний явно документированный режим.
-- Route/detail component-тесты проходят.
+- Каждый вход открывает тот же draft/шаг, а не отдельную форму.
+- Создание доступно на требуемых cabinet-маршрутах и отсутствует на `/auth/*`.
+- Route/component-тесты проходят.
 
-## UI Kit reference
+## Guided configuration
 
-### Routed contract sections
+### Customer scenario and rules
 
-### [P1] Task A8.6. Разделить `/kit` на маршрутные подразделы контрактов
-
-Статус: done
-
-Источник: Stage A8 `.plan`; `src/components/UiKit.vue`,
-`src/components/common/NavbarMenu.vue`, `src/components/common/NavbarTabs.vue`.
-
-Описание: Справочник UI Kit должен открываться как набор адресуемых разделов,
-а не одна длинная страница. Обзор, формы, таблицы, навигация и состояния,
-диалоги и оверлеи должны иметь собственные URL и активную navbar-вкладку,
-сохраняя все ранее созданные примеры и матрицу Stage A7.
-
-Уточнённые требования:
-
-- Существуют именованные маршруты и отдельные URL для `overview`, `forms`,
-  `tables`, `navigation-states`, `dialogs-overlays` (с предусмотренным
-  совместимым входом `/kit`).
-- На одном маршруте существует ровно один владелец зарегистрированного
-  NavbarMenu; NavbarTabs корректно показывает активный подраздел.
-- Каждый прежний пример UI Kit и матрица demo-state доступны ровно в одном
-  логичном подразделе, без копирования контрактной разметки.
-- Открытие подраздела не перезаписывает persisted demo-state.
-
-План реализации:
-
-1. Вынести разделы справочника в route-driven components и добавить nested
-   routes/совместимый redirect в router.
-2. Подключить NavbarMenu и NavbarTabs к shell справочника, распределив текущие
-   примеры и матрицу без дублирования.
-3. Обновить docs/README и покрыть route, active-tab и demo-state preservation
-   component-тестами.
-
-Область:
-
-- `src/router.js`
-- `src/components/UiKit.vue`
-- `src/components/kit/**`
-- `src/components/common/NavbarMenu.vue`
-- `src/components/common/NavbarTabs.vue`
-- `docs/design-system.md`
-- `README.md`
-- `tests/unit/components/UiKit.test.js`
-- `tests/unit/components/kit/**`
-
-Критерии приёмки:
-
-- Каждый подраздел `/kit` имеет собственный URL и активную вкладку Navbar.
-- Все прежние примеры, включая матрицу Stage A7, доступны и не продублированы.
-- Переходы по `/kit` не меняют сохранённые demo-настройки; route/component
-  тесты проходят.
-
-## Demo authentication
-
-### Login and logout loop
-
-### [P1] Task A8.7. Замкнуть kit-only цикл входа и выхода
+### [P0] Task A9.3. Реализовать shell мастера и шаги «Боль», «Контекст» и «Правила»
 
 Статус: done
 
-Источник: Stage A8 `.plan`; `src/App.vue`, `src/components/Navbar.vue`,
-`src/components/auth/**`, `src/stores/auth.js`.
+Источник: Stage A9 `.plan`, таблица смысловых шагов 1, 2 и 4.
 
-Описание: Демонстрационная навигация должна позволять закончить auth-сценарий:
-«Выйти» из пользовательского меню переводит на auth-экран, а «Войти»
-возвращает в демо-кабинет. Это навигационная fixture, а не реальная сессия.
+Описание: Первый агент должен начинаться с понятной клиентской боли, затем получить бизнес-контекст и правила ответов без обязательного выбора модели или пространства.
 
 Уточнённые требования:
 
-- Logout доступен из существующего user-menu и переводит на выбранный
-  login/signup entry route без вызова API.
-- Успешное demo-login действие возвращает на стартовый маршрут кабинета;
-  повторный login/logout цикл и прямое открытие auth URLs работают.
-- Auth-маршруты используют минимальную auth-оболочку без кабинета Navbar и
-  Sidebar, если это требуется текущим contract shell; кабинетные маршруты
-  сохраняют оболочку.
-- Не добавляются реальная аутентификация, токены, backend persistence или
-  ложные permission-режимы auth-форм.
-- Retroactive-уточнение (по итогам post-review доработки, зафиксировано
-  задним числом): минимальный Navbar на `/auth/*` отображается без фона и
-  границы (читается как часть auth-страницы, а не отдельная панель), а
-  переключатель темы (светлая/тёмная, по умолчанию — системная) вынесен в
-  правый угол отдельным контролом, раз в этом режиме нет user-меню, где он
-  обычно живёт. Плейсхолдеры полей входа/регистрации — инструкция, что
-  вводить («Введите email», «Придумайте пароль…»), а не образец значения.
+- Есть 3–5 fixture-сценариев и «Другая задача», каждый со стабильным `scenarioId`, примером вопроса и ожидаемого результата без обещаний CRM/заказа.
+- Поля контекста валидируются рядом с полем; предложенное имя можно изменить и back не теряет введённые значения.
+- Правила включают задачу, стиль, ограничения, отсутствие ответа и связь с оператором; тест доступен только после задачи и правил.
+- Первый агент показывает развёрнутые подсказки, последующий — компактные с возможностью раскрыть их снова.
 
 План реализации:
 
-1. Уточнить fixture action в auth-store и навигационные обработчики Navbar/
-   auth-форм.
-2. Разделить application/auth shell по route meta, используя существующие
-   компоненты, без второго независимого layout-contract.
-3. Документировать границу demo-auth и добавить component-тесты logout, login,
-   direct auth URL и повторного цикла.
+1. Добавить route-driven wizard shell с progress, навигацией, save draft и exit.
+2. Реализовать presentation-компоненты трёх смысловых шагов на состоянии wizard store.
+3. Добавить валидацию, keyboard/focus и component-тесты переходов.
 
 Область:
 
-- `src/App.vue`
-- `src/router.js`
-- `src/components/Navbar.vue`
-- `src/components/auth/**`
-- `src/stores/auth.js`
+- `src/components/agents/wizard/**`
+- `src/stores/wizard.js`
 - `src/styles/trickster-buefy.scss`
-- `docs/design-system.md`
-- `tests/unit/components/Navbar.test.js`
-- `tests/unit/components/auth/**`
+- `tests/unit/components/agents/wizard/**`
 
 Критерии приёмки:
 
-- «Выйти» ведёт на auth-экран, «Войти» — на dashboard; прямые auth URLs и
-  повторный цикл работают без backend.
-- Auth-экраны не показывают кабинетные Navbar/Sidebar, а кабинетные маршруты
-  сохраняют их.
-- Минимальный Navbar на auth-экранах — без фона/границы, с переключателем
-  темы в правом углу (системная тема по умолчанию); плейсхолдеры полей входа
-  и регистрации — инструктивные, не примерные значения.
-- Релевантные unit/component-тесты, `npm run test:unit`, `npm run lint:style`,
-  `npm run guard:no-component-styles`, `npm run build` и `git diff --check`
-  проходят после выполнения всех задач этапа.
+- Шаги нельзя молча пропустить, а back/continue сохраняют поля.
+- UI явно описывает границы ответа и роль оператора.
+- Component-тесты валидации, progress и переходов проходят.
+
+### Knowledge sources
+
+### [P0] Task A9.4. Добавить шаг знаний с ленивой личной коллекцией
+
+Статус: done
+
+Источник: Stage A9 `.plan`, «Знания без внутренних структур на основном пути».
+
+Описание: Пользователь добавляет файлы, текст и ссылки без выбора коллекции; мастер создаёт и связывает одну личную collection агента только при необходимости.
+
+Уточнённые требования:
+
+- Несколько источников показывают loading, processing, ready и error; доступны retry, replace, remove и явное продолжение без источника.
+- Agent–collection связывается устойчивыми IDs, не совпадающими именами; rename синхронизирует auto-name, но не явно изменённое expert-name.
+- Locale не переименовывает пользовательские данные, а удаление source draft не затрагивает чужие данные.
+
+План реализации:
+
+1. Расширить wizard/knowledge fixtures и действия ленивого создания collection/source.
+2. Реализовать одну поверхность источников и статусы исправления.
+3. Покрыть rename, одинаковые имена, partial failure и retry тестами.
+
+Область:
+
+- `src/components/agents/wizard/**`
+- `src/stores/{wizard,knowledge,agents}.js`
+- `tests/unit/{stores,components}/**`
+
+Критерии приёмки:
+
+- Коллекция не выбирается вручную и не дублируется при повторном действии.
+- Состояния каждого source и последствия продолжения без знания понятны.
+- Узкие store/component-тесты проходят.
+
+### Advanced configuration and localization
+
+### [P1] Task A9.5. Добавить экспертные параметры, model classes и scoped RU/EN/ES
+
+Статус: done
+
+Источник: Stage A9 `.plan`, «Основной и экспертный режимы, модели и тарифы» и локализационные критерии.
+
+Описание: Основной путь рекомендует класс модели, а вторичная доступная ссылка раскрывает температуру, инструкцию и BYOK в пределах fixture-capabilities.
+
+Уточнённые требования:
+
+- В основном UI применяются «Простая / Продвинутая / Сильная» с назначением, относительной ценой и availability без гарантий качества или выдуманных тарифов.
+- Fixture-профили младшего, расширенного и одного доступного класса не обходят capability; A6 ModelSelect/BYOK остаётся экспертной поверхностью.
+- Переключение expert mode, capability и locale не теряет draft, ручную инструкцию, ключ или модель и не заменяет их автоматически.
+- Новый путь имеет полный одинаковый набор RU/EN/ES ключей; язык UI независим от языка инструкции агента.
+
+План реализации:
+
+1. Добавить capability fixtures и presentation mapping model classes.
+2. Реализовать доступный disclosure экспертных полей и предупреждение о возврате к шаблону.
+3. Добавить scoped словари и тесты сохранения значений/полноты ключей.
+
+Область:
+
+- `src/components/agents/wizard/**`
+- `src/components/agents/{AgentSettings,ModelSelect,ApiKeySelect}.vue`
+- `src/stores/{wizard,models,apiKeys}.js`
+- `src/locales/wizard/**`
+- `tests/unit/{agents,stores,components}/**`
+
+Критерии приёмки:
+
+- Основной путь не требует raw model ID, expert mode не расширяет права.
+- RU/EN/ES показывают те же шаги и не меняют пользовательские данные.
+- Тесты capability и локализации проходят.
+
+## Validation and channel activation
+
+### Sandbox and status projection
+
+### [P0] Task A9.6. Встроить песочницу и presentation-модель статусов S2
+
+Статус: done
+
+Источник: Stage A9 `.plan`, шаг 5 и «Система статусов» S2.
+
+Описание: До запуска оператор проверяет агента в роли клиента, а UI ясно отличает draft, готовность, подключение, активацию, паузу и частичный сбой.
+
+Уточнённые требования:
+
+- Песочница предлагает сценарные вопросы, custom question, отсутствие информации и возврат к правилам/знаниям; сообщения не публикуются клиентам.
+- S2 является производной fixture-проекцией, не меняет server enum: lifecycle отдельно от readiness knowledge и каждого channel.
+- Pending/error не показывают успех; изменение проверенных правил/знаний/class помечает необходимость повторной проверки.
+
+План реализации:
+
+1. Добавить sandbox step и связи его результатов с wizard draft.
+2. Реализовать S2 projection и таблицу отображения на agent/channel fixtures.
+3. Обновить agent/card/playground presentation и тесты частичного сбоя/паузы.
+
+Область:
+
+- `src/components/{Agents.vue,agents/**,channels/**}`
+- `src/stores/{wizard,agents,channels}.js`
+- `tests/unit/{agents,components,stores}/**`
+
+Критерии приёмки:
+
+- Песочница не включает канал и не заявляет оценку реального ИИ.
+- Карточка не скрывает рабочий lifecycle из-за ошибки одного канала.
+- Тесты S2 и sandbox-переходов проходят.
+
+### Telegram and review
+
+### [P0] Task A9.7. Реализовать UI-спецификацию подключения Telegram с T1/T2 fallback
+
+Статус: done
+
+Источник: Stage A9 `.plan`, шаг 6 и «Telegram и вариант QR»; внешние API Issues #114–#118.
+
+Описание: Мастер показывает кандидат managed-bot QR/deep-link и обязательный fallback BotFather, не выдавая fixture за реальное создание или подтверждённую привязку.
+
+Уточнённые требования:
+
+- T1 на desktop показывает QR, на mobile — «Открыть Telegram»; QR не содержит секрет, не логинит и не означает success.
+- T2 объясняет официальный fallback и допускает fixture-ввод token/username только с безопасными состояниями ошибки, конфликта и возврата.
+- WizardId/workspace не передаются в official link по догадке; ownership, correlation и реальные retries остаются product/API contract.
+
+План реализации:
+
+1. Добавить Telegram step с T1/T2 presentation states и cancel/return.
+2. Связать его с fixture-statuses канала без сетевых вызовов или persistence.
+3. Написать тесты mobile fallback, конфликтов и отсутствия ложного success.
+
+Область:
+
+- `src/components/agents/wizard/**`
+- `src/components/channels/**`
+- `src/stores/{wizard,channels}.js`
+- `tests/unit/components/agents/wizard/**`
+
+Критерии приёмки:
+
+- Недоступный T1 всегда предлагает T2, а «Подключить позже» сохраняет draft.
+- QR/deep-link и token не приводят к активному статусу без fixture-подтверждения.
+- Component-тесты Telegram states проходят.
+
+### [P0] Task A9.8. Добавить review, явный запуск и post-launch действия
+
+Статус: done
+
+Источник: Stage A9 `.plan`, шаг 7 и критерии launch lifecycle.
+
+Описание: Последний шаг даёт аудит конфигурации и отдельные команды «Сохранить без запуска»/«Включить ответы в Telegram», после которых доступны следующие действия без ложного успеха.
+
+Уточнённые требования:
+
+- Review показывает аудиторию, канал, знания, правила, модель/class, лимит и последствия запуска.
+- Save draft не активирует ответы; activation следует только `review → pending → confirmed success`, retry не дублирует channel.
+- После completion доступны открыть бота, диалоги, пауза и создание следующего агента; экспертный личный сценарий не появляется.
+
+План реализации:
+
+1. Реализовать review screen с action contracts и confirmation fixture-state.
+2. Подключить post-launch navigation и pause/resume presentation.
+3. Добавить regression-тесты save, activation failure/retry и next-agent isolation.
+
+Область:
+
+- `src/components/agents/wizard/**`
+- `src/components/{Agents.vue,conversations/**,channels/**}`
+- `src/stores/{wizard,agents,channels}.js`
+- `tests/unit/{components,stores}/**`
+
+Критерии приёмки:
+
+- Ни одно промежуточное действие не включает ответы.
+- Success отражается лишь после явного fixture-подтверждения и не создаёт дублей.
+- Regression-тесты запуска и продолжения работы проходят.
+
+## Contract and verification
+
+### Documentation and accessibility
+
+### [P1] Task A9.9. Зафиксировать contract мастера и его границы downstream
+
+Статус: done
+
+Источник: Stage A9 `.plan`, «Область», «Риски» и критерии приёмки.
+
+Описание: Реализованный мастер должен быть описан как kit specification: с ID-связью, S2, T1/T2, fixtures и ограничениями, без обещания продуктовой интеграции.
+
+Уточнённые требования:
+
+- Документация различает текущие fixture-поверхности и отдельные API/product contracts для draft persistence, Telegram correlation, тарифов и model tiers.
+- Фиксируются keyboard/focus, text statuses, reduced motion, 200% zoom, long names и RU/EN/ES; ручная матрица остаётся диагностической.
+- Исходный `docs/ux-review-2026-09-11.md` не редактируется.
+
+План реализации:
+
+1. Обновить design contract, migration guide и README по фактической реализации задач A9.1–A9.8.
+2. Добавить/скорректировать accessibility и component/store regression tests.
+3. Зафиксировать отсутствие API, persistence и component-local styles.
+
+Область:
+
+- `docs/design-system.md`
+- `docs/agent-migration-guide.md`
+- `README.md`
+- `tests/unit/**`
+
+Критерии приёмки:
+
+- Документы не называют fixtures готовой backend-интеграцией.
+- Тесты покрывают keyboard/focus, ошибки, повторный вход и локализацию.
+- `npm run test:unit`, `npm run lint:style`, `npm run guard:no-component-styles`, `npm run build` и `git diff --check` проходят после реализации.

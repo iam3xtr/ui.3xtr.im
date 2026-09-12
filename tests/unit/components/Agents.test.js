@@ -29,7 +29,7 @@ if (typeof window.matchMedia !== "function") {
   });
 }
 
-async function mountAgents({ workspaceId = "demo", demoMode } = {}) {
+async function mountAgents({ workspaceId = "demo", demoMode, path = "/agents" } = {}) {
   const pinia = createPinia();
   setActivePinia(pinia);
 
@@ -44,10 +44,11 @@ async function mountAgents({ workspaceId = "demo", demoMode } = {}) {
     history: createMemoryHistory(),
     routes: [
       { path: "/agents", name: "agents", component: Agents },
+      { path: "/agents/new/:step?", name: "agent-wizard", component: { template: "<div />" } },
       { path: "/agents/:id", name: "agent", component: { template: "<div />" } },
     ],
   });
-  router.push("/agents");
+  router.push(path);
   await router.isReady();
 
   // `useSimulatedLoading` (не в scope этого finding) держит `Loader`
@@ -66,31 +67,40 @@ async function mountAgents({ workspaceId = "demo", demoMode } = {}) {
   vi.useRealTimers();
   await flushPromises();
 
-  return { wrapper };
+  return { wrapper, router };
 }
 
-describe("Agents.vue — модель в карточке и фильтре (Stage A6 fix)", () => {
-  it("карточка каталога показывает читаемое имя модели, а не каталожный UID", async () => {
+// Task A9.5 post-review fix (Stage A9 `.plan` decision 4): карточка и фильтр
+// теперь показывают класс модели (`MODEL_CLASS_LABELS`, `src/stores/models.js`),
+// не сырое каталожное имя — тот же принцип, по которому мастор уже прячет
+// raw model id на основном пути. `Консультант` (`gpt-4.1-mini`) и
+// `Support Bot` (`gpt-4o-mini`) оба относятся к классу `basic`
+// («Простая»); `Sales Assistant` (`gpt-4.1`) — единственный агент demo
+// пространства класса `advanced` («Продвинутая»), поэтому именно им
+// проверяется точечное сужение фильтра.
+describe("Agents.vue — модель в карточке и фильтре (Stage A6 fix, Task A9.5 post-review)", () => {
+  it("карточка каталога показывает класс модели, а не каталожное имя/UID", async () => {
     const { wrapper } = await mountAgents();
 
-    expect(wrapper.text()).toContain("GPT-4.1 mini");
+    expect(wrapper.text()).toContain("Простая");
+    expect(wrapper.text()).not.toContain("GPT-4.1 mini");
     expect(wrapper.text()).not.toContain("gpt-4.1-mini");
   });
 
-  it("фильтр по модели сужает список до реально совпадающих агентов", async () => {
+  it("фильтр по классу модели сужает список до реально совпадающих агентов", async () => {
     const { wrapper } = await mountAgents();
 
     expect(wrapper.findAll(".tr-entity-card__title").length).toBeGreaterThan(1);
 
     const modelItem = wrapper.findAll(".dropdown-item")
-      .find((item) => item.text() === "GPT-4.1 mini");
+      .find((item) => item.text() === "Продвинутая");
     expect(modelItem).toBeTruthy();
 
     await modelItem.trigger("click");
     await flushPromises();
 
     const cardTitles = wrapper.findAll(".tr-entity-card__title").map((el) => el.text());
-    expect(cardTitles).toEqual(["Консультант"]);
+    expect(cardTitles).toEqual(["Sales Assistant"]);
   });
 
   it("BYOK-агент фильтруется/отображается по эффективной модели, не по обычной", async () => {
@@ -147,5 +157,69 @@ describe("Agents.vue — demo-состояния (Task A7.3)", () => {
     expect(wrapper.find(".message.is-warning").exists()).toBe(false);
     expect(wrapper.find(".tr-async-state--permission-denied").exists()).toBe(false);
     expect(wrapper.findAll(".tr-entity-card__title").length).toBeGreaterThan(0);
+  });
+});
+
+// Task A9.6: S2 presentation-статус на карточке каталога — «demo»/1
+// (Активен, один рабочий канал ch-101 + один в ошибке ch-102) и «demo»/4
+// (Активен, единственный канал ch-104 ещё не подключён) — см. fixtures в
+// `src/stores/agents.js`/`src/stores/channels.js`.
+describe("Agents.vue — S2 presentation-статус карточки (Task A9.6)", () => {
+  it("активный агент с рабочим и сбойным каналом остаётся «Активен» и показывает отдельное предупреждение", async () => {
+    const { wrapper } = await mountAgents();
+
+    const card = wrapper.findAll(".tr-entity-card").find((c) => c.text().includes("Консультант"));
+    expect(card.find(".tag").text()).toBe("Активен");
+    expect(card.text()).toContain("WhatsApp — резервный канал");
+  });
+
+  it("активный агент без единого рабочего канала показывает «Не отвечает: ошибка подключения», не тихий «Активен»", async () => {
+    const { wrapper } = await mountAgents();
+
+    const card = wrapper.findAll(".tr-entity-card")
+      .find((c) => c.text().includes("Служба поддержки корпоративных клиентов"));
+    expect(card.find(".tag").text()).toBe("Не отвечает: ошибка подключения");
+  });
+
+  it("черновик с заполненной инструкцией показывается как «Готов к запуску», не просто «Черновик»", async () => {
+    const { wrapper } = await mountAgents();
+
+    const card = wrapper.findAll(".tr-entity-card").find((c) => c.text().includes("Sales Assistant"));
+    expect(card.find(".tag").text()).toBe("Готов к запуску");
+  });
+});
+
+// Task A9.2: каждый триггер создания в каталоге ведёт в общий route-driven
+// мастер вместо отдельной локальной модалки.
+describe("Agents.vue — единый вход в мастер создания (Task A9.2)", () => {
+  it("карточка «Создать нового агента» переходит в мастер вместо открытия модалки", async () => {
+    const { wrapper, router } = await mountAgents();
+
+    const createCard = wrapper.findAll("button")
+      .find((button) => button.text().includes("Создать нового агента")
+        && button.classes().includes("tr-entity-card--create"));
+    await createCard.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.find(".modal-card").exists()).toBe(false);
+    expect(router.currentRoute.value.name).toBe("agent-wizard");
+  });
+
+  it("empty-action «Создать нового агента» ведёт в тот же мастер", async () => {
+    const { wrapper, router } = await mountAgents({ demoMode: "empty" });
+
+    const createButton = wrapper.findAll("button")
+      .find((button) => button.text().includes("Создать нового агента"));
+    await createButton.trigger("click");
+    await flushPromises();
+
+    expect(router.currentRoute.value.name).toBe("agent-wizard");
+  });
+
+  it("`/agents?create=1` редиректит в мастер, а не открывает локальную форму", async () => {
+    const { wrapper, router } = await mountAgents({ path: "/agents?create=1" });
+
+    expect(wrapper.find(".modal-card").exists()).toBe(false);
+    expect(router.currentRoute.value.name).toBe("agent-wizard");
   });
 });

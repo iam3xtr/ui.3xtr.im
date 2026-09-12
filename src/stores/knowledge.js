@@ -39,6 +39,13 @@ import { reactive, ref } from "vue";
  * @property {CollectionType} type
  * @property {KnowledgeObject[]} objects
  * @property {ReindexRun[]} reindexRuns
+ * @property {boolean} autoNamed `true` only for a collection the agent wizard
+ *   created lazily for its own personal knowledge (Task A9.4): its `name`
+ *   tracks `fields.agentName` (see `stores/wizard.js`'s knowledge step) until
+ *   an explicit rename — through this store's own `updateCollection`, i.e.
+ *   the regular collection settings screen, wizard or not — flips it back to
+ *   `false`. Regular collections (fixtures, or created outside the wizard)
+ *   are never auto-named.
  */
 
 export const COLLECTION_TYPES = [
@@ -300,10 +307,13 @@ export const useKnowledgeStore = defineStore("knowledge", () => {
 
   /**
    * @param {string} workspaceId
-   * @param {{ name: string, description?: string, type: CollectionType }} input
+   * @param {{ name: string, description?: string, type: CollectionType, autoNamed?: boolean }} input
+   *   `autoNamed` is set only by the agent wizard's `ensureCollection`
+   *   (Task A9.4) — everything else (fixtures, the regular "create
+   *   collection" flow) leaves it `false`.
    * @returns {KnowledgeCollection}
    */
-  function createCollection(workspaceId, { name, description, type }) {
+  function createCollection(workspaceId, { name, description, type, autoNamed = false }) {
     const workspaceCollections = collectionsByWorkspace.value[workspaceId]
       ?? (collectionsByWorkspace.value[workspaceId] = []);
     /** @type {KnowledgeCollection} */
@@ -314,6 +324,7 @@ export const useKnowledgeStore = defineStore("knowledge", () => {
       description: description?.trim() || getCollectionType(type).description,
       objects: [],
       reindexRuns: [],
+      autoNamed,
     });
 
     workspaceCollections.push(collection);
@@ -322,6 +333,13 @@ export const useKnowledgeStore = defineStore("knowledge", () => {
   }
 
   /**
+   * Explicit rename/description edit — the regular collection settings
+   * screen (`components/knowledge/Settings.vue`) is the only caller. Clears
+   * `autoNamed`: once a name is set this way, the wizard's agent-name sync
+   * (`syncAutoName`) must stop overwriting it, wizard-created collection or
+   * not (Task A9.4, `.plan` "Знания без внутренних структур" — "Явное
+   * экспертное имя больше не перезаписывается").
+   *
    * @param {string} workspaceId
    * @param {string | number} collectionId
    * @param {{ name: string, description: string }} input
@@ -335,6 +353,31 @@ export const useKnowledgeStore = defineStore("knowledge", () => {
 
     collection.name = name;
     collection.description = description;
+    collection.autoNamed = false;
+  }
+
+  /**
+   * Keeps an `autoNamed` collection's name mirroring the wizard's current
+   * `fields.agentName` (Task A9.4) — a no-op once the collection has been
+   * explicitly renamed (`autoNamed` false, see `updateCollection`) or does
+   * not exist. Never called for a collection the wizard did not create
+   * itself, so this never renames a user's own/shared collection.
+   *
+   * @param {string} workspaceId
+   * @param {string | number} collectionId
+   * @param {string} name
+   * @returns {boolean} Whether the name was actually synced.
+   */
+  function syncAutoName(workspaceId, collectionId, name) {
+    const collection = getCollection(workspaceId, collectionId);
+
+    if (!collection || !collection.autoNamed || collection.name === name) {
+      return false;
+    }
+
+    collection.name = name;
+
+    return true;
   }
 
   /**
@@ -461,6 +504,7 @@ export const useKnowledgeStore = defineStore("knowledge", () => {
     getReindexRunStatus,
     createCollection,
     updateCollection,
+    syncAutoName,
     addObject,
     setObjectStatus,
     removeObject,

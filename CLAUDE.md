@@ -120,6 +120,10 @@ src/
                          #   NotFound, ...) — each catalog's detail lives in its own
                          #   domain subdirectory below, route-driven off the catalog
   components/agents/    # Agent detail: route-driven shell + its Navbar-tab screens (Task A5.4)
+  components/agents/wizard/ # Agent creation wizard content: shell lives in agents/AgentWizard.vue
+                         #   (Task A9.2), step components in wizard/steps/ — pain/context/rules
+                         #   ship in Task A9.3, the rest (knowledge/sandbox/telegram/review) in
+                         #   A9.4 and following; shared WizardHint.vue in wizard/
   components/channels/  # Channel catalog nested under agent detail (`/agents/:id/channels`, Task A5.5)
   components/knowledge/ # Collection detail: route-driven shell + files/settings/statistics tabs (Task A5.6)
   components/conversations/ # Conversation detail: route-driven shell + history/settings tabs (Task A5.7)
@@ -137,13 +141,40 @@ src/
                          #   consumed by `agents.js`'s BYOK contract (Task A6.1); `apiKeys.js` is
                          #   the per-workspace saved-OpenRouter-key fixture BYOK agents reference
                          #   by id instead of storing key text (Stage A6 fix, post-review).
+                         #   `wizard.js` (Task A9.1) is the agent-wizard lifecycle store: one
+                         #   draft per workspace, explicit continue/new-draft/cancel/back-forward
+                         #   results, and idempotent `ensureAgent`/`ensureCollection`/
+                         #   `addKnowledgeSource` against `agents.js`/`knowledge.js` so a repeated
+                         #   step or duplicate submit never creates a second fixture resource;
+                         #   no persistence, so reload starts from a clean store by construction.
+                         #   Also owns the pain/context/rules fixture content and `isStepComplete`
+                         #   validation dispatcher consumed by `agents/wizard/**` (Task A9.3);
+                         #   `WIZARD_LOCALES`/`draft.locale`/`setLocale`, `getRecommendedModelClassId`/
+                         #   `ensureDefaultModelClass` and `generateInstructionTemplate` are the
+                         #   wizard-side half of the expert-parameters/model-class/locale contract
+                         #   (Task A9.5) — `models.js`'s `MODEL_CLASSES`/`WIZARD_CAPABILITY_PROFILES`
+                         #   are the other half.
   styles/                # The two managed stylesheets — see "Styling rule" above
   assets/icons/          # Custom SVGs — see "Icons" above
+  locales/wizard/        # Scoped RU/EN/ES dictionaries for the wizard's expert-parameters
+                         #   disclosure only (Task A9.5) — not a kit-wide i18n library; the rest
+                         #   of the kit stays fixed Russian text per "Kit remains without i18n
+                         #   infra" below. `{ru,en,es}.js` must carry the exact same key paths
+                         #   (checked by `tests/unit/locales/wizard.test.js`); `index.js` exposes
+                         #   `getWizardDictionary(locale)`.
 tests/unit/stores/               # Vitest unit tests for Pinia stores (Task A6.1); no network
 tests/unit/agents/                # Vitest component tests (Task A6.3, `@vue/test-utils`);
                                   #   no network — `npm run test:unit`
+tests/unit/components/agents/wizard/ # Component tests for the wizard step content
+                                  #   (pain/context/rules gating, progress, name-suggestion —
+                                  #   Task A9.3); AgentWizard.test.js next to it stays scoped to
+                                  #   the Task A9.2 entry/fallback controller contract; expert
+                                  #   parameters/model-class/capability/locale coverage
+                                  #   (Task A9.5) lives in ExpertParameters.test.js
 tests/unit/components/            # Vitest component tests for top-level catalog screens
                                   #   (e.g. Agents.vue) — same runner/no-network rule
+tests/unit/locales/               # Completeness tests for `src/locales/wizard/**` dictionaries
+                                  #   (Task A9.5) — same key set across RU/EN/ES
 docs/design-system.md            # The design contract (canonical)
 docs/agent-migration-guide.md    # Icon/content-pattern mapping for consuming apps
 ```

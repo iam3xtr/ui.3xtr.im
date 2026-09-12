@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
-import { getAgentModelId, useAgentsStore } from "../../../src/stores/agents.js";
+import {
+  getAgentLifecycle,
+  getAgentModelId,
+  getAgentStatusProjection,
+  isAgentReadyToLaunch,
+  useAgentsStore,
+} from "../../../src/stores/agents.js";
 import { useApiKeysStore } from "../../../src/stores/apiKeys.js";
 
 describe("stores/agents — BYOK save flow", () => {
@@ -307,5 +313,89 @@ describe("stores/agents — getAgentModelId (эффективная модель
   it("возвращает null для отсутствующего агента", () => {
     expect(getAgentModelId(undefined)).toBeNull();
     expect(getAgentModelId(null)).toBeNull();
+  });
+});
+
+// Task A9.6: S2 presentation-lifecycle и карточная проекция. `AGENT_STATUSES`
+// (Активен/Черновик/Приостановлен) остаётся серверным enum — эти тесты
+// проверяют только derived-слой поверх него.
+describe("stores/agents — S2 presentation-статус (Task A9.6)", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  it("isAgentReadyToLaunch: пусто/пробелы — не готов, заполненная инструкция — готов", () => {
+    expect(isAgentReadyToLaunch({ instructions: "" })).toBe(false);
+    expect(isAgentReadyToLaunch({ instructions: "   " })).toBe(false);
+    expect(isAgentReadyToLaunch({ instructions: "Отвечай кратко." })).toBe(true);
+    expect(isAgentReadyToLaunch(undefined)).toBe(false);
+  });
+
+  it("getAgentLifecycle: черновик без инструкции — draft, с инструкцией — ready", () => {
+    expect(getAgentLifecycle({ status: "Черновик", instructions: "" })).toBe("draft");
+    expect(getAgentLifecycle({ status: "Черновик", instructions: "Задача агента." })).toBe("ready");
+  });
+
+  it("getAgentLifecycle: активен/приостановлен всегда возвращают свой lifecycle независимо от инструкции", () => {
+    expect(getAgentLifecycle({ status: "Активен", instructions: "" })).toBe("active");
+    expect(getAgentLifecycle({ status: "Приостановлен", instructions: "Есть инструкция." })).toBe("paused");
+  });
+
+  it("getAgentStatusProjection: draft/ready/paused не проверяют каналы", () => {
+    const draft = getAgentStatusProjection({ status: "Черновик", instructions: "" }, []);
+    expect(draft).toEqual({
+      lifecycle: "draft",
+      badgeLabel: "Черновик",
+      badgeType: undefined,
+      needsAttention: false,
+      attentionMessage: null,
+    });
+
+    const ready = getAgentStatusProjection({ status: "Черновик", instructions: "Задача." }, []);
+    expect(ready.lifecycle).toBe("ready");
+    expect(ready.badgeLabel).toBe("Готов к запуску");
+    expect(ready.needsAttention).toBe(false);
+  });
+
+  it("активен без каналов — обычный статус без предупреждения (нет канала ещё не значит сбой)", () => {
+    const projection = getAgentStatusProjection({ status: "Активен", instructions: "x" }, []);
+
+    expect(projection.badgeLabel).toBe("Активен");
+    expect(projection.needsAttention).toBe(false);
+  });
+
+  it("активен, все каналы нерабочие — «Не отвечает: ошибка подключения», lifecycle остаётся active", () => {
+    const channels = [
+      { name: "Бот", status: "error", runtimeReason: "Токен отозван." },
+    ];
+    const projection = getAgentStatusProjection({ status: "Активен", instructions: "x" }, channels);
+
+    expect(projection.lifecycle).toBe("active");
+    expect(projection.badgeLabel).toBe("Не отвечает: ошибка подключения");
+    expect(projection.badgeType).toBe("is-danger");
+    expect(projection.needsAttention).toBe(true);
+    expect(projection.attentionMessage).toBe("Токен отозван.");
+  });
+
+  it("активен, один канал в ошибке из нескольких — статус остаётся «Активен» с отдельным предупреждением", () => {
+    const channels = [
+      { name: "Основной", status: "active", runtimeReason: null },
+      { name: "Резервный", status: "error", runtimeReason: "Токен отозван провайдером." },
+    ];
+    const projection = getAgentStatusProjection({ status: "Активен", instructions: "x" }, channels);
+
+    expect(projection.badgeLabel).toBe("Активен");
+    expect(projection.badgeType).toBe("is-primary");
+    expect(projection.needsAttention).toBe(true);
+    expect(projection.attentionMessage).toContain("Резервный");
+    expect(projection.attentionMessage).toContain("Токен отозван провайдером.");
+  });
+
+  it("активен, единственный канал приостановлен пользователем — тоже «не отвечает», а не тихий «Активен»", () => {
+    const channels = [{ name: "Бот", status: "paused", runtimeReason: null }];
+    const projection = getAgentStatusProjection({ status: "Активен", instructions: "x" }, channels);
+
+    expect(projection.badgeLabel).toBe("Не отвечает: ошибка подключения");
+    expect(projection.needsAttention).toBe(true);
   });
 });

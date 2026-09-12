@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
-import { useModelsStore } from "../../../src/stores/models.js";
+import { getModelClassLabel, MODEL_CLASS_IDS, useModelsStore, WIZARD_CAPABILITY_PROFILES } from "../../../src/stores/models.js";
 
 describe("stores/models", () => {
   beforeEach(() => {
@@ -93,5 +93,94 @@ describe("stores/models", () => {
     const store = useModelsStore();
 
     expect(store.getModel("unknown-model")).toBeUndefined();
+  });
+});
+
+describe("stores/models — классы моделей (Task A9.5)", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  it("каждая каталожная модель отнесена к известному классу", () => {
+    const store = useModelsStore();
+
+    expect(store.models.every((model) => MODEL_CLASS_IDS.includes(model.classId))).toBe(true);
+  });
+
+  it("listByClass возвращает только модели своего класса, опционально по вендору", () => {
+    const store = useModelsStore();
+
+    for (const classId of MODEL_CLASS_IDS) {
+      const scoped = store.listByClass(classId);
+      expect(scoped.length).toBeGreaterThan(0);
+      expect(scoped.every((model) => model.classId === classId)).toBe(true);
+    }
+
+    const byokBasic = store.listByClass("basic", { providerId: "openrouter" });
+    expect(byokBasic.every((model) => model.providerId === "openrouter")).toBe(true);
+  });
+
+  it("getRecommendedModelForClass предпочитает recommended-модель, иначе первую из класса", () => {
+    const store = useModelsStore();
+
+    const basic = store.getRecommendedModelForClass("basic");
+    expect(basic.classId).toBe("basic");
+    expect(basic.recommended).toBe(true);
+  });
+
+  it("getRecommendedModelForClass возвращает undefined для пустого пересечения класса и вендора", () => {
+    const store = useModelsStore();
+
+    expect(store.getRecommendedModelForClass("power", { providerId: "google" })).toBeUndefined();
+  });
+
+  it("getModelClassLabel даёт короткий русский лейбл для каждого класса (Agents.vue post-review fix)", () => {
+    for (const classId of MODEL_CLASS_IDS) {
+      expect(getModelClassLabel(classId)).toBeTruthy();
+    }
+    expect(getModelClassLabel("basic")).toBe("Простая");
+    expect(getModelClassLabel("advanced")).toBe("Продвинутая");
+    expect(getModelClassLabel("power")).toBe("Сильная");
+  });
+
+  it("getModelClassLabel для неизвестного classId возвращает его же, не пустую строку", () => {
+    expect(getModelClassLabel("unknown-class")).toBe("unknown-class");
+  });
+});
+
+describe("stores/models — capability-профили тарифов (Task A9.5)", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  it("младший тариф (demo) допускает все классы, но не каталог/BYOK", () => {
+    const store = useModelsStore();
+    const profile = store.getCapabilityProfile("demo");
+
+    expect(profile.allowedClassIds).toEqual(MODEL_CLASS_IDS);
+    expect(profile.allowExpertCatalog).toBe(false);
+    expect(profile.allowByok).toBe(false);
+  });
+
+  it("расширенный тариф (trickster) допускает все классы, каталог и BYOK", () => {
+    const store = useModelsStore();
+    const profile = store.getCapabilityProfile("trickster");
+
+    expect(profile.allowedClassIds).toEqual(MODEL_CLASS_IDS);
+    expect(profile.allowExpertCatalog).toBe(true);
+    expect(profile.allowByok).toBe(true);
+  });
+
+  it("вариант с единственным доступным классом (empty) не даёт выбора", () => {
+    const store = useModelsStore();
+    const profile = store.getCapabilityProfile("empty");
+
+    expect(profile.allowedClassIds).toHaveLength(1);
+  });
+
+  it("незнакомый workspace падает на младший (junior) профиль", () => {
+    const store = useModelsStore();
+
+    expect(store.getCapabilityProfile("unknown-workspace")).toEqual(WIZARD_CAPABILITY_PROFILES.demo);
   });
 });

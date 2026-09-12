@@ -61,6 +61,25 @@
 
       <b-dropdown-item separator />
 
+      <!--
+        Постоянное действие «Создать агента» (Stage A9, Task A9.2): доступно
+        на любом кабинетном экране независимо от фильтра/пагинации/empty-
+        error списка каталога — здесь же на мобильном viewport, где нет
+        отдельного `.tr-topbar__actions`. Ведёт в общий route-driven мастер,
+        не в отдельную форму — см. `src/components/agents/AgentWizard.vue`.
+      -->
+      <b-dropdown-item
+        aria-role="menuitem"
+        @click="openAgentWizard"
+      >
+        <span class="tr-dropdown-action">
+          <b-icon icon="plus" size="is-small" />
+          Создать агента
+        </span>
+      </b-dropdown-item>
+
+      <b-dropdown-item separator />
+
       <b-dropdown-item
         v-for="item in mainNavigationItems"
         :key="item.routeName"
@@ -160,6 +179,19 @@
     </div>
 
     <div v-if="!minimal" class="tr-topbar__actions">
+      <!--
+        Постоянное действие «Создать агента» (Stage A9, Task A9.2): не
+        зависит от текущего маршрута/фильтра/пагинации — всегда открывает
+        общий route-driven мастер (`agent-wizard`), не отдельную форму.
+      -->
+      <b-button
+        type="is-primary"
+        icon-left="plus"
+        @click="openAgentWizard"
+      >
+        Создать агента
+      </b-button>
+
       <b-dropdown
         class="tr-dropdown tr-demo-panel"
         position="is-bottom-left"
@@ -686,6 +718,12 @@ const activeWorkspace = computed(
 const userInitials = computed(
   () => `${props.user.firstName[0] ?? ""}${props.user.lastName[0] ?? ""}`,
 );
+
+// Единая точка входа в мастер создания агента (Stage A9, Task A9.2) — общая
+// для desktop-кнопки и мобильного пункта меню выше.
+function openAgentWizard() {
+  router.push({ name: "agent-wizard" });
+}
 
 function goToWorkspaceSettings() {
   router.push({ name: "workspace-settings" });

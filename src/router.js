@@ -12,6 +12,7 @@ import AdminUsers from "./components/administration/Users.vue";
 import AgentDetail from "./components/agents/AgentDetail.vue";
 import AgentPlayground from "./components/agents/AgentPlayground.vue";
 import AgentSettings from "./components/agents/AgentSettings.vue";
+import AgentWizard from "./components/agents/AgentWizard.vue";
 import Agents from "./components/Agents.vue";
 import ForgotView from "./components/auth/ForgotView.vue";
 import InviteView from "./components/auth/InviteView.vue";
@@ -83,6 +84,27 @@ const router = createRouter({
       component: Agents,
       // meta: { contentMode: "fluid" }, — unset to match the cabinet, which
       // also keeps this commented out (src/modules/agents/routes.js).
+    },
+    // Agent creation wizard (Stage A9, Task A9.2): the one route-driven entry
+    // every "Создать агента" trigger resolves to — the persistent Navbar
+    // action, the dashboard empty-state CTA, the catalog's own create card
+    // and the `/agents?create=1` query-entry (Agents.vue redirects it here
+    // instead of opening a local modal). Declared before `/agents/:id` so
+    // its static `new` segment can never be shadowed by that dynamic
+    // param (Vue Router's matcher scores static segments higher regardless
+    // of declaration order, but the adjacency also keeps the two families
+    // readable together). `:step?` makes each step directly linkable and
+    // back/forward-able; `AgentWizard.vue` is the single controller that
+    // reconciles the URL against the workspace's current draft
+    // (`useWizardStore`, Task A9.1) — an invalid or missing step falls back
+    // to the draft's own step instead of resetting it. The step
+    // shell/content itself ships in Task A9.3; this route only owns
+    // entry/fallback wiring.
+    {
+      path: "/agents/new/:step?",
+      name: "agent-wizard",
+      component: AgentWizard,
+      meta: { contentMode: "contained" },
     },
     {
       path: "/agents/:id",

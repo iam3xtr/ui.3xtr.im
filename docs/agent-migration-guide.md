@@ -782,21 +782,26 @@ Deprecated aliases» `trickster-buefy.scss`, кроме переименован
 ## 14. Формы
 
 Эталон композиции — `.tr-form` из `design-system.md` (раздел «Формы»);
-конкретные поля в ките сегодня живут внутри модалок создания записи
-(`Agents.vue`, `Knowledge.vue`), а не на отдельной full-page форме — оба места
-показывают один и тот же паттерн `b-field` + штатный control, без ручного
-`<input>`/`<select>`.
+конкретные поля в ките сегодня живут внутри модалки создания записи
+(`Knowledge.vue`), а не на отдельной full-page форме — тот же паттерн
+`b-field` + штатный control, без ручного `<input>`/`<select>`. До Task A9.2
+`Agents.vue` держало здесь такую же модалку («Новый агент», одно поле
+`Название`) — она удалена: единственный вход в создание агента теперь ведёт в
+route-driven мастер (`src/components/agents/AgentWizard.vue`,
+`docs/design-system.md`, «Мастер создания агента: точки входа»), а не в
+отдельную форму.
 
 ```html
-<form class="modal-card" @submit.prevent="createAgent">
+<!-- src/components/knowledge/CollectionFormModal.vue -->
+<form class="modal-card" @submit.prevent="submit">
   <header class="modal-card-head">
-    <p class="modal-card-title">Новый агент</p>
+    <p class="modal-card-title">Новая коллекция</p>
     <button class="delete" type="button" aria-label="Закрыть" @click="..." />
   </header>
 
   <section class="modal-card-body">
     <b-field label="Название">
-      <b-input v-model="newAgentName" placeholder="Например, Консультант" required />
+      <b-input v-model="name" required />
     </b-field>
   </section>
 
@@ -898,8 +903,10 @@ Stage A6 fix (post-review, по решению пользователя 2026-09-
 ## 16. Оверлеи
 
 Эталон — разделы «Диалог подтверждения», «Боковая панель» и «Модальное окно»
-в `kit/DialogsOverlays.vue`; рабочие модалки создания — `Agents.vue`,
-`Knowledge.vue`.
+в `kit/DialogsOverlays.vue`; рабочая модалка создания — `Knowledge.vue`
+(`knowledge/CollectionFormModal.vue`). `Agents.vue` до Task A9.2 держало
+такую же для создания агента — она удалена в пользу единого route-driven
+мастера (см. раздел 14 выше).
 
 ```html
 <!-- Модальное окно -->
@@ -1063,3 +1070,39 @@ Task A5.10. Эталон — `src/components/auth/**` (`AuthPage`, `LoginView`,
 реальную интеграцию (`api.verificationConfirm`, `api.invitationsInspect/
 Accept/Report`) — переносится только разметка состояний
 (`idle`/`submitting`/`success`/`invalid`/…) и связанные классы.
+
+## 19. Мастер создания агента (Stage A9) — что переносить, что нет
+
+Эталон — `src/components/agents/AgentWizard.vue` + `agents/wizard/**` +
+`stores/wizard.js`; полный контракт шагов — `design-system.md`, раздел
+«Мастер создания агента: contract и границы downstream (Task A9.9)» (там же
+таблица issue-соответствий). Здесь — только то, что специфично для переноса.
+
+- Переносится 1:1 как UI: route-driven controller и все семь шагов, S2-
+  презентационная проекция (`getAgentLifecycle`/`getAgentStatusProjection`/
+  `getChannelConnectionState` — те же имена и та же семантика, что и в ките),
+  fixture-профили тарифов/классов моделей как визуальный образец (не как
+  готовые данные), T2 (BotFather + токен) как единственный интерактивный
+  Telegram-путь, RU/EN/ES-ключи `src/locales/wizard/**`.
+- **Не переносится как есть** — требует своего серверного контракта в ЛК
+  до включения реального поведения:
+  - draft persistence между reload/устройствами и идемпотентность
+    материализации агента — [api.3xtr.im#17](https://github.com/iam3xtr/api.3xtr.im/issues/17);
+  - согласованная тарифная матрица и effective capabilities вместо
+    kit-fixture-профилей — [api.3xtr.im#114](https://github.com/iam3xtr/api.3xtr.im/issues/114)
+    (BYOK `provider_model_id` отдельно, см. раздел 14a/14b — [#112](https://github.com/iam3xtr/api.3xtr.im/issues/112));
+  - серверные readiness/reasons и retry-safe launch для S2 —
+    [api.3xtr.im#115](https://github.com/iam3xtr/api.3xtr.im/issues/115);
+  - CRUD знаний/индексация вместо fixture-таймера в `KnowledgeStep.vue` —
+    [api.3xtr.im#116](https://github.com/iam3xtr/api.3xtr.im/issues/116);
+  - протокол привязки wizardId/workspaceId к managed-bot creation (T1
+    QR/deep-link) — [api.3xtr.im#117](https://github.com/iam3xtr/api.3xtr.im/issues/117);
+  - synthetic relay test для «Песочницы» вместо локального транскрипта —
+    [api.3xtr.im#87](https://github.com/iam3xtr/api.3xtr.im/issues/87);
+  - revision/If-Match + CAS для конфликта сохранения (в ките не
+    воспроизводится — single-tab in-memory state) —
+    [api.3xtr.im#118](https://github.com/iam3xtr/api.3xtr.im/issues/118).
+- До реализации соответствующего issue перенос T1 остаётся неинтерактивным
+  макетом (тот же приём, что и `GoogleButton.vue`, раздел 18) — включение
+  реального QR/deep-link без подтверждённого протокола создаёт риск показать
+  «подключено» для чужого бота (`.plan` Stage A9, «Риски»).
