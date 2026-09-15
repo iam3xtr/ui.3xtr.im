@@ -8,6 +8,16 @@
 [B4 — #27](https://github.com/iam3xtr/get.3xtr.im/issues/27).
 Полные постановки и зависимости перенесены в эти Issues.
 
+## Планируемая пакетная граница A11
+
+Это руководство описывает действующий sync-контракт. После Stage A11
+визуальная часть будет поставляться из `@iam3xtr/ui`, а общий Vue-слой — из
+`@iam3xtr/vue`. Последний включает переносимые компоненты и
+framework-level composables для UI-состояний, фокуса и overlays, но исключает
+API, Pinia stores, RBAC, router, fixtures, локали мастера и доменную логику.
+До фактической миграции продолжайте применять подготовку из следующего
+раздела; сабмодули `packages/ui` и `packages/vue` ещё не подключены.
+
 Документ для агента, который приводит вёрстку реального личного кабинета
 к единому шаблону, описанному в `trickster-ui-kit`. Здесь — правила и
 конкретные имена классов, а не общие пожелания: если страница ЛК содержит
@@ -871,6 +881,32 @@ Stage A6 fix (post-review, по решению пользователя 2026-09-
 контракт не реализован, перенос этой механики в кабинет блокирован тем же
 способом, что и перенос свободного BYOK-идентификатора (см. 14a выше).
 
+Task A10.2 добавляет две мгновенные команды, отдельные от «Сохранить модель и
+ключ» и друг от друга — при переносе оба вызова станут отдельными
+серверными эндпоинтами, а не частью `PATCH /agents/:id`:
+
+- **«Отвязать ключ»** (`AgentSettings.vue`, `stores/agents.js#detachApiKey`):
+  применяется сразу к одному агенту, в обход draft/save формы модели.
+  Стирает `use_own_api_key`/`api_key_id`/`byok_model`/`provider_model_id`
+  только у этого агента; сам ключ остаётся в `apiKeysStore` для остальных.
+- **«Удалить ключ»** (`ApiKeySelect.vue`, `apiKeysStore.deleteKey`): стирает
+  сам сохранённый ключ воркспейса безвозвратно. Confirm называет по имени
+  всех агентов, которые сейчас на него ссылаются
+  (`agentsStore.listAgentsUsingApiKey`), и каждый из них отвязывается
+  (`detachApiKey`) до удаления ключа — так «удаление ключа» и «отвязка от
+  агента» остаются разными по последствиям командами, а не одним действием
+  под двумя именами.
+
+Stage A10 review fix добавляет ещё две: **«Сохранить название»**
+(`agentsStore.renameAgent`) — собственный draft/Save, отдельный от модели/
+ключа; **смена статуса** (`agentsStore.setAgentStatus`) — мгновенная
+lifecycle-команда с confirm на каждый переход (Активировать/Приостановить/
+Вернуть в черновик), заменившая прежний immediate-apply `<b-select>`. При
+переносе название остаётся частью обычного `PATCH /agents/:id`; смена
+статуса — кандидат на отдельный lifecycle-эндпоинт (`POST
+/agents/:id/status` или аналог), а не поле в общем patch, если у кабинета
+появится собственное pause/resume-действие с подтверждением.
+
 ## 15. Пагинация
 
 Эталон — раздел «Пагинация» в `kit/Tables.vue`.
@@ -1106,3 +1142,46 @@ Accept/Report`) — переносится только разметка сос�
   макетом (тот же приём, что и `GoogleButton.vue`, раздел 18) — включение
   реального QR/deep-link без подтверждённого протокола создаёт риск показать
   «подключено» для чужого бота (`.plan` Stage A9, «Риски»).
+
+## 20. Повседневная работа (Stage A10) — что переносить, что нет
+
+Полная таблица шести daily-work journeys (начальный экран/действие/результат/
+выход из ошибки) и разбор границы kit/get/API для каждого — в
+`design-system.md`, раздел «Повседневные пользовательские пути и границы
+kit/get/API (Task A10.10)». Здесь — только то, что специфично для переноса в
+`get.3xtr.im`.
+
+- Переносится 1:1 как UI, той же разметкой и той же fixture-механикой, что и
+  в ките: `AgentKnowledge.vue` (материалы после мастера), `ChannelsView.vue`/
+  `ChannelCard.vue`/`TakeoverModal.vue` (восстановление канала), очередь и
+  detail диалогов с owner/lease/delivery-состояниями (Task A10.5), семь
+  resource-ключей и их представление (Task A10.6), `NotificationHistory.vue`/
+  `Help.vue`/`Audit.vue` (Task A10.8) и общий save/dirty/conflict-контракт
+  форм (`useSavableForm`/`useDirtyExitGuard`, `DirtyExitModal.vue`,
+  `FormErrorSummary.vue`, Task A10.1) вместе со scoped RU/EN/ES-словарём
+  `src/locales/common/**` (Task A10.9).
+- **Не переносится как есть** — то же самое поведение остаётся на
+  kit-fixture до готовности серверного контракта:
+  - safe error codes/actions, source retry, used-by/delete-impact для
+    материалов знаний — [api.3xtr.im#116](https://github.com/iam3xtr/api.3xtr.im/issues/116);
+  - readiness/reasons и retry-safe launch для статуса канала (S2) —
+    [api.3xtr.im#115](https://github.com/iam3xtr/api.3xtr.im/issues/115), тест канала —
+    [api.3xtr.im#87](https://github.com/iam3xtr/api.3xtr.im/issues/87);
+  - устойчивый expiry lease и recovery доставки для handoff —
+    [api.3xtr.im#51](https://github.com/iam3xtr/api.3xtr.im/issues/51),
+    [api.3xtr.im#98](https://github.com/iam3xtr/api.3xtr.im/issues/98)/[api.3xtr.im#100](https://github.com/iam3xtr/api.3xtr.im/issues/100);
+  - revision/If-Match + CAS вместо fixture-конфликта одного окна —
+    [api.3xtr.im#118](https://github.com/iam3xtr/api.3xtr.im/issues/118);
+  - согласованные capabilities вместо kit-fixture-профилей ресурсов/тарифа —
+    [api.3xtr.im#114](https://github.com/iam3xtr/api.3xtr.im/issues/114);
+  - list/unread count/read/read-all и watermark для истории уведомлений —
+    [api.3xtr.im#106](https://github.com/iam3xtr/api.3xtr.im/issues/106), read-проекция
+    для аудита пространства — [api.3xtr.im#109](https://github.com/iam3xtr/api.3xtr.im/issues/109);
+  - draft persistence/resume следующего агента между reload/устройствами —
+    [api.3xtr.im#17](https://github.com/iam3xtr/api.3xtr.im/issues/17).
+- Три новых route-backed поверхности (`/profile/notifications`, `/profile/help`,
+  `/workspace/audit`) и словарь `src/locales/common/**` — kit-specification
+  того же типа, что остальной `router.js`/`stores/**`; они не входят в
+  `ui-kit.allowlist.json` (только два managed stylesheet, см. «Downstream
+  sync» в `CLAUDE.md`) и переносятся вручную тем же review, что и разметка
+  остальных разделов A10.

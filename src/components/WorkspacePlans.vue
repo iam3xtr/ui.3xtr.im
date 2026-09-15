@@ -38,7 +38,11 @@ import { computed, ref, watch } from "vue";
 
 import { useSimulatedLoading } from "../composables/useSimulatedLoading";
 import { useDemoStore } from "../stores/demo";
-import { useWorkspaceStore } from "../stores/workspace";
+import {
+  formatResourceCapCaption,
+  getResourceLimitLabel,
+  useWorkspaceStore,
+} from "../stores/workspace";
 import AsyncState from "./common/AsyncState.vue";
 import Loader from "./common/Loader.vue";
 import TariffSelector from "./TariffSelector.vue";
@@ -57,6 +61,25 @@ const { activeWorkspaceId, activeWorkspaceTariff } = storeToRefs(workspaceStore)
 /** @type {import("vue").Ref<"monthly" | "yearly">} */
 const billingPeriod = ref("monthly");
 
+/**
+ * Каждый план описывает свой предел через тот же семиключевой контракт, что
+ * `stores/workspace.js`'s измеренные лимиты (Task A10.6), но без `used` —
+ * это каталог возможностей тарифа, не расход. `capLimit` — план-специфичный
+ * cap (`null` unlimited, `0` не входит в план), caption строится общим
+ * `formatResourceCapCaption`, поэтому подписи/единицы/период совпадают с
+ * тем, что видно на `workspace/Usage.vue`/в обзоре агента.
+ *
+ * @param {[string, number | null][]} caps
+ */
+function buildPlanLimits(caps) {
+  return caps.map(([key, cap]) => ({
+    key,
+    label: getResourceLimitLabel(key),
+    caption: formatResourceCapCaption(key, cap),
+    progress: null,
+  }));
+}
+
 /** @type {import("./TariffSelector.vue").TariffSelectorTariff[]} */
 const tariffOptions = [
   {
@@ -70,10 +93,15 @@ const tariffOptions = [
     rank: 0,
     description: "Для знакомства с платформой.",
     conditions: ["1 рабочее пространство", "Базовая поддержка"],
-    limits: [
-      { key: "credits", label: "Кредиты", caption: "100 / мес", progress: 0 },
-      { key: "members", label: "Участники", caption: "До 3", progress: null },
-    ],
+    limits: buildPlanLimits([
+      ["workspace_members", 3],
+      ["agents", 5],
+      ["knowledge_collections", 5],
+      ["knowledge_objects", 200],
+      ["channels", 0],
+      ["knowledge_extracted_bytes", 50_000_000],
+      ["active_conversations_monthly", 1000],
+    ]),
   },
   {
     id: "superior",
@@ -86,11 +114,16 @@ const tariffOptions = [
     color: "#2f6bc2",
     rank: 1,
     description: "Для растущих команд.",
-    conditions: ["До 25 участников", "Приоритетная поддержка"],
-    limits: [
-      { key: "credits", label: "Кредиты", caption: "1 000 000 / мес", progress: 0 },
-      { key: "members", label: "Участники", caption: "До 25", progress: null },
-    ],
+    conditions: ["Приоритетная поддержка"],
+    limits: buildPlanLimits([
+      ["workspace_members", 25],
+      ["agents", null],
+      ["knowledge_collections", null],
+      ["knowledge_objects", 5000],
+      ["channels", 10],
+      ["knowledge_extracted_bytes", 5_368_709_120],
+      ["active_conversations_monthly", null],
+    ]),
   },
   {
     id: "business",
@@ -99,11 +132,16 @@ const tariffOptions = [
     color: "#7041d4",
     rank: 2,
     description: "Для крупных команд и масштабных задач.",
-    conditions: ["Безлимитные участники", "Выделенная поддержка"],
-    limits: [
-      { key: "credits", label: "Кредиты", caption: "Без ограничений", progress: null },
-      { key: "members", label: "Участники", caption: "Без ограничений", progress: null },
-    ],
+    conditions: ["Выделенная поддержка"],
+    limits: buildPlanLimits([
+      ["workspace_members", null],
+      ["agents", null],
+      ["knowledge_collections", null],
+      ["knowledge_objects", null],
+      ["channels", null],
+      ["knowledge_extracted_bytes", null],
+      ["active_conversations_monthly", null],
+    ]),
   },
 ];
 

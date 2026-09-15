@@ -1163,6 +1163,17 @@ export const useWizardStore = defineStore("wizard", () => {
     const agentsStore = useAgentsStore();
     const agent = agentsStore.updateAgentSettings(workspaceId, agentResult.agent.id, patch);
 
+    // Task A10.3: переносит `draft.resources.collectionId` на сам агент
+    // (`agent.knowledgeCollectionId`), как только он точно существует —
+    // `draftsByWorkspace` держит не более одного драфта на пространство, и
+    // следующий вызов `startDraft` (следующий агент) заменит эту запись, так
+    // что без переноса ссылка на коллекцию первого агента больше нигде не
+    // сохранилась бы. `linkKnowledgeCollection` сама идемпотентна — повторный
+    // вызов `finalizeAgentFields` для того же draft'а/агента ничего не ломает.
+    if (draft.resources.collectionId != null && agent) {
+      agentsStore.linkKnowledgeCollection(workspaceId, agent.id, draft.resources.collectionId);
+    }
+
     return { ok: true, agent };
   }
 

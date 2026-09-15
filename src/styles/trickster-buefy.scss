@@ -536,6 +536,14 @@ a:hover {
   font-weight: tr.$font-weight-medium;
 }
 
+// W2 (Task A10.7): single-workspace mobile nav shows the name as plain text
+// instead of a single-option `b-select` — see Navbar.vue.
+.tr-mobile-workspace__value {
+  font-size: tr.$font-size-sm;
+  font-weight: tr.$font-weight-medium;
+  color: var(--tr-text);
+}
+
 .tr-mobile-nav-section-title {
   // stylelint-disable-next-line declaration-no-important -- Stage A3 debt: overrides Bulma/Buefy base specificity, tracked for buefy-first cleanup.
   color: var(--tr-text-subtle) !important;
@@ -1403,6 +1411,39 @@ a:hover {
   margin-top: auto;
 }
 
+// Keyboard-reachable error summary (Task A10.1, `common/FormErrorSummary.vue`):
+// each field error is a real `<button>` inside the `b-message` so it is
+// tab-reachable and jumps focus to the offending field on activation. Layout
+// only — `b-message`/`.message` already carries the `is-danger` color/border.
+.tr-form-error-summary__title {
+  margin: 0 0 tr.$space-2;
+  font-weight: tr.$font-weight-semibold;
+}
+
+.tr-form-error-summary__list {
+  display: flex;
+  flex-direction: column;
+  gap: tr.$space-1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tr-form-error-summary__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tr-form-error-summary__link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
 // b-upload's drag-drop zone (Task A5.6, `knowledge/Files.vue`): Buefy ships
 // the border/hover states for `.upload.is-drag-drop` itself, this only adds
 // the spacing this screen needs around and inside it.
@@ -1505,6 +1546,69 @@ a:hover {
   border: 0;
   cursor: pointer;
   color: var(--tr-primary);
+}
+
+// Task A10.2: per-key delete affordance inside the saved-key list — a
+// separate instant command from picking the key, so it never fires the
+// dropdown-item's own select handler (see `ApiKeySelect.vue`'s `@click.stop`).
+.tr-api-key-select__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: tr.$space-2;
+  width: 100%;
+}
+
+.tr-api-key-select__item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tr-api-key-select__item-delete {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--tr-text-muted);
+}
+
+.tr-api-key-select__item-delete:hover,
+.tr-api-key-select__item-delete:focus-visible {
+  color: var(--tr-danger);
+}
+
+// Task A10.2: instant "detach key from agent" action in `AgentSettings.vue`
+// — visually separate from the model/key draft's own Save button, since it
+// applies immediately and never touches the draft/save transaction above it.
+.tr-agent-settings__detach {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: tr.$space-3;
+  margin-top: tr.$space-3;
+  padding-top: tr.$space-3;
+  border-top: 1px solid var(--tr-border);
+}
+
+.tr-agent-settings__detach-hint {
+  margin: 0;
+  color: var(--tr-text-muted);
+  font-size: tr.$font-size-sm;
+}
+
+// Stage A10 review fix: status is a set of instant lifecycle actions (a
+// current-state tag plus buttons for the other transitions), not a form
+// control — laid out as a wrapping row so it degrades to stacked buttons on
+// narrow widths instead of overflowing.
+.tr-agent-settings__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: tr.$space-2;
 }
 
 // =============================================================================
@@ -1766,6 +1870,45 @@ a:hover {
 .tr-dashboard-icon {
   width: 40px;
   height: 40px;
+}
+
+// "Требует внимания" (Task A10.4): a list of `.tr-card`-based rows, each
+// naming one concrete S2 reason and a specific route/action — deliberately
+// not another grid of `.tr-dashboard-link` tiles, since these rows carry a
+// variable-length message plus a trailing action button instead of a single
+// metric.
+.tr-dashboard-attention__list {
+  display: flex;
+  flex-direction: column;
+  gap: tr.$space-3;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tr-dashboard-attention__item {
+  display: flex;
+  align-items: center;
+  gap: tr.$space-4;
+}
+
+.tr-dashboard-attention__icon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  color: var(--tr-warning);
+}
+
+.tr-dashboard-attention__body {
+  display: flex;
+  flex-direction: column;
+  gap: tr.$space-1;
+  min-width: 0;
+  margin-right: auto;
+}
+
+.tr-dashboard-attention__action {
+  flex: none;
 }
 
 .tr-knowledge__type-hint {
@@ -2914,6 +3057,20 @@ button.dropdown-item:hover {
   cursor: pointer;
 }
 
+// Send-conflict banner (Task A10.5, conversations/History.vue): a plain
+// `b-message` (same `is-warning` contract as the `demoStore.isPartial`
+// banners elsewhere in this file) shown above the composer when
+// `sendMessage` refuses to push the draft because the dialog is escalated
+// and owned by a different operator — only spacing is custom here, color
+// comes from `.message.is-warning` itself. The draft stays in
+// `tr-conversation-composer-input`, untouched.
+.tr-conversation-handoff-conflict {
+  flex: 0 0 auto;
+  margin: 0;
+  border-radius: 0;
+  border-top: 1px solid var(--tr-divider);
+}
+
 .tr-conversation-composer {
   display: flex;
   align-items: center;
@@ -3027,8 +3184,16 @@ button.dropdown-item:hover {
 .tr-conversation-channel-context {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: tr.$space-2;
   margin-top: tr.$space-1;
+}
+
+// «Взять диалог»/«Вернуть агенту» (Task A10.5, conversations/ConversationHeader.vue)
+// sit inline with the channel/status/owner tags above — small buttons, no
+// extra chrome beyond what Buefy's `is-small` already gives them.
+.tr-conversation-handoff-action {
+  flex: 0 0 auto;
 }
 
 .tr-agents__sandbox-note {
@@ -3189,6 +3354,119 @@ button.dropdown-item:hover {
 
 .tr-row--between {
   justify-content: space-between;
+}
+
+.tr-row--center {
+  justify-content: center;
+}
+
+// `.tr-agent-knowledge__header`/`.tr-agent-knowledge__collection-actions`
+// (Task A10.3) — the agent detail "Знания" tab's title+summary/action-buttons
+// header (`components/agents/AgentKnowledge.vue`): both need to wrap under
+// `.tr-row`'s plain non-wrapping flex on a narrow screen instead of
+// overflowing (title+summary vs. the button pair, and the two buttons
+// against each other).
+.tr-agent-knowledge__header {
+  flex-wrap: wrap;
+  row-gap: tr.$space-2;
+
+  > * {
+    min-width: 0;
+  }
+}
+
+.tr-agent-knowledge__collection-actions {
+  flex-wrap: wrap;
+}
+
+// `.tr-notification-history*` (Task A10.8, `profile/NotificationHistory.vue`):
+// the route-backed all/unread/paginated surface reuses the existing
+// `.tr-notification*` dropdown-item classes (see "Overlays" above) for one
+// entry's own layout — this block only adds the page-level list/target/
+// action wrapping the dropdown never needed.
+.tr-notification-history__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.tr-notification-history__list .tr-notification {
+  align-items: center;
+  padding-block: tr.$space-3;
+  border-bottom: 1px solid var(--tr-divider);
+}
+
+.tr-notification-history__list .tr-notification:last-child {
+  border-bottom: 0;
+}
+
+.tr-notification--unread .tr-notification__copy strong {
+  font-weight: tr.$font-weight-semibold;
+}
+
+.tr-notification-history__target {
+  font-size: tr.$font-size-xs;
+}
+
+.tr-notification-history__mark-read {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+}
+
+.tr-notification-history__tabs.tabs {
+  margin-bottom: 0;
+}
+
+// `.tr-help__*` (Task A10.8, `profile/Help.vue`): a static glossary +
+// scenario reference, no fixture/loading states of its own.
+.tr-help__glossary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: tr.$space-4;
+}
+
+.tr-help__glossary-item dt {
+  color: var(--tr-text-strong);
+  font-weight: tr.$font-weight-semibold;
+}
+
+.tr-help__glossary-item dd {
+  margin: tr.$space-1 0 0;
+  color: var(--tr-text-muted);
+}
+
+.tr-help__scenarios {
+  display: flex;
+  flex-direction: column;
+  gap: tr.$space-4;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.tr-help__scenario {
+  display: flex;
+  align-items: flex-start;
+  gap: tr.$space-3;
+}
+
+.tr-help__scenario p {
+  margin: tr.$space-1 0 0;
+}
+
+// `.tr-workspace-audit__gap` (Task A10.8, `workspace/Audit.vue`): a
+// retention-gap note below the audit table — muted text with a leading
+// info icon, same idea as `.tr-muted` but keeping the icon inline.
+.tr-workspace-audit__gap {
+  display: flex;
+  align-items: center;
+  gap: tr.$space-2;
+  margin: tr.$space-3 0 0;
+  color: var(--tr-text-muted);
+  font-size: tr.$font-size-xs;
 }
 
 .tr-divider {
@@ -3665,6 +3943,21 @@ button.dropdown-item:hover {
   }
 
   .tr-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tr-dashboard-attention__item {
+    flex-wrap: wrap;
+  }
+
+  .tr-dashboard-attention__body {
+    flex: 1 1 100%;
+    margin-right: 0;
+  }
+
+  // `.tr-help__glossary` (Task A10.8): two columns only make sense once
+  // there's width for both a term and its description side by side.
+  .tr-help__glossary {
     grid-template-columns: 1fr;
   }
 }

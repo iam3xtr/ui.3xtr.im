@@ -8,6 +8,23 @@
 `npm run ui-kit:update` кабинета. Контракт целиком описан в
 [`docs/design-system.md`](docs/design-system.md).
 
+## Планируемые библиотеки A11
+
+Текущий kit ещё использует локальные исходники и прежний `ui-kit:update`
+контракт. После Stage A11 он станет первым потребителем двух приватных npm
+пакетов из GitHub Packages:
+
+- [`iam3xtr/ui`](https://github.com/iam3xtr/ui) / `@iam3xtr/ui` — визуальная
+  основа: tokens, CSS/SCSS-тема, логотип и shared SVG/loader assets;
+- [`iam3xtr/vue`](https://github.com/iam3xtr/vue) / `@iam3xtr/vue` —
+  переносимые Vue-компоненты и framework-level composables для UI-состояний,
+  focus и overlays.
+
+`@iam3xtr/vue` не является местом для API-клиентов, Pinia stores, RBAC,
+маршрутов, fixture-данных, локалей мастера или доменной политики. Они остаются
+в приложениях. Позднее исходники библиотек будут подключены в этом репозитории
+как `packages/ui` и `packages/vue` Git submodules; пока сабмодулей нет.
+
 ## Состав
 
 - `src/styles/_trickster-tokens.scss` — фирменные цвета, нейтральная палитра, типографика, отступы и геометрия.
@@ -19,14 +36,14 @@
   - `src/components/agents/{AgentDetail,AgentPlayground,AgentSettings}.vue` — `/agents/:id` (песочница/настройки) и `src/components/channels/{ChannelsView,ChannelCard,ChannelFormModal,ChannelLimits,TakeoverModal}.vue` — `/agents/:id/channels`;
   - `src/components/knowledge/{CollectionDetail,Files,Settings,Statistics,CollectionFormModal,KnowledgeFileFormModal}.vue` — `/knowledge/:id` и его вкладки настроек/статистики;
   - `src/components/conversations/{ConversationDetail,History,Settings,ConversationHeader,MessageDeliveryStatus}.vue` — `/conversations/:agentId/:conversationId` и его настройки.
-- `src/components/{Workspace,WorkspaceSettings,WorkspacePlans}.vue` и `src/components/workspace/{Usage,Members,InviteMemberForm,WorkspaceBilling}.vue` — пять вкладок `/workspace/*` (обзор, настройки, участники, тарифы, биллинг).
-- `src/components/profile/{ProfileShell,Settings,Security}.vue` — `/profile` и `/profile/security` (форма профиля с переключателями уведомлений, активные сеансы).
+- `src/components/{Workspace,WorkspaceSettings,WorkspacePlans}.vue` и `src/components/workspace/{Usage,Members,InviteMemberForm,WorkspaceBilling,Audit}.vue` — шесть вкладок `/workspace/*` (обзор, настройки, участники, тарифы, биллинг, аудит изменений пространства — Task A10.8).
+- `src/components/profile/{ProfileShell,Settings,Security,NotificationHistory,Help}.vue` — `/profile`, `/profile/security` (форма профиля с переключателями уведомлений, активные сеансы), `/profile/notifications` и `/profile/help` (постоянно доступная история уведомлений и контекстная помощь, Task A10.8).
 - `src/components/auth/{AuthPage,LoginView,SignupView,ForgotView,VerifyView,InviteView,GoogleButton,WorkspaceSelector}.vue` — `/auth/{login,signup,forgot,verify,invite}` на общем контейнере `AuthPage`, без сетевых запросов.
 - `src/components/kit/{KitShell,Overview,Forms,Tables,NavigationStates,DialogsOverlays}.vue` — витрина-справочник контрактов Stage A3, разделённая на пять маршрутных подразделов (Task A8.6): `KitShell.vue` — route-driven shell (`NavbarMenu`/`NavbarTabs` + `<RouterView>`), подразделы — `/kit/overview` (алиас `/kit`, кнопки/теги/уведомления/лимиты/загрузчик/тариф), `/kit/forms` (поля формы, `b-upload`), `/kit/tables` (`b-table`, пагинация), `/kit/navigation-states` (`Toolbar`, вкладки, эталонная матрица всех шести значений `DEMO_MODES` — `ready`/`loading`/`empty`/`error`/`permission-denied`/`partial` — для контрактов `ListAsyncState`/`AsyncState`/`partial`-баннера, Task A7.6) и `/kit/dialogs-overlays` (диалог подтверждения, тост, `b-loading`/`b-skeleton`, `b-sidebar`, `b-modal`).
 - `src/components/administration/{Users,Providers,Models,Tariffs,Requests}.vue` — пять облегчённых операторских каталогов (`/users`, `/providers`, `/models`, `/tariffs`, `/requests`, Task A8.3): `Toolbar` + `b-table` на том же demo-контракте, что остальные каталоги, без форм, permissions и API — граница и связь с полноценными операторскими разделами `get.3xtr.im` описаны в `docs/design-system.md` («Административные каталоги»).
-- `src/components/common/` — общие примитивы, которых нет в Buefy: `Toolbar`/`ToolbarSearch`/`ToolbarDropdown`/`MobileFilters` (поиск, фильтры и действия над списком), `NavbarMenu`/`NavbarTabs` (маршрутные вкладки раздела в навбаре через Teleport), `PageHeader`, `AsyncState`/`ListAsyncState` (состояния `loading`/`empty`/`no-results`/`error`/`permission-denied`), `CopyPre`, `TariffSummaryCard`, `Icon`, `Loader`. Подробный контракт каждого — в [`docs/design-system.md`](docs/design-system.md#общие-компоненты).
-- `src/composables/` — `navbarMenu.js` (provide/inject target для `NavbarMenu`), `useFocusTrap.js` (возврат фокуса для мобильных `mobile-modal` панелей), `useSimulatedLoading.js` (демо-задержка кит-экранов).
-- `src/stores/` — Pinia-сторы демо-состояния, все in-memory: `modal.js`/`toaster.js` — тонкие адаптеры над программным API Buefy (`b-modal`/`b-sidebar`/`b-dialog`/`b-toast`); `workspace.js`, `agents.js`, `channels.js`, `knowledge.js`, `conversations.js`, `members.js`, `profile.js`, `auth.js` — доменные фикстуры экранов Stage A5; `administration.js` — платформенные фикстуры пяти облегчённых операторских каталогов (Task A8.3), не связанные с одноимёнными per-workspace сторами; `wizard.js` — состояние мастера создания агента (Stage A9), scoped per-workspace draft в памяти текущей сессии, без persistence между перезагрузками. Реального API кит не вызывает.
+- `src/components/common/` — общие примитивы, которых нет в Buefy: `Toolbar`/`ToolbarSearch`/`ToolbarDropdown`/`MobileFilters` (поиск, фильтры и действия над списком), `NavbarMenu`/`NavbarTabs` (маршрутные вкладки раздела в навбаре через Teleport), `PageHeader`, `AsyncState`/`ListAsyncState` (состояния `loading`/`empty`/`no-results`/`error`/`permission-denied`), `CopyPre`, `TariffSummaryCard`, `Icon`, `Loader`, `DirtyExitModal`/`FormErrorSummary` (общий save/dirty/conflict-контракт форм, Task A10.1). Подробный контракт каждого — в [`docs/design-system.md`](docs/design-system.md#общие-компоненты).
+- `src/composables/` — `navbarMenu.js` (provide/inject target для `NavbarMenu`), `useFocusTrap.js` (возврат фокуса для мобильных `mobile-modal` панелей), `useSimulatedLoading.js` (демо-задержка кит-экранов), `useSavableForm.js`/`useDirtyExitGuard.js` (draft/save/reset и dirty-exit guard, переиспользуемые всеми savable-формами A10.1).
+- `src/stores/` — Pinia-сторы демо-состояния, все in-memory: `modal.js`/`toaster.js` — тонкие адаптеры над программным API Buefy (`b-modal`/`b-sidebar`/`b-dialog`/`b-toast`); `workspace.js`, `agents.js`, `channels.js`, `knowledge.js`, `conversations.js`, `members.js`, `profile.js`, `auth.js` — доменные фикстуры экранов Stage A5; `administration.js` — платформенные фикстуры пяти облегчённых операторских каталогов (Task A8.3), не связанные с одноимёнными per-workspace сторами; `wizard.js` — состояние мастера создания агента (Stage A9), scoped per-workspace draft в памяти текущей сессии, без persistence между перезагрузками; `locale.js` — kit-wide fixture-переключатель RU/EN/ES общих форм (Task A10.9, `src/locales/common/**`), независимый от `wizard.js`'s собственного `draft.locale`. Реального API кит не вызывает.
 - `src/assets/icons/` — обоснованный набор кастомных SVG-иконок (вендоры LLM и виды моделей), см. раздел «Иконки».
 
 ## Целевая версия

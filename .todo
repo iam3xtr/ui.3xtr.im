@@ -1,331 +1,392 @@
-# TODO: Stage A9 — Мастер первого и последующих агентов для клиентов
+# TODO: Stage A10 — Повседневная работа с агентами и сквозной UX кабинета
 
-Дата актуализации: 2026-09-13
+Дата актуализации: 2026-09-15
 
-Статус: Stage A9 закрыт 2026-09-13; все задачи проверены и завершены.
+Статус: Stage A10 закрыт 2026-09-15 после stage-review; все задачи приняты.
 
 ## Назначение
 
-Этот файл декомпозирует только Stage A9: backend-less мастер создания агента для клиентов, его fixture-жизненный цикл, знания, песочницу, подключение Telegram, review/запуск и локализованный основной UX. Вне scope — API, реальный Telegram, QR-привязка, серверное persistence, изменение API enum, продуктовые тарифы и перенос в `get.3xtr.im`.
+Этот файл декомпозирует только Stage A10: backend-less эталон ежедневной работы после мастера A9 — безопасное редактирование, знания, диагностика, диалоги, ресурсы, workspace, помощь и локализация. Вне scope — сеть, server persistence, изменение API enum, реальная ETag/lease/ingestion/billing policy, Telegram API и соседние репозитории.
 
-Проверка дублей 2026-09-12: открыты только Issues #1 (release artifact) и #2 (сбор UI-багов) `iam3xtr/ui.3xtr.im`; задачи A9 не дублируют их. API-зависимости #17/#87/#114–#118 остаются внешним workstream, новых Issues здесь не создаётся.
+Проверка дублей 2026-09-13: открыты только Issues #1 (release artifact) и #2 (сбор UI-багов) `iam3xtr/ui.3xtr.im`; отдельных Issues, дублирующих A10, нет. API #17/#87/#103/#106/#109/#114–#118 остаются внешним workstream.
 
-## Wizard state and entry points
+## Forms and configuration
 
-### Draft lifecycle
+### Save, dirty and conflict contract
 
-### [P0] Task A9.1. Создать изолированный in-memory store мастера
-
-Статус: done
-
-Источник: Stage A9 `.plan`, «Общий вход и жизненный цикл мастера» и «Знания без внутренних структур».
-
-Описание: Один draft должен принадлежать одному workspace, переживать переходы в пределах сессии и не создавать повторные fixture-ресурсы при повторе шага или submit.
-
-Уточнённые требования:
-
-- `wizardId`, draft и созданные им resource IDs изолированы по `workspaceId`; reload не восстанавливает их.
-- Продолжение, новый draft, отмена, back/forward и невалидный шаг имеют явный результат; отмена не трогает общие или завершённые данные.
-- Создание agent, collection и source идемпотентно внутри одного draft; partial failure сохраняет уже созданные ID.
-
-План реализации:
-
-1. Добавить Pinia fixture-store мастера с состояниями draft, step, ресурсами и явными действиями lifecycle.
-2. Связать его с workspace fixture без localStorage и без сетевого кода.
-3. Покрыть isolation, retry, cancel и duplicate-submit store-тестами.
-
-Область:
-
-- `src/stores/wizard.js`
-- `src/stores/{agents,knowledge,workspace}.js`
-- `tests/unit/stores/wizard.test.js`
-
-Критерии приёмки:
-
-- Draft одного пространства недоступен в другом, а reload начинается с чистых fixtures.
-- Повтор действия не дублирует связанные fixture-сущности; отмена безопасна.
-- Узкие store-тесты проходят.
-
-### [P0] Task A9.2. Добавить единый route-driven вход в мастер
+### [P0] Task A10.1. Ввести fixture-контракт сохранения и dirty-exit форм
 
 Статус: done
 
-Источник: Stage A9 `.plan`, «Общий вход и жизненный цикл мастера».
+Источник: Stage A10 `.plan`, «Явное сохранение и безопасное редактирование».
 
-Описание: Все точки создания должны открыть один мастер, включая `/agents?create=1`, отдельный contained URL, пустой dashboard и постоянное действие на кабинетных экранах.
-
-Уточнённые требования:
-
-- Auth и служебные маршруты не показывают create action; остальные входы не зависят от фильтра, пагинации, empty/error списка или viewport.
-- Direct URL, browser back/forward и невалидный step используют один controller и fallback, не сбрасывая валидный draft.
-- Лимит/capability не скрывает вход, а показывает presentation-only объяснение без имитации permission API.
-
-План реализации:
-
-1. Добавить именованные wizard routes и их `contentMode` в router.
-2. Подключить общий trigger в shell/dashboard/catalog и query-entry `/agents?create=1`.
-3. Добавить route/component-тесты точек входа и fallback.
-
-Область:
-
-- `src/router.js`
-- `src/App.vue`
-- `src/components/{Dashboard,Agents,Navbar}.vue`
-- `src/components/agents/**`
-- `tests/unit/{router,components}/**`
-
-Критерии приёмки:
-
-- Каждый вход открывает тот же draft/шаг, а не отдельную форму.
-- Создание доступно на требуемых cabinet-маршрутах и отсутствует на `/auth/*`.
-- Route/component-тесты проходят.
-
-## Guided configuration
-
-### Customer scenario and rules
-
-### [P0] Task A9.3. Реализовать shell мастера и шаги «Боль», «Контекст» и «Правила»
-
-Статус: done
-
-Источник: Stage A9 `.plan`, таблица смысловых шагов 1, 2 и 4.
-
-Описание: Первый агент должен начинаться с понятной клиентской боли, затем получить бизнес-контекст и правила ответов без обязательного выбора модели или пространства.
+Описание: Настройки агента, знаний, каналов, workspace и профиля должны различать чистую форму, правки, pending, success, error и conflict, не теряя ввод при неудаче или выходе.
 
 Уточнённые требования:
 
-- Есть 3–5 fixture-сценариев и «Другая задача», каждый со стабильным `scenarioId`, примером вопроса и ожидаемого результата без обещаний CRM/заказа.
-- Поля контекста валидируются рядом с полем; предложенное имя можно изменить и back не теряет введённые значения.
-- Правила включают задачу, стиль, ограничения, отсутствие ответа и связь с оператором; тест доступен только после задачи и правил.
-- Первый агент показывает развёрнутые подсказки, последующий — компактные с возможностью раскрыть их снова.
+- Независимые операции пароля, ключа, профиля и конфигурации не становятся одной транзакцией.
+- Повторный submit в pending не создаёт второй fixture-эффект; unknown timeout требует сверить состояние.
+- Dirty-exit для route/workspace/locale предлагает «Сохранить / Выйти без сохранения / Остаться»; conflict сохраняет локальную копию.
 
 План реализации:
 
-1. Добавить route-driven wizard shell с progress, навигацией, save draft и exit.
-2. Реализовать presentation-компоненты трёх смысловых шагов на состоянии wizard store.
-3. Добавить валидацию, keyboard/focus и component-тесты переходов.
+1. Инвентаризировать формы и добавить минимальный shared fixture-adapter состояний без сети.
+2. Подключить save, field errors, keyboard summary и guard выхода.
+3. Написать tests pending/error/conflict/retry/dirty navigation.
 
 Область:
 
-- `src/components/agents/wizard/**`
-- `src/stores/wizard.js`
-- `src/styles/trickster-buefy.scss`
-- `tests/unit/components/agents/wizard/**`
-
-Критерии приёмки:
-
-- Шаги нельзя молча пропустить, а back/continue сохраняют поля.
-- UI явно описывает границы ответа и роль оператора.
-- Component-тесты валидации, progress и переходов проходят.
-
-### Knowledge sources
-
-### [P0] Task A9.4. Добавить шаг знаний с ленивой личной коллекцией
-
-Статус: done
-
-Источник: Stage A9 `.plan`, «Знания без внутренних структур на основном пути».
-
-Описание: Пользователь добавляет файлы, текст и ссылки без выбора коллекции; мастер создаёт и связывает одну личную collection агента только при необходимости.
-
-Уточнённые требования:
-
-- Несколько источников показывают loading, processing, ready и error; доступны retry, replace, remove и явное продолжение без источника.
-- Agent–collection связывается устойчивыми IDs, не совпадающими именами; rename синхронизирует auto-name, но не явно изменённое expert-name.
-- Locale не переименовывает пользовательские данные, а удаление source draft не затрагивает чужие данные.
-
-План реализации:
-
-1. Расширить wizard/knowledge fixtures и действия ленивого создания collection/source.
-2. Реализовать одну поверхность источников и статусы исправления.
-3. Покрыть rename, одинаковые имена, partial failure и retry тестами.
-
-Область:
-
-- `src/components/agents/wizard/**`
-- `src/stores/{wizard,knowledge,agents}.js`
-- `tests/unit/{stores,components}/**`
-
-Критерии приёмки:
-
-- Коллекция не выбирается вручную и не дублируется при повторном действии.
-- Состояния каждого source и последствия продолжения без знания понятны.
-- Узкие store/component-тесты проходят.
-
-### Advanced configuration and localization
-
-### [P1] Task A9.5. Добавить экспертные параметры, model classes и scoped RU/EN/ES
-
-Статус: done
-
-Источник: Stage A9 `.plan`, «Основной и экспертный режимы, модели и тарифы» и локализационные критерии.
-
-Описание: Основной путь рекомендует класс модели, а вторичная доступная ссылка раскрывает температуру, инструкцию и BYOK в пределах fixture-capabilities.
-
-Уточнённые требования:
-
-- В основном UI применяются «Простая / Продвинутая / Сильная» с назначением, относительной ценой и availability без гарантий качества или выдуманных тарифов.
-- Fixture-профили младшего, расширенного и одного доступного класса не обходят capability; A6 ModelSelect/BYOK остаётся экспертной поверхностью.
-- Переключение expert mode, capability и locale не теряет draft, ручную инструкцию, ключ или модель и не заменяет их автоматически.
-- Новый путь имеет полный одинаковый набор RU/EN/ES ключей; язык UI независим от языка инструкции агента.
-
-План реализации:
-
-1. Добавить capability fixtures и presentation mapping model classes.
-2. Реализовать доступный disclosure экспертных полей и предупреждение о возврате к шаблону.
-3. Добавить scoped словари и тесты сохранения значений/полноты ключей.
-
-Область:
-
-- `src/components/agents/wizard/**`
-- `src/components/agents/{AgentSettings,ModelSelect,ApiKeySelect}.vue`
-- `src/stores/{wizard,models,apiKeys}.js`
-- `src/locales/wizard/**`
-- `tests/unit/{agents,stores,components}/**`
-
-Критерии приёмки:
-
-- Основной путь не требует raw model ID, expert mode не расширяет права.
-- RU/EN/ES показывают те же шаги и не меняют пользовательские данные.
-- Тесты capability и локализации проходят.
-
-## Validation and channel activation
-
-### Sandbox and status projection
-
-### [P0] Task A9.6. Встроить песочницу и presentation-модель статусов S2
-
-Статус: done
-
-Источник: Stage A9 `.plan`, шаг 5 и «Система статусов» S2.
-
-Описание: До запуска оператор проверяет агента в роли клиента, а UI ясно отличает draft, готовность, подключение, активацию, паузу и частичный сбой.
-
-Уточнённые требования:
-
-- Песочница предлагает сценарные вопросы, custom question, отсутствие информации и возврат к правилам/знаниям; сообщения не публикуются клиентам.
-- S2 является производной fixture-проекцией, не меняет server enum: lifecycle отдельно от readiness knowledge и каждого channel.
-- Pending/error не показывают успех; изменение проверенных правил/знаний/class помечает необходимость повторной проверки.
-
-План реализации:
-
-1. Добавить sandbox step и связи его результатов с wizard draft.
-2. Реализовать S2 projection и таблицу отображения на agent/channel fixtures.
-3. Обновить agent/card/playground presentation и тесты частичного сбоя/паузы.
-
-Область:
-
-- `src/components/{Agents.vue,agents/**,channels/**}`
-- `src/stores/{wizard,agents,channels}.js`
+- `src/components/{agents,knowledge,channels,workspace,profile}/**`
+- `src/components/{WorkspaceSettings,WorkspacePlans}.vue`
+- `src/composables/**`
+- `src/stores/**`
 - `tests/unit/{agents,components,stores}/**`
 
 Критерии приёмки:
 
-- Песочница не включает канал и не заявляет оценку реального ИИ.
-- Карточка не скрывает рабочий lifecycle из-за ошибки одного канала.
-- Тесты S2 и sandbox-переходов проходят.
+- Ошибка не очищает ввод, первая ошибка достижима клавиатурой.
+- Правки не пропадают без явного выбора пользователя.
+- Tests фиксируют idempotent submit и conflict без auto-overwrite.
 
-### Telegram and review
-
-### [P0] Task A9.7. Реализовать UI-спецификацию подключения Telegram с T1/T2 fallback
+### [P0] Task A10.2. Отделить мгновенные команды от сохранения агента и каналов
 
 Статус: done
 
-Источник: Stage A9 `.plan`, шаг 6 и «Telegram и вариант QR»; внешние API Issues #114–#118.
+Источник: Stage A10 `.plan`, «Явное сохранение и безопасное редактирование»; S2 Stage A9.
 
-Описание: Мастер показывает кандидат managed-bot QR/deep-link и обязательный fallback BotFather, не выдавая fixture за реальное создание или подтверждённую привязку.
+Описание: Пауза, handoff, отвязка и смена ключа должны быть отдельными командами с собственным результатом; конфигурация работающего агента применяется только после save.
 
 Уточнённые требования:
 
-- T1 на desktop показывает QR, на mobile — «Открыть Telegram»; QR не содержит секрет, не логинит и не означает success.
-- T2 объясняет официальный fallback и допускает fixture-ввод token/username только с безопасными состояниями ошибки, конфликта и возврата.
-- WizardId/workspace не передаются в official link по догадке; ownership, correlation и реальные retries остаются product/API contract.
+- Маска ключа не редактируется как секрет; удаление ключа и отвязка от агента имеют разные последствия.
+- Save объясняет влияние на следующие ответы, но не создаёт live/draft-версии или историю промптов.
+- Destructive confirm называет реальные fixture-последствия без вымышленного Undo/каскада.
 
 План реализации:
 
-1. Добавить Telegram step с T1/T2 presentation states и cancel/return.
-2. Связать его с fixture-statuses канала без сетевых вызовов или persistence.
-3. Написать тесты mobile fallback, конфликтов и отсутствия ложного success.
+1. Актуализировать AgentSettings, ChannelsView и action contracts stores.
+2. Добавить confirmation-copy и S2-проекции мгновенных действий.
+3. Покрыть pause/resume, key detach/delete, confirm и duplicate actions.
 
 Область:
 
-- `src/components/agents/wizard/**`
+- `src/components/agents/{AgentSettings,AgentDetail,ModelSelect,ApiKeySelect}.vue`
 - `src/components/channels/**`
-- `src/stores/{wizard,channels}.js`
-- `tests/unit/components/agents/wizard/**`
+- `src/stores/{agents,apiKeys,channels}.js`
+- `tests/unit/{agents,components,stores}/**`
 
 Критерии приёмки:
 
-- Недоступный T1 всегда предлагает T2, а «Подключить позже» сохраняет draft.
-- QR/deep-link и token не приводят к активному статусу без fixture-подтверждения.
-- Component-тесты Telegram states проходят.
+- Save не выполняет мгновенную команду и наоборот.
+- Confirm называет только затрагиваемые fixture-сущности.
+- Component/store tests проходят без сети.
 
-### [P0] Task A9.8. Добавить review, явный запуск и post-launch действия
+## Knowledge lifecycle
+
+### Post-wizard sources
+
+### [P0] Task A10.3. Продолжить работу со знаниями агента через default collection A9
 
 Статус: done
 
-Источник: Stage A9 `.plan`, шаг 7 и критерии launch lifecycle.
+Источник: Stage A10 `.plan`, «Знания после завершения мастера»; Stage A9 A9.4.
 
-Описание: Последний шаг даёт аудит конфигурации и отдельные команды «Сохранить без запуска»/«Включить ответы в Telegram», после которых доступны следующие действия без ложного успеха.
+Описание: Из detail агента пользователь добавляет, редактирует, повторяет обработку и безопасно удаляет материалы той же default collection, не создавая новую при каждом визите.
 
 Уточнённые требования:
 
-- Review показывает аудиторию, канал, знания, правила, модель/class, лимит и последствия запуска.
-- Save draft не активирует ответы; activation следует только `review → pending → confirmed success`, retry не дублирует channel.
-- После completion доступны открыть бота, диалоги, пауза и создание следующего агента; экспертный личный сценарий не появляется.
+- Простой путь не требует collection, embedding profile или chunk parameters; общие коллекции остаются expert surface.
+- Различаются upload, processing, ready, partial, error, limit и unknown; неподтверждённый процент не рисуется.
+- Убрать связь, удалить source и удалить collection — разные действия с доступными impacted agents.
 
 План реализации:
 
-1. Реализовать review screen с action contracts и confirmation fixture-state.
-2. Подключить post-launch navigation и pause/resume presentation.
-3. Добавить regression-тесты save, activation failure/retry и next-agent isolation.
+1. Связать AgentDetail/Knowledge с существующей `collectionId` и source actions.
+2. Добавить states/retry/replace/remove и предложение повторить sandbox.
+3. Покрыть повторный вход, одинаковые имена, partial/error и delete impact.
 
 Область:
 
-- `src/components/agents/wizard/**`
-- `src/components/{Agents.vue,conversations/**,channels/**}`
-- `src/stores/{wizard,agents,channels}.js`
+- `src/components/{Agents,Knowledge}.vue`
+- `src/components/agents/**`
+- `src/components/knowledge/**`
+- `src/stores/{agents,knowledge,wizard}.js`
 - `tests/unit/{components,stores}/**`
 
 Критерии приёмки:
 
-- Ни одно промежуточное действие не включает ответы.
-- Success отражается лишь после явного fixture-подтверждения и не создаёт дублей.
-- Regression-тесты запуска и продолжения работы проходят.
+- Повторный визит использует ID-связь и не создаёт второй collection.
+- Error/partial/unknown не выглядят ready, доступное исправление видно рядом.
+- Удаление не затрагивает чужие collections/agents.
 
-## Contract and verification
+## Agent operations
 
-### Documentation and accessibility
+### Dashboard diagnostics
 
-### [P1] Task A9.9. Зафиксировать contract мастера и его границы downstream
+### [P0] Task A10.4. Собрать непустой dashboard вокруг S2-причин и исправлений
 
 Статус: done
 
-Источник: Stage A9 `.plan`, «Область», «Риски» и критерии приёмки.
+Источник: Stage A10 `.plan`, «Ежедневный dashboard и диагностика агента»; Stage A9 A9.6.
 
-Описание: Реализованный мастер должен быть описан как kit specification: с ID-связью, S2, T1/T2, fixtures и ограничениями, без обещания продуктовой интеграции.
+Описание: После A9 dashboard сначала показывает «Требует внимания», затем последние агенты, диалоги и метрики с периодом и временем обновления.
 
 Уточнённые требования:
 
-- Документация различает текущие fixture-поверхности и отдельные API/product contracts для draft persistence, Telegram correlation, тарифов и model tiers.
-- Фиксируются keyboard/focus, text statuses, reduced motion, 200% zoom, long names и RU/EN/ES; ручная матрица остаётся диагностической.
-- Исходный `docs/ux-review-2026-09-11.md` не редактируется.
+- Пустой dashboard сохраняет вход A9; draft продолжается, новый агент создаётся тем же мастером.
+- Attention покрывает incomplete setup, knowledge, channel, handoff и limit; ошибка одного channel не скрывает рабочие остальные.
+- Unknown, zero, empty и error различаются; delivery не называется качеством помощи.
 
 План реализации:
 
-1. Обновить design contract, migration guide и README по фактической реализации задач A9.1–A9.8.
-2. Добавить/скорректировать accessibility и component/store regression tests.
-3. Зафиксировать отсутствие API, persistence и component-local styles.
+1. Добавить dashboard selector из agents/channels/knowledge/conversations/resources fixtures.
+2. Отрисовать cards с конкретным route/action, period и timestamp.
+3. Покрыть S2 partial failure, resume draft, empty/error/unknown metrics.
+
+Область:
+
+- `src/components/{Dashboard,Agents}.vue`
+- `src/stores/{agents,channels,knowledge,conversations,wizard,workspace}.js`
+- `src/styles/trickster-buefy.scss`
+- `tests/unit/components/{Dashboard,Agents}.test.js`
+
+Критерии приёмки:
+
+- Каждая attention card ведёт к исправлению или объяснимому blocker.
+- Partial channel failure не отключает работающего агента.
+- Метрики не подменяют unknown нулём.
+
+### Conversation handoff and delivery
+
+### [P0] Task A10.5. Дополнить очередь диалогов handoff, lease и delivery states
+
+Статус: done
+
+Источник: Stage A10 `.plan`, «Диалоги и работа оператора»; API Issues #87/#103.
+
+Описание: List/detail диалогов дают понятную очередь участия, владение handoff и безопасные действия без имитации несогласованного server routing.
+
+Уточнённые требования:
+
+- «Взять диалог»/«Вернуть агенту» — отдельные fixture-команды; конфликт не отправляет чужой текст.
+- queued/sending/delivered/read/failed/cancelled различаются; retry есть лишь в retryable-state.
+- URL, mobile return, selected dialog и filters сохраняют контекст; unavailable объект имеет безопасный выход.
+
+План реализации:
+
+1. Расширить conversation fixtures owner/lease/delivery без API claims.
+2. Обновить controls, conflict copy и draft-message preservation.
+3. Покрыть filters, lease expiry, retry guard, routes и unavailable detail.
+
+Область:
+
+- `src/components/Conversations.vue`
+- `src/components/conversations/**`
+- `src/stores/conversations.js`
+- `src/router.js`
+- `tests/unit/components/{Conversations,conversations/**}.test.js`
+
+Критерии приёмки:
+
+- Handoff owner/lease не выводятся из времени сообщения.
+- Non-retryable action недоступен и не меняет fixture-state.
+- Конфликт сохраняет текст и предлагает обновить состояние.
+
+## Workspace and resources
+
+### Resource limits and billing semantics
+
+### [P1] Task A10.6. Нормализовать resources, limits и BYOK fixture-представление
+
+Статус: done
+
+Источник: Stage A10 `.plan`, «Ресурсы, расходы и тарифные возможности»; API Issue #106.
+
+Описание: Workspace plans/billing и обзор агента показывают одинаковые лимиты, период и расход без вымышленных денег, прогнозов или API-полей.
+
+Уточнённые требования:
+
+- Сохраняются ключи `workspace_members`, `agents`, `knowledge_collections`, `knowledge_objects`, `channels`, `knowledge_extracted_bytes`, `active_conversations_monthly`.
+- Zero, unlimited, unknown, exhausted и temporary error имеют разные text states; unknown не рисует 0%.
+- Platform billing и BYOK объясняются раздельно; create entry остаётся видимым при limits/pagination.
+
+План реализации:
+
+1. Привести workspace/agent selectors к одному fixture schema и formatters.
+2. Обновить Plans/Billing/agent overview со state-specific copy.
+3. Добавить tests всех limit states и ключей.
+
+Область:
+
+- `src/components/{WorkspacePlans,Workspace}.vue`
+- `src/components/workspace/{Usage,WorkspaceBilling}.vue`
+- `src/components/agents/**`
+- `src/stores/{workspace,models,apiKeys}.js`
+- `tests/unit/{components,stores}/**`
+
+Критерии приёмки:
+
+- Семь ключей имеют корректные единицы и период.
+- Unknown/zero/unlimited/error различимы текстом.
+- UI не обещает стоимость/прогноз без данных.
+
+### Workspace context and registration
+
+### [P1] Task A10.7. Уточнить W1/W2-контекст, signup и invite fixtures
+
+Статус: done
+
+Источник: Stage A10 `.plan`, «Пространство и регистрация без лишнего обязательного выбора»; API Issue #17.
+
+Описание: Workspace остаётся ненавязчивым default context, но tenant isolation, invite и смена пространства должны быть прозрачными и безопасными.
+
+Уточнённые требования:
+
+- Self-registration формирует редактируемое default workspace name и передаёт поле fixture-контракту.
+- Invite не спрашивает имя workspace и не создаёт tenant приглашённому.
+- Switch изолирует selection/history/forms; team link не выдаёт права и не создаёт workspace.
+
+План реализации:
+
+1. Актуализировать workspace selector/navigation и signup/invite flows.
+2. Добавить default-name, expired/retry/validation states и switch cleanup guards.
+3. Покрыть registration/invite/no-extra-workspace и isolation tests.
+
+Область:
+
+- `src/components/{Navbar,Workspace}.vue`
+- `src/components/auth/**`
+- `src/components/workspace/**`
+- `src/stores/{workspace,auth}.js`
+- `tests/unit/{components,stores}/**`
+
+Критерии приёмки:
+
+- Invite-flow не создаёт owner workspace и не отправляет поле workspace.
+- Один workspace не перегружает путь выбором, несколько имеют switcher.
+- Смена контекста не переносит tenant data/form edits без выбора.
+
+Отложено (решение пользователя, ревью Stage A10, 2026-09-15): `InviteView.vue`
+не получил отдельные expired/retry/validation states, обещанные шагом 2 плана
+реализации выше — сейчас один общий статус "invalid" на просроченное/отозванное/
+уже использованное приглашение и только общий `demoStore.isError` AsyncState без
+invite-специфичного retry. Буквальные acceptance-критерии этой задачи не
+нарушены (invite всё ещё не создаёт tenant и не отправляет поле `workspace`).
+Разделение состояний — отдельная будущая задача, не часть A10.7.
+
+## Help, history and accessibility
+
+### Help, notifications and workspace audit
+
+### [P1] Task A10.8. Добавить route-backed помощь, notification history и workspace audit fixture
+
+Статус: done
+
+Источник: Stage A10 `.plan`, «Повторно доступная помощь и две разные истории»; API Issue #109.
+
+Описание: После исчезновения bell пользователь сохраняет путь к истории уведомлений и помощи, не смешивая персональную ленту с workspace audit.
+
+Уточнённые требования:
+
+- History поддерживает all/unread, pagination, read-all snapshot и per-recipient read; read не удаляет запись.
+- Empty, error/retry, deleted target и retention — отдельные states; history не называется полным audit.
+- Audit показывает только разрешённые actor/action/time/gaps и никогда password/key/payload.
+
+План реализации:
+
+1. Добавить named routes, profile/help navigation и fixture screens/selectors.
+2. Расширить notifications fixtures и capability-gated audit presentation.
+3. Покрыть unread snapshot, isolation, pagination, retention и secret absence.
+
+Область:
+
+- `src/components/{Navbar}.vue`
+- `src/components/profile/**`
+- `src/components/workspace/**`
+- `src/components/common/**`
+- `src/stores/{notifications,profile,workspace}.js`
+- `src/router.js`
+- `src/navigation.js`
+- `tests/unit/{components,stores}/**`
+
+Критерии приёмки:
+
+- History доступна при zero unread, bell всё ещё может скрываться.
+- Read одного recipient не меняет другого.
+- Audit не раскрывает секреты и объясняет отсутствие данных/прав.
+
+### Locales, accessibility and journey evidence
+
+### [P1] Task A10.9. Распространить scoped RU/EN/ES и accessibility-contract на A10 screens
+
+Статус: done
+
+Источник: Stage A10 `.plan`, «RU/EN/ES и доступность».
+
+Описание: Общие cross-cutting компоненты A10 (save/dirty-exit, error summary) и переключатель языка имеют одинаковый набор RU/EN/ES key paths; все client surfaces A10 не зависят от цвета, hover или мыши для обязательных действий.
+
+Сужено по факту реализации (решение пользователя, ревью Stage A10, 2026-09-15): RU/EN/ES scope — `common/DirtyExitModal.vue`, `common/FormErrorSummary.vue` и управляющий ими переключатель языка в `Navbar.vue`, а не все перечисленные ниже экраны целиком. Остальные A10 client surfaces (dashboard, agents/detail/settings, playground, channels, conversations/detail, knowledge/detail/settings, workspace/*, profile/security, auth, help/history) остаются фиксированным русским текстом — тот же принцип «kit остаётся без kit-wide i18n infra» (`CLAUDE.md`), которым уже ограничен scope wizard-словарей A9.5. Accessibility-contract (icon-only names, focus, keyboard) остаётся в scope для всех перечисленных экранов без сужения.
+
+Уточнённые требования:
+
+- Перевод не меняет user data, instructions, response language, money или rights; `/kit`/administration вне scope.
+- Icon-only actions имеют accessible names; overlays возвращают focus, multiline не submit-ится случайно, pagination keyboard-accessible.
+- Manual light/dark/mobile/zoom matrix документируется диагностически, не как acceptance gate.
+
+План реализации:
+
+1. Добавить scoped dictionaries/adapter без kit-wide i18n library — для общих save/dirty-exit/error-summary компонентов, не для каждого экрана.
+2. Обновить accessible labels, focus/error/overlay semantics и responsive contract — на всех перечисленных экранах.
+3. Написать locale key parity и accessibility regression tests.
+
+Область:
+
+- `src/components/{Dashboard,Agents,Conversations,Knowledge,Navbar}.vue`
+- `src/components/{agents,channels,conversations,knowledge,workspace,profile,auth}/**`
+- `src/locales/**`
+- `src/styles/trickster-buefy.scss`
+- `tests/unit/**`
+
+Критерии приёмки:
+
+- RU/EN/ES dictionaries охватывают общие save/dirty-exit/error-summary компоненты и переключатель языка, с одинаковыми ключами, не переводят user data.
+- Critical save/error/overlay/pagination paths работают с keyboard и текстовым статусом на всех перечисленных экранах.
+- Нет новых `<style>` в Vue и глобальной i18n-зависимости.
+
+## Contract and verification
+
+### A10 journeys and downstream boundaries
+
+### [P1] Task A10.10. Зафиксировать daily-work пути и границы kit/API контракта
+
+Статус: done
+
+Источник: Stage A10 `.plan`, «Завершение пользовательских путей и документация».
+
+Описание: Документация описывает реализованные daily-work surfaces как fixture specification, отделяя их от API, permissions и бизнес-результатов.
+
+Уточнённые требования:
+
+- Документируются journeys: исправить ответ через знания, восстановить channel, handoff, limit, notification и следующий агент — включая fallback/error.
+- Таблица расхождений различает kit/get/API; route/states/locales не попадают в CSS allowlist автоматически.
+- `docs/ux-review-2026-09-11.md` и его разделы 8/9 не редактируются; `CHANGELOG.md` не создаётся.
+
+План реализации:
+
+1. Обновить docs только по фактической реализации A10.1–A10.9.
+2. Зафиксировать accessibility diagnostics, API dependencies и отсутствие сети/persistence.
+3. Сверить docs с tests, router и managed stylesheets.
 
 Область:
 
 - `docs/design-system.md`
 - `docs/agent-migration-guide.md`
 - `README.md`
+- `.plan`
 - `tests/unit/**`
 
 Критерии приёмки:
 
-- Документы не называют fixtures готовой backend-интеграцией.
-- Тесты покрывают keyboard/focus, ошибки, повторный вход и локализацию.
-- `npm run test:unit`, `npm run lint:style`, `npm run guard:no-component-styles`, `npm run build` и `git diff --check` проходят после реализации.
+- Docs не выдают fixture за production integration или business result.
+- Каждый journey имеет экран, действие и безопасный fallback.
+- После реализации проходят `npm run test:unit`, `npm run lint:style`, `npm run guard:no-component-styles`, `npm run build`, `git diff --check`.

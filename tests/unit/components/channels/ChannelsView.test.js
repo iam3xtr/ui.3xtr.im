@@ -5,7 +5,9 @@ import { createMemoryHistory, createRouter } from "vue-router";
 import Buefy from "buefy";
 
 import ChannelsView from "../../../../src/components/channels/ChannelsView.vue";
+import { useChannelsStore } from "../../../../src/stores/channels.js";
 import { useDemoStore } from "../../../../src/stores/demo.js";
+import { useModalStore } from "../../../../src/stores/modal.js";
 import { useWorkspaceStore } from "../../../../src/stores/workspace.js";
 
 // jsdom has no `matchMedia` — `Loader.vue` reads it on mount (see
@@ -94,5 +96,38 @@ describe("ChannelsView.vue — demo-состояния (Task A7.3)", () => {
 
     expect(wrapper.find(".message.is-warning").exists()).toBe(true);
     expect(wrapper.findAll(".tr-entity-card").length).toBeGreaterThan(0);
+  });
+});
+
+// Task A10.2: удаление канала подтверждается перед мутацией — «уточнить
+// последствия удаления сущностей перед подтверждением» (`.plan` Stage A10).
+describe("ChannelsView.vue — подтверждение удаления канала (Task A10.2)", () => {
+  function findDeleteButton(wrapper) {
+    return wrapper.findAll("button").find((button) => button.text().trim() === "Удалить");
+  }
+
+  it("отмена подтверждения не удаляет канал", async () => {
+    const { wrapper } = await mountChannelsView({ agentId: "1" });
+    const modalStore = useModalStore();
+    const channelsStore = useChannelsStore();
+    vi.spyOn(modalStore, "confirm").mockImplementation(() => {});
+
+    const before = channelsStore.listByAgent("demo", "1").length;
+    await findDeleteButton(wrapper).trigger("click");
+
+    expect(modalStore.confirm).toHaveBeenCalledOnce();
+    expect(channelsStore.listByAgent("demo", "1")).toHaveLength(before);
+  });
+
+  it("подтверждение удаляет канал", async () => {
+    const { wrapper } = await mountChannelsView({ agentId: "1" });
+    const modalStore = useModalStore();
+    const channelsStore = useChannelsStore();
+    vi.spyOn(modalStore, "confirm").mockImplementation((options) => options.onConfirm?.());
+
+    const before = channelsStore.listByAgent("demo", "1").length;
+    await findDeleteButton(wrapper).trigger("click");
+
+    expect(channelsStore.listByAgent("demo", "1")).toHaveLength(before - 1);
   });
 });

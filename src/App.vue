@@ -17,11 +17,12 @@
 
     <template v-else>
       <Navbar
-        v-model:workspace="workspace"
+        :workspace="workspace"
         v-model:is-dark="isDark"
         :workspaces="workspaces"
         :user="user"
-        @create-workspace="workspaceStore.createWorkspace"
+        @update:workspace="handleWorkspaceSwitch"
+        @create-workspace="handleCreateWorkspace"
         @logout="handleLogout"
       >
         <template #menu>
@@ -52,7 +53,9 @@ import { storeToRefs } from "pinia";
 import {
   computed, onMounted, provide, ref, shallowRef, watch,
 } from "vue";
-import { RouterView, useRoute, useRouter } from "vue-router";
+import {
+  isNavigationFailure, RouterView, useRoute, useRouter,
+} from "vue-router";
 
 import Navbar from "./components/Navbar.vue";
 import Sidebar from "./components/Sidebar.vue";
@@ -100,6 +103,47 @@ const isAuthRoute = computed(() => route.path.startsWith("/auth/"));
 function handleLogout() {
   authStore.logout();
   router.push({ name: "auth-login" });
+}
+
+/**
+ * Tenant-switch isolation (Task A10.7, `.plan` "Пространство и регистрация
+ * без лишнего обязательного выбора"): switching the active workspace or
+ * creating a new one must not silently carry a dirty form or a detail-page
+ * selection from the previous context along with it. Routing back to
+ * `dashboard` first — rather than only reassigning `activeWorkspaceId` in
+ * place — reuses the existing per-form `useDirtyExitGuard`
+ * (`onBeforeRouteLeave`) exactly as its own comment already anticipated
+ * ("route change, workspace switch or locale change"): a dirty screen shows
+ * its save/discard/stay dialog and can block the switch by resolving
+ * "Остаться" (`isNavigationFailure`), and any per-screen selection/filter
+ * state is discarded for free by the resulting unmount, instead of staying
+ * on screen now attributed to a different workspace.
+ * @param {() => void} action
+ */
+async function runAfterLeavingWorkspaceContext(action) {
+  if (route.name !== "dashboard") {
+    const failure = await router.push({ name: "dashboard" });
+    if (isNavigationFailure(failure)) {
+      return;
+    }
+  }
+  action();
+}
+
+/** @param {string} id */
+function handleWorkspaceSwitch(id) {
+  if (id === workspace.value) {
+    return;
+  }
+  runAfterLeavingWorkspaceContext(() => {
+    workspace.value = id;
+  });
+}
+
+function handleCreateWorkspace() {
+  runAfterLeavingWorkspaceContext(() => {
+    workspaceStore.createWorkspace();
+  });
 }
 
 /**

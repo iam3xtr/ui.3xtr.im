@@ -53,6 +53,20 @@ import { getChannelsNeedingAttention, hasWorkingChannel } from "./channels.js";
  *   `byok_model` (выбор одного сбрасывает другой — см. `ModelSelect.vue`). В
  *   кабинете пока не сохраняется — блокировано Issue api.3xtr.im#112; в ките
  *   реализовано полностью как спецификация контракта. Не подменяет `model`.
+ * @property {number | null} knowledgeCollectionId Durable-ссылка на личную
+ *   коллекцию знаний агента (`src/stores/knowledge.js`), Task A10.3.
+ *   Заводится либо мастером (`stores/wizard.js`'s `finalizeAgentFields`
+ *   переносит `draft.resources.collectionId` сюда, как только агент точно
+ *   существует), либо лениво самой вкладкой «Знания» детали агента
+ *   (`components/agents/AgentKnowledge.vue`) при первом добавленном
+ *   материале — в обоих случаях через `linkKnowledgeCollection` ниже, так
+ *   что повторный визит всегда находит уже созданную коллекцию по этому id
+ *   вместо того, чтобы завести вторую. В отличие от `draft.resources`
+ *   (Stage A9), это поле переживает следующие драфты мастера в том же
+ *   пространстве — `draftsByWorkspace` держит не более одного драфта на
+ *   пространство и подменяет прежний, так что ссылка на коллекцию первого
+ *   агента больше нигде не сохранилась бы, не будь она перенесена на сам
+ *   агент.
  */
 
 export const AGENT_STATUSES = ["Активен", "Черновик", "Приостановлен"];
@@ -71,6 +85,16 @@ const DEFAULT_BYOK_STATE = {
   byok_model: null,
   provider_model_id: null,
   api_key_id: null,
+};
+
+/**
+ * Пустая ссылка на личную коллекцию знаний по умолчанию (Task A10.3) —
+ * примешивается к каждой fixture-записи агента наравне с `DEFAULT_BYOK_STATE`.
+ *
+ * @type {Pick<Agent, "knowledgeCollectionId">}
+ */
+const DEFAULT_KNOWLEDGE_STATE = {
+  knowledgeCollectionId: null,
 };
 
 /**
@@ -123,6 +147,7 @@ const initialAgentsByWorkspace = {
         },
       ],
       ...DEFAULT_BYOK_STATE,
+      ...DEFAULT_KNOWLEDGE_STATE,
     },
     {
       id: 2,
@@ -135,6 +160,7 @@ const initialAgentsByWorkspace = {
       instructions: "Уточняй задачу клиента и предлагай подходящий тариф.",
       messages: [],
       ...DEFAULT_BYOK_STATE,
+      ...DEFAULT_KNOWLEDGE_STATE,
     },
     {
       id: 3,
@@ -147,6 +173,7 @@ const initialAgentsByWorkspace = {
       instructions: "Используй базу знаний и запрашивай детали ошибки.",
       messages: [],
       ...DEFAULT_BYOK_STATE,
+      ...DEFAULT_KNOWLEDGE_STATE,
     },
     {
       id: 4,
@@ -162,6 +189,7 @@ const initialAgentsByWorkspace = {
       instructions: "Запрашивай номер договора и SLA перед эскалацией.",
       messages: [],
       ...DEFAULT_BYOK_STATE,
+      ...DEFAULT_KNOWLEDGE_STATE,
     },
   ],
   trickster: [
@@ -196,6 +224,11 @@ const initialAgentsByWorkspace = {
       // "trickster") — сам секрет на агенте больше не хранится.
       api_key_id: "key-1",
       provider_model_id: "meta-llama/llama-3.1-405b-instruct",
+      // Task A10.3: уже связан с существующей коллекцией "Trickster Docs"
+      // (`src/stores/knowledge.js`'s `trickster` workspace, id 1) — фикстура
+      // повторного визита во вкладку «Знания», а не первого лениво созданного
+      // контейнера.
+      knowledgeCollectionId: 1,
     },
   ],
   empty: [],
@@ -366,6 +399,7 @@ export const useAgentsStore = defineStore("agents", () => {
       instructions: "",
       messages: [],
       ...DEFAULT_BYOK_STATE,
+      ...DEFAULT_KNOWLEDGE_STATE,
     };
 
     workspaceAgents.push(agent);
@@ -399,6 +433,188 @@ export const useAgentsStore = defineStore("agents", () => {
       outgoing: false,
     });
     agent.updated = "Сейчас";
+  }
+
+  /**
+   * Агенты воркспейса, реально ссылающиеся на сохранённый ключ
+   * `src/stores/apiKeys.js` по `api_key_id` — используется
+   * `ApiKeySelect.vue` (Task A10.2), чтобы confirm перед удалением ключа
+   * называл затронутых агентов по имени, а не выдуманным каскадом.
+   *
+   * @param {string} workspaceId
+   * @param {string} apiKeyId
+   * @returns {Agent[]}
+   */
+  function listAgentsUsingApiKey(workspaceId, apiKeyId) {
+    return listByWorkspace(workspaceId)
+      .filter((agent) => agent.use_own_api_key && agent.api_key_id === apiKeyId);
+  }
+
+  /**
+   * Стирает у агента ссылку на собственный ключ и связанные с ним
+   * BYOK-only поля модели — то же присвоение полей, что делает
+   * `updateAgentSettings` при выключении BYOK, вынесенное в отдельную
+   * функцию, потому что здесь это отдельный вызов, а не побочный эффект
+   * патча.
+   *
+   * @param {Agent} agent
+   */
+  function clearApiKeyFields(agent) {
+    Object.assign(agent, {
+      use_own_api_key: false,
+      has_api_key: false,
+      api_key_provider_id: null,
+      api_key_cleared: true,
+      api_key_id: null,
+      byok_model: null,
+      provider_model_id: null,
+    });
+    agent.updated = "Сейчас";
+  }
+
+  /**
+   * Мгновенная команда «отвязать ключ от агента» (Task A10.2, `.plan` Stage
+   * A10 «Явное сохранение и безопасное редактирование»): применяется сразу,
+   * в обход `draft`/«Сохранить модель и ключ» в `AgentSettings.vue` —
+   * отвязка одного агента не транзакция формы модели/ключа, у неё
+   * собственный результат. Не удаляет сам ключ из
+   * `src/stores/apiKeys.js` — он остаётся доступен другим агентам
+   * воркспейса; это отличает отвязку от удаления ключа
+   * (`apiKeysStore.deleteKey`), которая стирает секрет для всех.
+   *
+   * @param {string} workspaceId
+   * @param {string | number} agentId
+   * @returns {Agent | undefined}
+   */
+  function detachApiKey(workspaceId, agentId) {
+    const agent = getAgent(workspaceId, agentId);
+
+    if (!agent || !agent.use_own_api_key) {
+      return agent;
+    }
+
+    clearApiKeyFields(agent);
+
+    return agent;
+  }
+
+  /**
+   * Сохранение названия агента (Stage A10 review fix, `.plan` Stage A10
+   * «Явное сохранение и безопасное редактирование») — точка приложения
+   * `AgentSettings.vue`'s независимого name-draft `useSavableForm`; больше не
+   * мутируется полем напрямую из компонента.
+   *
+   * @param {string} workspaceId
+   * @param {string | number} agentId
+   * @param {string} name
+   * @returns {Agent | undefined}
+   */
+  function renameAgent(workspaceId, agentId, name) {
+    const agent = getAgent(workspaceId, agentId);
+
+    if (!agent) {
+      return undefined;
+    }
+
+    agent.name = name;
+    agent.updated = "Сейчас";
+
+    return agent;
+  }
+
+  /**
+   * Мгновенная команда смены статуса агента (Stage A10 review fix, `.plan`
+   * Stage A10 «Явное сохранение и безопасное редактирование» — Task A10.2's
+   * own stated intent for a pause/resume-like instant command, not part of
+   * any Save transaction). No-op for an unknown status or one that already
+   * matches — `AgentSettings.vue`'s confirm only ever offers the other two
+   * `AGENT_STATUSES` values, so this is a defensive guard, not a real path.
+   *
+   * @param {string} workspaceId
+   * @param {string | number} agentId
+   * @param {string} status One of `AGENT_STATUSES`.
+   * @returns {Agent | undefined}
+   */
+  function setAgentStatus(workspaceId, agentId, status) {
+    const agent = getAgent(workspaceId, agentId);
+
+    if (!agent || !AGENT_STATUSES.includes(status) || agent.status === status) {
+      return agent;
+    }
+
+    agent.status = status;
+    agent.updated = "Сейчас";
+
+    return agent;
+  }
+
+  /**
+   * Агенты воркспейса, чья личная коллекция знаний ссылается на данный
+   * `collectionId` (Task A10.3) — используется вкладкой «Знания» детали
+   * агента (`components/agents/AgentKnowledge.vue`), чтобы подтверждение
+   * удаления коллекции называло затронутых агентов по имени, а не тихо
+   * расширяло каскад (`.plan` Stage A10 «Развести… удалить материал…
+   * удалить коллекцию» — «подтверждение показывает доступных пользователю
+   * затронутых агентов»). Сегодня коллекция всегда 1:1 с агентом (создаётся
+   * либо мастером, либо этой же вкладкой), так что результат — максимум
+   * один агент; функция намеренно общая на случай будущего сценария общих
+   * коллекций (тот же экспертный раздел «Знания», не создаваемый этой
+   * задачей).
+   *
+   * @param {string} workspaceId
+   * @param {string | number} collectionId
+   * @returns {Agent[]}
+   */
+  function listAgentsUsingCollection(workspaceId, collectionId) {
+    return listByWorkspace(workspaceId)
+      .filter((agent) => agent.knowledgeCollectionId != null
+        && String(agent.knowledgeCollectionId) === String(collectionId));
+  }
+
+  /**
+   * Идемпотентно связывает агента с его личной коллекцией знаний
+   * (Task A10.3): повторный вызов с уже установленной ссылкой ничего не
+   * меняет — вызывающая сторона (`stores/wizard.js`'s `finalizeAgentFields`,
+   * `AgentKnowledge.vue`'s ленивое создание при первом материале) не должна
+   * сама проверять, связан ли уже агент, прежде чем звать эту функцию.
+   *
+   * @param {string} workspaceId
+   * @param {string | number} agentId
+   * @param {number} collectionId
+   * @returns {Agent | undefined}
+   */
+  function linkKnowledgeCollection(workspaceId, agentId, collectionId) {
+    const agent = getAgent(workspaceId, agentId);
+
+    if (!agent || agent.knowledgeCollectionId != null) {
+      return agent;
+    }
+
+    agent.knowledgeCollectionId = collectionId;
+
+    return agent;
+  }
+
+  /**
+   * «Убрать из знаний агента» (Task A10.3): агент перестаёт использовать
+   * коллекцию в ответах немедленно, но сама коллекция и её материалы
+   * остаются в общем разделе «Знания» — в отличие от удаления коллекции
+   * (`knowledgeStore.deleteCollection`), которое стирает её для всех
+   * связанных агентов безвозвратно. Безопасна для агента без коллекции —
+   * не создаёт ошибку, просто не находит что убирать.
+   *
+   * @param {string} workspaceId
+   * @param {string | number} agentId
+   * @returns {Agent | undefined}
+   */
+  function unlinkKnowledgeCollection(workspaceId, agentId) {
+    const agent = getAgent(workspaceId, agentId);
+
+    if (agent) {
+      agent.knowledgeCollectionId = null;
+    }
+
+    return agent;
   }
 
   /**
@@ -550,5 +766,12 @@ export const useAgentsStore = defineStore("agents", () => {
     sendMessage,
     isByokSaveValid,
     updateAgentSettings,
+    listAgentsUsingApiKey,
+    detachApiKey,
+    renameAgent,
+    setAgentStatus,
+    listAgentsUsingCollection,
+    linkKnowledgeCollection,
+    unlinkKnowledgeCollection,
   };
 });

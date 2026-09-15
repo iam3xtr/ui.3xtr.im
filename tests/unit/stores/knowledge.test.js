@@ -52,3 +52,38 @@ describe("stores/knowledge — autoNamed / syncAutoName (Task A9.4)", () => {
     expect(store.syncAutoName("demo", 999_999, "Что угодно")).toBe(false);
   });
 });
+
+// Task A10.3: полное удаление коллекции (отличается от «убрать из знаний
+// агента», которое не трогает саму коллекцию — см. `stores/agents.js`'s
+// `unlinkKnowledgeCollection`).
+describe("stores/knowledge — deleteCollection (Task A10.3)", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  it("удаляет коллекцию из списка пространства", () => {
+    const store = useKnowledgeStore();
+    const collection = store.createCollection("demo", { name: "Временная", type: "mixed" });
+
+    expect(store.getCollection("demo", collection.id)).toBeDefined();
+
+    store.deleteCollection("demo", collection.id);
+
+    expect(store.getCollection("demo", collection.id)).toBeUndefined();
+  });
+
+  it("не трогает коллекции другого пространства с тем же id", () => {
+    const store = useKnowledgeStore();
+
+    store.deleteCollection("demo", 1);
+
+    expect(store.getCollection("demo", 1)).toBeUndefined();
+    expect(store.getCollection("trickster", 1)).toBeDefined();
+  });
+
+  it("удаление в несуществующем пространстве — no-op, не создаёт исключение", () => {
+    const store = useKnowledgeStore();
+
+    expect(() => store.deleteCollection("no-such-workspace", 1)).not.toThrow();
+  });
+});

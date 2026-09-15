@@ -247,6 +247,35 @@ const initialCollectionsByWorkspace = {
   empty: [],
 };
 
+/**
+ * S2 per-collection attention reason (Task A10.4, `.plan` "Ежедневный
+ * dashboard и диагностика агента" — "обязательные знания не готовы"):
+ * mirrors `getChannelsNeedingAttention` in `stores/channels.js` — a pure
+ * derivation of the collection's own object/reindex-run statuses, never a
+ * second source of truth. A collection needs attention when at least one
+ * object is stuck in `"error"`, or (when every object is otherwise fine) its
+ * most recent reindex run ended in `"error"`.
+ *
+ * @param {KnowledgeCollection} collection
+ * @returns {string | null} Human-readable reason, or `null` when the
+ *   collection has nothing to flag.
+ */
+export function getCollectionAttentionReason(collection) {
+  const failingObject = collection.objects.find((object) => object.status === "error");
+
+  if (failingObject) {
+    return `Материал «${failingObject.name}» не проиндексирован.`;
+  }
+
+  const lastRun = collection.reindexRuns[0];
+
+  if (lastRun && lastRun.status === "error") {
+    return "Последняя переиндексация завершилась с ошибкой.";
+  }
+
+  return null;
+}
+
 export const useKnowledgeStore = defineStore("knowledge", () => {
   /** @type {import("vue").Ref<Record<string, KnowledgeCollection[]>>} */
   const collectionsByWorkspace = ref(structuredClone(initialCollectionsByWorkspace));
@@ -381,6 +410,30 @@ export const useKnowledgeStore = defineStore("knowledge", () => {
   }
 
   /**
+   * Удаляет коллекцию целиком вместе со всеми её материалами и историей
+   * переиндексации (Task A10.3) — отличается от «убрать из знаний агента»
+   * (`agentsStore.unlinkKnowledgeCollection`), которая не трогает саму
+   * коллекцию и оставляет её материалы доступными в разделе «Знания».
+   * Вызывающая сторона (`components/agents/AgentKnowledge.vue`) сама находит
+   * затронутых агентов через `agentsStore.listAgentsUsingCollection` и
+   * отвязывает их до/после этого вызова — этот стор не знает про агентов и
+   * не делает ничего за пределами своих коллекций.
+   *
+   * @param {string} workspaceId
+   * @param {string | number} collectionId
+   */
+  function deleteCollection(workspaceId, collectionId) {
+    const workspaceCollections = collectionsByWorkspace.value[workspaceId];
+
+    if (!workspaceCollections) {
+      return;
+    }
+
+    collectionsByWorkspace.value[workspaceId] = workspaceCollections
+      .filter((collection) => String(collection.id) !== String(collectionId));
+  }
+
+  /**
    * Registers a new object in `indexing` status — callers own the timer that
    * eventually flips it to `indexed`/`error` via `setObjectStatus` (kept out
    * of the store so unmounting the tab cancels the timer, same pattern as
@@ -504,6 +557,7 @@ export const useKnowledgeStore = defineStore("knowledge", () => {
     getReindexRunStatus,
     createCollection,
     updateCollection,
+    deleteCollection,
     syncAutoName,
     addObject,
     setObjectStatus,

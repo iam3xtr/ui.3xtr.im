@@ -41,9 +41,15 @@
         <div class="tr-mobile-workspace">
           <span class="tr-mobile-workspace__label">
             <b-icon icon="briefcase-outline" size="is-small" />
-            Пространство
+            {{ hasMultipleWorkspaces ? "Пространство" : "Пространство для команды" }}
           </span>
+          <!--
+            W2 (Task A10.7): one workspace has nothing to switch to — show its
+            name as plain text instead of a single-option select, same
+            "no unnecessary choice" rule as the desktop trigger above.
+          -->
           <b-select
+            v-if="hasMultipleWorkspaces"
             v-model="workspace"
             expanded
             aria-label="Выбрать рабочее пространство"
@@ -56,6 +62,7 @@
               {{ item.name }}
             </option>
           </b-select>
+          <span v-else class="tr-mobile-workspace__value">{{ activeWorkspace.name }}</span>
         </div>
       </b-dropdown-item>
 
@@ -290,20 +297,21 @@
         v-model="workspace"
         class="tr-dropdown tr-workspace-dropdown"
         position="is-bottom-left"
-        aria-role="list"
+        :aria-role="hasMultipleWorkspaces ? 'list' : 'menu'"
       >
         <template #trigger>
           <button
             class="tr-navbar-trigger tr-workspace-trigger"
             type="button"
-            aria-label="Выбрать рабочее пространство"
+            :aria-label="hasMultipleWorkspaces ? 'Выбрать рабочее пространство' : 'Пространство для команды'"
           >
             <b-icon icon="briefcase-outline" size="is-small" />
             <span class="tr-workspace-trigger__selection">
               <span class="tr-navbar-trigger__label">
-                {{ activeWorkspace.name }}
+                {{ hasMultipleWorkspaces ? activeWorkspace.name : "Пространство для команды" }}
               </span>
               <b-icon
+                v-if="hasMultipleWorkspaces"
                 class="tr-workspace-switch-icon"
                 icon="unfold-more-horizontal"
                 size="is-small"
@@ -312,28 +320,56 @@
           </button>
         </template>
 
+        <!--
+          W2 (Task A10.7, `.plan` "Три языка и пространство на младших
+          тарифах"): один личный workspace не навязывает выбор — триггер и
+          вводная строка читаются как второстепенный пункт «Пространство для
+          команды», без списка (выбирать не из чего) и без переключательной
+          иконки выше. Как только пространств больше одного, возвращается
+          обычный переключатель со списком и активным контекстом — ветки ниже
+          отличаются только этим блоком, остальные пункты (настройки/
+          участники/создание) те же в обоих случаях.
+        -->
         <b-dropdown-item custom :focusable="false">
           <p class="tr-dropdown-intro">
-            Переключайтесь между доступными рабочими пространствами.
+            <template v-if="hasMultipleWorkspaces">
+              Переключайтесь между доступными рабочими пространствами.
+            </template>
+            <template v-else>
+              Пригласите команду, чтобы работать в общем пространстве.
+            </template>
           </p>
         </b-dropdown-item>
 
         <b-dropdown-item separator />
 
-        <b-dropdown-item
-          v-for="item in workspaces"
-          :key="item.id"
-          :value="item.id"
-          aria-role="listitem"
-        >
-          <span class="tr-dropdown-item-row">
-            <span class="tr-dropdown-item-copy">
-              <strong>{{ item.name }}</strong>
-              <small>{{ item.role }}</small>
+        <template v-if="hasMultipleWorkspaces">
+          <b-dropdown-item
+            v-for="item in workspaces"
+            :key="item.id"
+            :value="item.id"
+            aria-role="listitem"
+          >
+            <span class="tr-dropdown-item-row">
+              <span class="tr-dropdown-item-copy">
+                <strong>{{ item.name }}</strong>
+                <small>{{ item.role }}</small>
+              </span>
+              <b-tag size="is-small">{{ item.plan }}</b-tag>
             </span>
-            <b-tag size="is-small">{{ item.plan }}</b-tag>
-          </span>
-        </b-dropdown-item>
+          </b-dropdown-item>
+        </template>
+        <template v-else>
+          <b-dropdown-item custom :focusable="false">
+            <span class="tr-dropdown-item-row">
+              <span class="tr-dropdown-item-copy">
+                <strong>{{ activeWorkspace.name }}</strong>
+                <small>{{ activeWorkspace.role }}</small>
+              </span>
+              <b-tag size="is-small">{{ activeWorkspace.plan }}</b-tag>
+            </span>
+          </b-dropdown-item>
+        </template>
 
         <b-dropdown-item separator />
 
@@ -493,7 +529,7 @@
               <b-icon icon="translate" size="is-small" />
               Язык
             </span>
-            <b-select v-model="locale" size="is-small">
+            <b-select v-model="locale" size="is-small" aria-label="Язык интерфейса">
               <option value="ru">Русский</option>
               <option value="en">English</option>
               <option value="es">Español</option>
@@ -513,6 +549,25 @@
           <span class="tr-dropdown-action">
             <b-icon icon="shield-lock-outline" size="is-small" />
             Безопасность
+          </span>
+        </b-dropdown-item>
+
+        <!--
+          Task A10.8 (`.plan` item 7): permanent profile-menu entries,
+          independent of the bell above — "История уведомлений" stays
+          reachable even when the bell itself is hidden at zero unread, and
+          "Помощь" is always available, not only on a one-off first visit.
+        -->
+        <b-dropdown-item @click="goToNotificationHistory">
+          <span class="tr-dropdown-action">
+            <b-icon icon="bell-outline" size="is-small" />
+            История уведомлений
+          </span>
+        </b-dropdown-item>
+        <b-dropdown-item @click="goToHelp">
+          <span class="tr-dropdown-action">
+            <b-icon icon="help-circle-outline" size="is-small" />
+            Помощь
           </span>
         </b-dropdown-item>
 
@@ -565,6 +620,7 @@ import {
   useDemoStore,
 } from "../stores/demo";
 import { useNotificationsStore } from "../stores/notifications";
+import { useLocaleStore } from "../stores/locale.js";
 import Logo from "./Logo.vue";
 
 /**
@@ -614,7 +670,12 @@ const emit = defineEmits(["create-workspace", "logout"]);
 
 const workspace = defineModel("workspace", { required: true });
 const isDark = defineModel("isDark", { required: true });
-const locale = ref("ru");
+// Task A10.9: this switch now actually drives the scoped `locales/common`
+// dictionary (see `common/DirtyExitModal.vue`/`common/FormErrorSummary.vue`)
+// instead of sitting decoratively on a local `ref`; kept as a kit-wide
+// `Pinia` store rather than the wizard's own per-draft `locale` field, since
+// this one is not scoped to any single agent draft.
+const { locale } = storeToRefs(useLocaleStore());
 const mobileNavDropdown = ref(null);
 const userDropdown = ref(null);
 const route = useRoute();
@@ -715,6 +776,10 @@ const activeWorkspace = computed(
     ?? props.workspaces[0],
 );
 
+// W2 (Task A10.7): the switcher only makes sense once there is something to
+// switch to — see the dropdown markup above.
+const hasMultipleWorkspaces = computed(() => props.workspaces.length > 1);
+
 const userInitials = computed(
   () => `${props.user.firstName[0] ?? ""}${props.user.lastName[0] ?? ""}`,
 );
@@ -739,6 +804,14 @@ function goToProfile() {
 
 function goToSecurity() {
   router.push({ name: "security" });
+}
+
+function goToNotificationHistory() {
+  router.push({ name: "notification-history" });
+}
+
+function goToHelp() {
+  router.push({ name: "help" });
 }
 
 function closeMobileNav() {

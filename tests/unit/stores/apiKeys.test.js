@@ -64,4 +64,33 @@ describe("stores/apiKeys", () => {
     expect(store.maskSecret(key)).toBe("••••d7e8");
     expect(store.maskSecret(key)).not.toContain(key.secret.slice(0, -4));
   });
+
+  // Task A10.2: удаление ключа — отдельная мгновенная команда от отвязки
+  // агента (`stores/agents.js#detachApiKey`); этот стор ничего не знает о
+  // ссылающихся агентах, оркестрация — в `ApiKeySelect.vue`.
+  it("deleteKey безвозвратно убирает ключ из воркспейса", () => {
+    const store = useApiKeysStore();
+
+    store.deleteKey("trickster", "key-1");
+
+    expect(store.getKey("trickster", "key-1")).toBeUndefined();
+    expect(store.listByWorkspace("trickster")).toEqual([]);
+  });
+
+  it("deleteKey не трогает ключи другого воркспейса", () => {
+    const store = useApiKeysStore();
+    store.createKey("demo", { label: "Другой ключ", secret: "sk-or-v1-other" });
+
+    store.deleteKey("trickster", "key-1");
+
+    expect(store.listByWorkspace("demo")).toHaveLength(1);
+  });
+
+  it("deleteKey для неизвестного воркспейса/id — no-op", () => {
+    const store = useApiKeysStore();
+
+    expect(() => store.deleteKey("unknown-workspace", "key-1")).not.toThrow();
+    expect(() => store.deleteKey("trickster", "nope")).not.toThrow();
+    expect(store.listByWorkspace("trickster")).toHaveLength(1);
+  });
 });

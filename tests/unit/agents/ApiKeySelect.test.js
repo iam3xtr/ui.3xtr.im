@@ -1,10 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import Buefy from "buefy";
 
 import ApiKeySelect from "../../../src/components/agents/ApiKeySelect.vue";
+import { useAgentsStore } from "../../../src/stores/agents.js";
 import { useApiKeysStore } from "../../../src/stores/apiKeys.js";
+import { useModalStore } from "../../../src/stores/modal.js";
 import { useWorkspaceStore } from "../../../src/stores/workspace.js";
 
 // Stage A6 fix (post-review, по решению пользователя 2026-09-11): own
@@ -89,5 +91,75 @@ describe("ApiKeySelect.vue", () => {
     await item.trigger("click");
 
     expect(wrapper.emitted("update:modelValue")).toEqual([["key-1"]]);
+  });
+});
+
+// Task A10.2: удаление ключа — отдельная мгновенная команда от выбора ключа
+// и от «Сохранить модель и ключ» в `AgentSettings.vue`.
+describe("ApiKeySelect.vue — удаление ключа (Task A10.2)", () => {
+  function findDeleteButton(wrapper) {
+    return wrapper.find(".tr-api-key-select__item-delete");
+  }
+
+  it("клик по удалению не эмитит выбор ключа", async () => {
+    const wrapper = mountApiKeySelect({ workspaceId: "trickster" });
+    const modalStore = useModalStore();
+    vi.spyOn(modalStore, "confirm").mockImplementation(() => {});
+
+    await findDeleteButton(wrapper).trigger("click");
+
+    expect(wrapper.emitted("update:modelValue")).toBeUndefined();
+  });
+
+  it("confirm называет затронутого агента по имени", async () => {
+    const wrapper = mountApiKeySelect({ workspaceId: "trickster" });
+    const modalStore = useModalStore();
+    vi.spyOn(modalStore, "confirm").mockImplementation(() => {});
+
+    await findDeleteButton(wrapper).trigger("click");
+
+    const options = modalStore.confirm.mock.calls[0][0];
+    expect(options.message).toContain("Trickster Concierge");
+  });
+
+  it("подтверждение отвязывает ссылающихся агентов и удаляет ключ", async () => {
+    const wrapper = mountApiKeySelect({ workspaceId: "trickster" });
+    const modalStore = useModalStore();
+    const agentsStore = useAgentsStore();
+    const apiKeysStore = useApiKeysStore();
+    vi.spyOn(modalStore, "confirm").mockImplementation((options) => options.onConfirm?.());
+
+    await findDeleteButton(wrapper).trigger("click");
+
+    expect(apiKeysStore.getKey("trickster", "key-1")).toBeUndefined();
+    const agent = agentsStore.getAgent("trickster", 1);
+    expect(agent.use_own_api_key).toBe(false);
+    expect(agent.api_key_id).toBe(null);
+  });
+
+  it("удаление выбранного в этом контроле ключа сбрасывает v-model", async () => {
+    const wrapper = mountApiKeySelect({ workspaceId: "trickster", modelValue: "key-1" });
+    const modalStore = useModalStore();
+    vi.spyOn(modalStore, "confirm").mockImplementation((options) => options.onConfirm?.());
+
+    await findDeleteButton(wrapper).trigger("click");
+
+    expect(wrapper.emitted("update:modelValue").at(-1)).toEqual([null]);
+  });
+
+  it("ключ без ссылающихся агентов удаляется без побочных мутаций у других агентов", async () => {
+    const wrapper = mountApiKeySelect({ workspaceId: "demo" });
+    const modalStore = useModalStore();
+    const apiKeysStore = useApiKeysStore();
+    vi.spyOn(modalStore, "confirm").mockImplementation((options) => options.onConfirm?.());
+
+    const key = apiKeysStore.createKey("demo", { label: "Свободный ключ", secret: "sk-or-v1-free" });
+    await wrapper.vm.$nextTick();
+
+    await findDeleteButton(wrapper).trigger("click");
+
+    const options = modalStore.confirm.mock.calls[0][0];
+    expect(options.message).toContain("не используется ни одним агентом");
+    expect(apiKeysStore.getKey("demo", key.id)).toBeUndefined();
   });
 });

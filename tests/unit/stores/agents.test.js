@@ -399,3 +399,177 @@ describe("stores/agents — S2 presentation-статус (Task A9.6)", () => {
     expect(projection.needsAttention).toBe(true);
   });
 });
+
+// Task A10.2: мгновенная отвязка агента от собственного ключа — отдельная
+// команда от `updateAgentSettings` (форма модели/ключа) и от удаления самого
+// ключа (`stores/apiKeys.js#deleteKey`).
+describe("stores/agents — detachApiKey / listAgentsUsingApiKey (Task A10.2)", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  it("detachApiKey стирает BYOK-only поля у BYOK-агента и не трогает обычную модель", () => {
+    const store = useAgentsStore();
+
+    const agent = store.detachApiKey("trickster", 1);
+
+    expect(agent.use_own_api_key).toBe(false);
+    expect(agent.has_api_key).toBe(false);
+    expect(agent.api_key_provider_id).toBe(null);
+    expect(agent.api_key_id).toBe(null);
+    expect(agent.byok_model).toBe(null);
+    expect(agent.provider_model_id).toBe(null);
+    expect(agent.api_key_cleared).toBe(true);
+    // Обычная модель — отдельное поле, отвязка её не трогает.
+    expect(agent.model).toBe("gpt-4.1-mini");
+  });
+
+  it("detachApiKey на агенте без собственного ключа не меняет запись", () => {
+    const store = useAgentsStore();
+    const before = { ...store.getAgent("demo", 1) };
+
+    const agent = store.detachApiKey("demo", 1);
+
+    expect(agent).toMatchObject(before);
+  });
+
+  it("detachApiKey для несуществующего агента возвращает undefined", () => {
+    const store = useAgentsStore();
+
+    expect(store.detachApiKey("demo", 9999)).toBeUndefined();
+  });
+
+  it("listAgentsUsingApiKey находит только агентов, реально ссылающихся на ключ", () => {
+    const store = useAgentsStore();
+
+    expect(store.listAgentsUsingApiKey("trickster", "key-1")).toHaveLength(1);
+    expect(store.listAgentsUsingApiKey("trickster", "key-1")[0].id).toBe(1);
+    expect(store.listAgentsUsingApiKey("trickster", "unknown-key")).toEqual([]);
+    // Ключ существует в trickster, но не виден из другого воркспейса.
+    expect(store.listAgentsUsingApiKey("demo", "key-1")).toEqual([]);
+  });
+
+  it("listAgentsUsingApiKey перестаёт находить агента после detachApiKey", () => {
+    const store = useAgentsStore();
+
+    store.detachApiKey("trickster", 1);
+
+    expect(store.listAgentsUsingApiKey("trickster", "key-1")).toEqual([]);
+  });
+});
+
+// Stage A10 review fix: name/status больше не мутируются напрямую из
+// AgentSettings.vue — renameAgent — точка приложения независимого
+// name-draft Save, setAgentStatus — мгновенная lifecycle-команда.
+describe("stores/agents — renameAgent / setAgentStatus (Stage A10 review fix)", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  it("renameAgent меняет имя и не трогает другие поля", () => {
+    const store = useAgentsStore();
+    const before = { ...store.getAgent("demo", 1) };
+
+    const agent = store.renameAgent("demo", 1, "Новое имя");
+
+    expect(agent.name).toBe("Новое имя");
+    expect(agent.model).toBe(before.model);
+    expect(agent.status).toBe(before.status);
+  });
+
+  it("renameAgent для несуществующего агента возвращает undefined", () => {
+    const store = useAgentsStore();
+
+    expect(store.renameAgent("demo", 9999, "Имя")).toBeUndefined();
+  });
+
+  it("setAgentStatus меняет статус на один из AGENT_STATUSES", () => {
+    const store = useAgentsStore();
+
+    const agent = store.setAgentStatus("demo", 1, "Приостановлен");
+
+    expect(agent.status).toBe("Приостановлен");
+  });
+
+  it("setAgentStatus — неизвестный статус не меняет запись", () => {
+    const store = useAgentsStore();
+    const before = { ...store.getAgent("demo", 1) };
+
+    const agent = store.setAgentStatus("demo", 1, "Не статус");
+
+    expect(agent.status).toBe(before.status);
+  });
+
+  it("setAgentStatus для несуществующего агента возвращает undefined", () => {
+    const store = useAgentsStore();
+
+    expect(store.setAgentStatus("demo", 9999, "Активен")).toBeUndefined();
+  });
+});
+
+// Task A10.3: durable-ссылка агента на личную коллекцию знаний, переживающая
+// смену draft'а мастера (`stores/wizard.js` держит не более одного draft'а
+// на пространство).
+describe("stores/agents — linkKnowledgeCollection / unlinkKnowledgeCollection / listAgentsUsingCollection (Task A10.3)", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  it("новый агент не связан ни с одной коллекцией", () => {
+    const store = useAgentsStore();
+    const agent = store.createAgent("demo", "Новый агент");
+
+    expect(agent.knowledgeCollectionId).toBeNull();
+  });
+
+  it("фикстура trickster уже связана с существующей коллекцией (повторный визит)", () => {
+    const store = useAgentsStore();
+
+    expect(store.getAgent("trickster", 1).knowledgeCollectionId).toBe(1);
+  });
+
+  it("linkKnowledgeCollection связывает агента и идемпотентна — повтор с другим id ничего не меняет", () => {
+    const store = useAgentsStore();
+
+    const first = store.linkKnowledgeCollection("demo", 1, 42);
+    expect(first.knowledgeCollectionId).toBe(42);
+
+    const second = store.linkKnowledgeCollection("demo", 1, 999);
+    expect(second.knowledgeCollectionId).toBe(42);
+  });
+
+  it("linkKnowledgeCollection для несуществующего агента возвращает undefined", () => {
+    const store = useAgentsStore();
+
+    expect(store.linkKnowledgeCollection("demo", 9999, 1)).toBeUndefined();
+  });
+
+  it("unlinkKnowledgeCollection стирает ссылку без ошибки на агенте без коллекции", () => {
+    const store = useAgentsStore();
+
+    store.linkKnowledgeCollection("demo", 1, 42);
+    const agent = store.unlinkKnowledgeCollection("demo", 1);
+
+    expect(agent.knowledgeCollectionId).toBeNull();
+    expect(store.unlinkKnowledgeCollection("demo", 2)).toBeDefined();
+    expect(store.getAgent("demo", 2).knowledgeCollectionId).toBeNull();
+  });
+
+  it("listAgentsUsingCollection находит только агентов, реально ссылающихся на коллекцию", () => {
+    const store = useAgentsStore();
+
+    expect(store.listAgentsUsingCollection("trickster", 1)).toHaveLength(1);
+    expect(store.listAgentsUsingCollection("trickster", 1)[0].id).toBe(1);
+    expect(store.listAgentsUsingCollection("trickster", 999)).toEqual([]);
+    // Коллекция id=1 у demo — другая запись в другом workspace, не должна найтись здесь.
+    expect(store.listAgentsUsingCollection("demo", 1)).toEqual([]);
+  });
+
+  it("listAgentsUsingCollection перестаёт находить агента после unlinkKnowledgeCollection", () => {
+    const store = useAgentsStore();
+
+    store.unlinkKnowledgeCollection("trickster", 1);
+
+    expect(store.listAgentsUsingCollection("trickster", 1)).toEqual([]);
+  });
+});

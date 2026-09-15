@@ -812,6 +812,52 @@ describe("stores/wizard — Проверка и запуск (Task A9.8)", () =>
     expect(result.agent.status).toBe("Черновик");
   });
 
+  // Task A10.3: draft.resources.collectionId переносится на сам агент, чтобы
+  // ссылка пережила следующий draft того же пространства (агенту после
+  // мастера — Task A10.3 её и читает).
+  it("finalizeAgentFields переносит draft.resources.collectionId на agent.knowledgeCollectionId", () => {
+    const store = useWizardStore();
+    const knowledgeStore = useKnowledgeStore();
+    const agentsStore = useAgentsStore();
+
+    store.startDraft("demo");
+    store.updateFields("demo", {
+      agentName: "Агент поддержки",
+      task: "Отвечать на вопросы о меню.",
+      style: "friendly",
+      noAnswerAction: "apologize_offer_operator",
+      operatorHandoff: "on_no_answer",
+      modelClassId: "basic",
+    });
+
+    const { collection } = store.ensureCollection("demo", "Агент поддержки");
+    const result = store.finalizeAgentFields("demo");
+
+    expect(result.ok).toBe(true);
+    expect(result.agent.knowledgeCollectionId).toBe(collection.id);
+    expect(agentsStore.getAgent("demo", result.agent.id).knowledgeCollectionId).toBe(collection.id);
+    expect(knowledgeStore.getCollection("demo", collection.id)).toBeDefined();
+  });
+
+  it("finalizeAgentFields без коллекции в draft'е не трогает knowledgeCollectionId", () => {
+    const store = useWizardStore();
+
+    store.startDraft("demo");
+    store.updateFields("demo", {
+      agentName: "Агент без знаний",
+      task: "Отвечать на вопросы о меню.",
+      style: "friendly",
+      noAnswerAction: "apologize_offer_operator",
+      operatorHandoff: "on_no_answer",
+      modelClassId: "basic",
+    });
+
+    const result = store.finalizeAgentFields("demo");
+
+    expect(result.ok).toBe(true);
+    expect(result.agent.knowledgeCollectionId).toBeNull();
+  });
+
   it("saveDraftWithoutLaunch завершает draft, не активируя ответы", () => {
     const { store, agent, channel } = draftWithConfirmedChannel();
     const channelsStore = useChannelsStore();

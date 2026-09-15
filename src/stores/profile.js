@@ -3,6 +3,11 @@ import { ref } from "vue";
 
 /**
  * @typedef {Object} ProfileInfo
+ * @property {number} id Task A10.5: the current operator's identity for
+ *   `stores/conversations.js`'s handoff owner/lease commands
+ *   (`claimHandoff`/`releaseHandoff`/`sendMessage`'s guard) — matches
+ *   `members.js`'s `demo` workspace owner entry (id 1, same name/email),
+ *   the one workspace whose handoff fixtures model a real operator identity.
  * @property {string} name
  * @property {string} email
  * @property {boolean} emailVerified
@@ -42,6 +47,7 @@ import { ref } from "vue";
  * бэкенда — синхронный in-memory state (Stage A5.2).
  */
 const initialProfile = {
+  id: 1,
   name: "Иван Петров",
   email: "ivan.petrov@example.com",
   emailVerified: true,

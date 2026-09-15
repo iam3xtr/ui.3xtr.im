@@ -1,6 +1,7 @@
 <template>
   <div class="tr-model-select">
     <b-autocomplete
+      ref="autocompleteRef"
       v-model="query"
       :data="options"
       field="name"
@@ -45,7 +46,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 
 import { useModelsStore } from "../../stores/models.js";
 
@@ -78,6 +79,19 @@ const props = defineProps({
     type: String,
     default: "Модель",
   },
+  // Stage A10 review fix: `FormErrorSummary`'s "jump to field" is a plain
+  // `document.getElementById(field)?.focus()` — but Buefy's `b-autocomplete`
+  // routes a plain `id` attr to its own outer wrapper `<div>` (via its
+  // `CompatFallthroughMixin`, twice over — once for the autocomplete root,
+  // once for the inner `b-input`'s own root), never to the actual `<input>`
+  // that can take focus. `inputId` is set imperatively on that real input
+  // element below instead of relying on attribute fallthrough. Optional —
+  // omitted by every consumer that doesn't need a jump target (e.g. the
+  // wizard's `ExpertParameters.vue`), so this has no effect there.
+  inputId: {
+    type: String,
+    default: null,
+  },
 });
 
 const modelValue = defineModel({ type: String, default: null });
@@ -85,6 +99,22 @@ const providerModelId = defineModel("providerModelId", { type: String, default: 
 
 const modelsStore = useModelsStore();
 const query = ref("");
+const autocompleteRef = ref(null);
+
+function applyInputId() {
+  const inputEl = autocompleteRef.value?.$el?.querySelector("input");
+  if (!inputEl) {
+    return;
+  }
+  if (props.inputId) {
+    inputEl.id = props.inputId;
+  } else {
+    inputEl.removeAttribute("id");
+  }
+}
+
+onMounted(applyInputId);
+watch(() => props.inputId, applyInputId);
 
 const scopeProviderId = computed(() => (props.useOwnApiKey ? "openrouter" : undefined));
 const trimmedQuery = computed(() => query.value.trim());

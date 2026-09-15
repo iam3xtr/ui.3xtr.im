@@ -288,3 +288,127 @@ describe("Navbar.vue — уведомления активного простр�
     expect(wrapper.find(".tr-notifications-dropdown").exists()).toBe(false);
   });
 });
+
+// Task A10.7 (W2, `.plan` "Три языка и пространство на младших тарифах"):
+// один личный workspace не навязывает выбор — переключатель сворачивается до
+// второстепенного пункта «Пространство для команды» без списка для выбора;
+// как только пространств больше одного, возвращается обычный переключатель.
+describe("Navbar.vue — W2: переключатель пространства (Task A10.7)", () => {
+  it("один workspace: без списка и иконки переключения, вторичный пункт «Пространство для команды»", async () => {
+    const { wrapper } = await mountNavbar();
+
+    const trigger = wrapper.find(".tr-workspace-trigger");
+    expect(trigger.text()).toContain("Пространство для команды");
+    expect(trigger.find(".tr-workspace-switch-icon").exists()).toBe(false);
+    expect(trigger.attributes("aria-label")).toBe("Пространство для команды");
+
+    // No selectable list — nothing to switch to.
+    expect(wrapper.findAll(".tr-workspace-dropdown [role=listitem]")).toHaveLength(0);
+
+    const mobileLabel = wrapper.find(".tr-mobile-workspace__label");
+    expect(mobileLabel.text()).toContain("Пространство для команды");
+    expect(wrapper.find(".tr-mobile-workspace select").exists()).toBe(false);
+    expect(wrapper.find(".tr-mobile-workspace__value").text()).toBe("Demo");
+  });
+
+  it("несколько workspace: обычный переключатель со списком и активным контекстом", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: "/", name: "dashboard", component: { template: "<div />" } }],
+    });
+    router.push("/");
+    await router.isReady();
+
+    const multipleWorkspaces = [
+      { id: "demo", name: "Demo", role: "Владелец", plan: "Pro" },
+      { id: "trickster", name: "Trickster Team", role: "Администратор", plan: "Superior" },
+    ];
+
+    const wrapper = mount(Navbar, {
+      props: {
+        workspaces: multipleWorkspaces,
+        user,
+        workspace: "demo",
+        isDark: false,
+      },
+      global: { plugins: [pinia, router, Buefy] },
+    });
+
+    const trigger = wrapper.find(".tr-workspace-trigger");
+    expect(trigger.text()).toContain("Demo");
+    expect(trigger.text()).not.toContain("Пространство для команды");
+    expect(trigger.find(".tr-workspace-switch-icon").exists()).toBe(true);
+
+    expect(wrapper.findAll(".tr-workspace-dropdown [role=listitem]")).toHaveLength(2);
+
+    const mobileLabel = wrapper.find(".tr-mobile-workspace__label");
+    expect(mobileLabel.text()).toBe("Пространство");
+    expect(wrapper.find(".tr-mobile-workspace select").exists()).toBe(true);
+  });
+});
+
+// Task A10.8: "История уведомлений"/"Помощь" are permanent user-menu entries,
+// independent of the bell — reachable even with zero unread (bell hidden).
+describe("Navbar.vue — постоянные пункты «История уведомлений»/«Помощь» (Task A10.8)", () => {
+  async function mountNavbarWithHistoryRoutes() {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: "/", name: "dashboard", component: { template: "<div />" } },
+        { path: "/profile/notifications", name: "notification-history", component: { template: "<div />" } },
+        { path: "/profile/help", name: "help", component: { template: "<div />" } },
+      ],
+    });
+    router.push("/");
+    await router.isReady();
+
+    const wrapper = mount(Navbar, {
+      props: { workspaces, user, workspace: "demo", isDark: false },
+      global: { plugins: [pinia, router, Buefy] },
+    });
+
+    return { wrapper, router };
+  }
+
+  it("пункты присутствуют даже когда непрочитанных нет и колокольчик скрыт", async () => {
+    const { wrapper } = await mountNavbarWithHistoryRoutes();
+    const notificationsStore = useNotificationsStore();
+    notificationsStore.markAllRead("demo");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find(".tr-notifications-trigger").exists()).toBe(false);
+
+    const items = wrapper.findAll(".tr-user-dropdown .dropdown-item")
+      .map((item) => item.text());
+    expect(items.some((text) => text.includes("История уведомлений"))).toBe(true);
+    expect(items.some((text) => text.includes("Помощь"))).toBe(true);
+  });
+
+  it("клик по «История уведомлений» ведёт на named route", async () => {
+    const { wrapper, router } = await mountNavbarWithHistoryRoutes();
+
+    const item = wrapper.findAll(".tr-user-dropdown .dropdown-item")
+      .find((el) => el.text().includes("История уведомлений"));
+    await item.trigger("click");
+    await flushPromises();
+
+    expect(router.currentRoute.value.name).toBe("notification-history");
+  });
+
+  it("клик по «Помощь» ведёт на named route", async () => {
+    const { wrapper, router } = await mountNavbarWithHistoryRoutes();
+
+    const item = wrapper.findAll(".tr-user-dropdown .dropdown-item")
+      .find((el) => el.text().includes("Помощь"));
+    await item.trigger("click");
+    await flushPromises();
+
+    expect(router.currentRoute.value.name).toBe("help");
+  });
+});

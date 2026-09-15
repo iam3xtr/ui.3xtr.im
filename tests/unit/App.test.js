@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { createMemoryHistory, createRouter } from "vue-router";
+import { defineComponent, h } from "vue";
 import Buefy from "buefy";
 
 import App from "../../src/App.vue";
+import Navbar from "../../src/components/Navbar.vue";
 import { useAuthStore } from "../../src/stores/auth.js";
 import { useWorkspaceStore } from "../../src/stores/workspace.js";
+import { useDirtyExitGuard } from "../../src/composables/useDirtyExitGuard.js";
 
 // jsdom has no `matchMedia` — `Loader.vue` (mounted by any screen that uses
 // `useSimulatedLoading`) reads it on mount; App.vue itself does not, but its
@@ -43,7 +46,7 @@ const IconStub = { name: "icon", props: ["name"], template: "<span />" };
 // returns to `auth-login`, a successful demo-login returns to `dashboard`,
 // direct `/auth/*` URLs render the minimal (Sidebar-less) shell, and the
 // cycle repeats without a backend.
-async function mountApp(initialPath = "/") {
+async function mountApp(initialPath = "/", extraRoutes = []) {
   const pinia = createPinia();
   setActivePinia(pinia);
 
@@ -53,6 +56,7 @@ async function mountApp(initialPath = "/") {
     history: createMemoryHistory(),
     routes: [
       { path: "/", name: "dashboard", component: { template: "<div class=\"dashboard-stub\" />" } },
+      ...extraRoutes,
       { path: "/agents/", name: "agents", component: { template: "<div />" } },
       { path: "/agents/new/:step?", name: "agent-wizard", component: { template: "<div />" } },
       { path: "/conversations", name: "conversations", component: { template: "<div />" } },
@@ -133,5 +137,109 @@ describe("App.vue — kit-only auth cycle (Task A8.7)", () => {
     await wrapper.find(".tr-dropdown-danger").trigger("click");
     await flushPromises();
     expect(router.currentRoute.value.name).toBe("auth-login");
+  });
+});
+
+// Task A10.7 ("Смена контекста не переносит tenant data/form edits без
+// выбора"): switching the active workspace (or creating a new one) routes
+// through `dashboard` first, reusing the same `useDirtyExitGuard`
+// (`onBeforeRouteLeave`) any savable form already wires up — a dirty screen
+// must not lose input silently just because the workspace changed underneath
+// it, and the switch itself is not applied while the guard keeps the user on
+// the page ("Остаться").
+function makeDirtyFormRoute(isDirtyRef) {
+  return defineComponent({
+    setup() {
+      const guard = useDirtyExitGuard({
+        isDirty: () => isDirtyRef.value,
+        onSave: () => ({ ok: true }),
+        onDiscard: () => {
+          isDirtyRef.value = false;
+        },
+      });
+      return () => h("div", { class: "dirty-form-stub" }, [
+        h("span", { class: "active" }, String(guard.active.value)),
+        h("button", { class: "stay", onClick: guard.stay }),
+        h("button", { class: "discard", onClick: guard.confirmDiscard }),
+      ]);
+    },
+  });
+}
+
+describe("App.vue — изоляция при смене пространства (Task A10.7)", () => {
+  it("переключение пространства при чистой форме уходит на dashboard и применяется", async () => {
+    const isDirty = { value: false };
+    const { wrapper, router } = await mountApp("/dirty", [
+      { path: "/dirty", name: "dirty-form", component: makeDirtyFormRoute(isDirty) },
+    ]);
+
+    expect(router.currentRoute.value.name).toBe("dirty-form");
+
+    const navbar = wrapper.findComponent(Navbar);
+    navbar.vm.$emit("update:workspace", "trickster");
+    await flushPromises();
+
+    expect(router.currentRoute.value.name).toBe("dashboard");
+    expect(useWorkspaceStore().activeWorkspaceId).toBe("trickster");
+  });
+
+  it("грязная форма блокирует переключение пространства, пока не выбрано явное действие", async () => {
+    const isDirty = { value: true };
+    const { wrapper, router } = await mountApp("/dirty", [
+      { path: "/dirty", name: "dirty-form", component: makeDirtyFormRoute(isDirty) },
+    ]);
+
+    const navbar = wrapper.findComponent(Navbar);
+    navbar.vm.$emit("update:workspace", "trickster");
+    await flushPromises();
+
+    // The dirty-exit dialog is open and the switch has not been applied.
+    expect(wrapper.find(".dirty-form-stub .active").text()).toBe("true");
+    expect(router.currentRoute.value.name).toBe("dirty-form");
+    expect(useWorkspaceStore().activeWorkspaceId).toBe("demo");
+
+    await wrapper.find(".dirty-form-stub .stay").trigger("click");
+    await flushPromises();
+
+    // "Остаться" — the switch is abandoned, not applied underneath the edit.
+    expect(router.currentRoute.value.name).toBe("dirty-form");
+    expect(useWorkspaceStore().activeWorkspaceId).toBe("demo");
+  });
+
+  it("«Выйти без сохранения» отпускает форму и завершает переключение пространства", async () => {
+    const isDirty = { value: true };
+    const { wrapper, router } = await mountApp("/dirty", [
+      { path: "/dirty", name: "dirty-form", component: makeDirtyFormRoute(isDirty) },
+    ]);
+
+    const navbar = wrapper.findComponent(Navbar);
+    navbar.vm.$emit("update:workspace", "trickster");
+    await flushPromises();
+
+    await wrapper.find(".dirty-form-stub .discard").trigger("click");
+    await flushPromises();
+
+    expect(router.currentRoute.value.name).toBe("dashboard");
+    expect(useWorkspaceStore().activeWorkspaceId).toBe("trickster");
+  });
+
+  it("создание пространства проходит через тот же guard, что и обычное переключение", async () => {
+    const isDirty = { value: true };
+    const { wrapper, router } = await mountApp("/dirty", [
+      { path: "/dirty", name: "dirty-form", component: makeDirtyFormRoute(isDirty) },
+    ]);
+
+    const navbar = wrapper.findComponent(Navbar);
+    navbar.vm.$emit("create-workspace");
+    await flushPromises();
+
+    expect(router.currentRoute.value.name).toBe("dirty-form");
+    expect(useWorkspaceStore().workspaces).toHaveLength(3);
+
+    await wrapper.find(".dirty-form-stub .discard").trigger("click");
+    await flushPromises();
+
+    expect(router.currentRoute.value.name).toBe("dashboard");
+    expect(useWorkspaceStore().workspaces).toHaveLength(4);
   });
 });

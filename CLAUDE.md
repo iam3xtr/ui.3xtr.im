@@ -127,8 +127,14 @@ src/
   components/channels/  # Channel catalog nested under agent detail (`/agents/:id/channels`, Task A5.5)
   components/knowledge/ # Collection detail: route-driven shell + files/settings/statistics tabs (Task A5.6)
   components/conversations/ # Conversation detail: route-driven shell + history/settings tabs (Task A5.7)
-  components/workspace/ # Workspace tabs beyond Settings/Plans: usage, members, billing (Task A5.8)
-  components/profile/   # Profile shell + settings/security tabs (Task A5.9)
+  components/workspace/ # Workspace tabs beyond Settings/Plans: usage, members, billing (Task A5.8);
+                         #   Audit.vue (Task A10.8) is a capability-gated tab (role-based via
+                         #   `stores/workspace.js`'s `canViewAudit`), separate from the personal
+                         #   notification history under components/profile/ below
+  components/profile/   # Profile shell + settings/security tabs (Task A5.9); NotificationHistory.vue
+                         #   and Help.vue (Task A10.8) are two more permanent, route-backed tabs —
+                         #   the former reads the same `stores/notifications.js` fixture as the
+                         #   Navbar bell (Task A8.2), the latter is static reference content
   components/auth/      # Auth container + login/signup/forgot/verify/invite screens (Task A5.10)
   components/kit/       # UI Kit reference shell + its five route-driven sections: overview,
                          #   forms, tables, navigation-states, dialogs-overlays (Task A8.6)
@@ -162,6 +168,13 @@ src/
                          #   infra" below. `{ru,en,es}.js` must carry the exact same key paths
                          #   (checked by `tests/unit/locales/wizard.test.js`); `index.js` exposes
                          #   `getWizardDictionary(locale)`.
+  locales/common/        # Scoped RU/EN/ES dictionaries (Task A10.9) for the two cross-cutting
+                         #   pieces every A10 savable form reuses: `common/DirtyExitModal.vue`
+                         #   and `common/FormErrorSummary.vue`'s default title. Same non-kit-wide
+                         #   scope as `locales/wizard/`; driven by `stores/locale.js`'s
+                         #   `useLocaleStore()` (Navbar's "Язык" `b-select`), independent from
+                         #   the wizard's own per-draft `WIZARD_LOCALES`. `index.js` exposes
+                         #   `getCommonDictionary(locale)`.
 tests/unit/stores/               # Vitest unit tests for Pinia stores (Task A6.1); no network
 tests/unit/agents/                # Vitest component tests (Task A6.3, `@vue/test-utils`);
                                   #   no network — `npm run test:unit`
@@ -173,8 +186,13 @@ tests/unit/components/agents/wizard/ # Component tests for the wizard step conte
                                   #   (Task A9.5) lives in ExpertParameters.test.js
 tests/unit/components/            # Vitest component tests for top-level catalog screens
                                   #   (e.g. Agents.vue) — same runner/no-network rule
-tests/unit/locales/               # Completeness tests for `src/locales/wizard/**` dictionaries
-                                  #   (Task A9.5) — same key set across RU/EN/ES
+tests/unit/components/common/     # Component tests for shared `common/**` pieces, incl.
+                                  #   `LocaleWiring.test.js` (Task A10.9) covering
+                                  #   `DirtyExitModal.vue`/`FormErrorSummary.vue` against
+                                  #   `stores/locale.js` + `locales/common/**`
+tests/unit/locales/               # Completeness tests for `src/locales/wizard/**` (Task A9.5)
+                                  #   and `src/locales/common/**` (Task A10.9) dictionaries —
+                                  #   same key set across RU/EN/ES in each scope
 docs/design-system.md            # The design contract (canonical)
 docs/agent-migration-guide.md    # Icon/content-pattern mapping for consuming apps
 ```

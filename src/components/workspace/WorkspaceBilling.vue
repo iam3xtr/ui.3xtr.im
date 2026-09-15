@@ -24,7 +24,13 @@
 // either side yet).
 import AsyncState from "../common/AsyncState.vue";
 
+// Task A10.6: called out separately from BYOK, per `.plan`'s "Платформенная
+// оплата и BYOK имеют разные пояснения" — this billing surface is for the
+// platform's own tariff, not for agents configured with their own provider
+// key (whose response cost is billed directly by that provider, outside
+// this kit's fixture data either way).
 const emptyMessage = "Кит не хранит платёжные данные — история счетов и способы оплаты "
   + "появятся вместе с интеграцией платёжного провайдера в кабинете. Текущий тариф и "
-  + "лимиты пространства — на вкладке «Тариф».";
+  + "лимиты пространства — на вкладке «Тариф». Ответы агентов с собственным ключом "
+  + "провайдера (BYOK) сюда не входят — их оплачивает напрямую сам провайдер.";
 </script>

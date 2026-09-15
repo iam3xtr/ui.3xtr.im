@@ -190,8 +190,29 @@ function handleDeactivate(channel) {
   channelsStore.deactivateChannel(activeWorkspaceId.value, agentId.value, channel.id);
 }
 
+// Task A10.2: удаление канала подтверждается — «уточнить последствия
+// удаления сущностей перед подтверждением» (`.plan` Stage A10 «Явное
+// сохранение и безопасное редактирование»). Пауза (`handleDeactivate`) и
+// перехват (`handleActivate`/`TakeoverModal`) остаются мгновенными
+// командами без confirm — они не разрушают данные и обратимы обычной
+// повторной активацией, в отличие от удаления канала.
 function handleDelete(channel) {
-  channelsStore.deleteChannel(activeWorkspaceId.value, agentId.value, channel.id);
+  modalStore.confirm({
+    title: `Удалить канал «${channel.name}»?`,
+    message: channel.isEnabled
+      ? "Канал сейчас доставляет ответы агента — после удаления он "
+        + "перестанет отвечать в этом мессенджере без возможности "
+        + "восстановления. Подключить заново можно только как новый канал."
+      : "Канал будет удалён без возможности восстановления. Подключить "
+        + "заново можно только как новый канал.",
+    confirmText: "Удалить канал",
+    cancelText: "Отмена",
+    type: "is-danger",
+    hasIcon: true,
+    onConfirm: () => {
+      channelsStore.deleteChannel(activeWorkspaceId.value, agentId.value, channel.id);
+    },
+  });
 }
 
 watch(agentId, () => {

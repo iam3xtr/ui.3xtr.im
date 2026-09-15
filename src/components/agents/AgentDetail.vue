@@ -46,8 +46,9 @@ import NavbarMenu from "../common/NavbarMenu.vue";
 import NavbarTabs from "../common/NavbarTabs.vue";
 
 // Route-driven detail shell (Task A5.4; `agent-channels` tab added in
-// Task A5.5): resolves the agent by the `:id` route param and exposes it to
-// the `agent`/`agent-settings`/`agent-channels` child routes via their own
+// Task A5.5; `agent-knowledge` added in Task A10.3): resolves the agent by
+// the `:id` route param and exposes it to the `agent`/`agent-settings`/
+// `agent-channels`/`agent-knowledge` child routes via their own
 // `agentsStore.getAgent(...)` call — mirrors get.3xtr.im's
 // `agents/views/Agent.vue`, which likewise re-derives the agent in every tab
 // component instead of passing it down. Losing the agent mid-view (workspace
@@ -76,5 +77,6 @@ const tabs = computed(() => [
   { label: "Песочница", to: { name: "agent", params: { id: route.params.id } } },
   { label: "Настройки", to: { name: "agent-settings", params: { id: route.params.id } } },
   { label: "Каналы", to: { name: "agent-channels", params: { id: route.params.id } } },
+  { label: "Знания", to: { name: "agent-knowledge", params: { id: route.params.id } } },
 ]);
 </script>

@@ -51,3 +51,20 @@ describe("router — agent-wizard entry route (Task A9.2)", () => {
     expect(router.resolve("/agents/1").name).toBe("agent");
   });
 });
+
+// Task A10.8: named, route-backed help/notification-history/workspace-audit
+// surfaces — a permanent profile-menu entry and a workspace tab each resolve
+// to a real route, not a modal/tooltip with no addressable URL.
+describe("router — help, notification history and workspace audit routes (Task A10.8)", () => {
+  it("/profile/notifications resolves to notification-history", () => {
+    expect(router.resolve("/profile/notifications").name).toBe("notification-history");
+  });
+
+  it("/profile/help resolves to help", () => {
+    expect(router.resolve("/profile/help").name).toBe("help");
+  });
+
+  it("/workspace/audit resolves to workspace-audit", () => {
+    expect(router.resolve("/workspace/audit").name).toBe("workspace-audit");
+  });
+});

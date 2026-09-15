@@ -31,6 +31,7 @@
           maxlength="64"
           :disabled="isSubmitting"
           required
+          @input="markWorkspaceNameTouched"
         />
       </b-field>
 
@@ -91,7 +92,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 
@@ -105,7 +106,9 @@ import AuthPage from "./AuthPage.vue";
 // payload на бэкенд; кит не выполняет запрос вовсе (`stores/auth.js`,
 // `signup()` — фикстурный промис), поэтому здесь сохранён только
 // пользовательский эффект режима: поле «Название пространства» скрывается,
-// когда есть pending workspace-инвайт (см. `LoginView.vue`/`InviteView.vue`).
+// когда есть pending workspace-инвайт (см. `LoginView.vue`/`InviteView.vue`),
+// и предзаполняется редактируемым значением по имени, а не остаётся пустым
+// обязательным полем (Task A10.7 — см. `workspaceNameTouched` ниже).
 // Как и `LoginView.vue`, форма без подписей полей (`b-field` без `label`) —
 // это отличие auth-форм от остального кабинета (раздел 14), подпись для
 // скринридеров переносится в `aria-label` на `b-input`.
@@ -125,6 +128,29 @@ const form = reactive({
 });
 const errorMessage = ref("");
 const isSubmitting = ref(false);
+
+/**
+ * Editable default workspace name (Task A10.7, `.plan` "Пространство и
+ * регистрация без лишнего обязательного выбора" — «Self-registration
+ * формирует редактируемое default workspace name»): the field pre-fills
+ * from the first word of `form.name` as the person types it, so
+ * self-registration never blocks on an empty required field the person has
+ * to think up on the spot — but the moment they type into the workspace
+ * field themselves, the suggestion stops overwriting their edit.
+ */
+const workspaceNameTouched = ref(false);
+
+watch(() => form.name, (name) => {
+  if (workspaceNameTouched.value) {
+    return;
+  }
+  const firstWord = name.trim().split(/\s+/)[0] ?? "";
+  form.workspace = firstWord ? `Пространство ${firstWord}` : "";
+});
+
+function markWorkspaceNameTouched() {
+  workspaceNameTouched.value = true;
+}
 
 async function submit() {
   if (isSubmitting.value) {

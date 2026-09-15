@@ -10,6 +10,7 @@ import AdminRequests from "./components/administration/Requests.vue";
 import AdminTariffs from "./components/administration/Tariffs.vue";
 import AdminUsers from "./components/administration/Users.vue";
 import AgentDetail from "./components/agents/AgentDetail.vue";
+import AgentKnowledge from "./components/agents/AgentKnowledge.vue";
 import AgentPlayground from "./components/agents/AgentPlayground.vue";
 import AgentSettings from "./components/agents/AgentSettings.vue";
 import AgentWizard from "./components/agents/AgentWizard.vue";
@@ -35,10 +36,13 @@ import NavigationStates from "./components/kit/NavigationStates.vue";
 import Overview from "./components/kit/Overview.vue";
 import Tables from "./components/kit/Tables.vue";
 import NotFound from "./components/NotFound.vue";
+import ProfileHelp from "./components/profile/Help.vue";
+import ProfileNotificationHistory from "./components/profile/NotificationHistory.vue";
 import ProfileSecurity from "./components/profile/Security.vue";
 import ProfileSettings from "./components/profile/Settings.vue";
 import ProfileShell from "./components/profile/ProfileShell.vue";
 import Workspace from "./components/Workspace.vue";
+import WorkspaceAudit from "./components/workspace/Audit.vue";
 import WorkspacePlans from "./components/WorkspacePlans.vue";
 import WorkspaceSettings from "./components/WorkspaceSettings.vue";
 import WorkspaceBilling from "./components/workspace/WorkspaceBilling.vue";
@@ -132,6 +136,15 @@ const router = createRouter({
           path: "channels",
           name: "agent-channels",
           component: ChannelsView,
+          meta: { contentMode: "contained" },
+        },
+        // Task A10.3: default-collection знания агента after the wizard —
+        // reuses the same `/agents/:id/**` tab family as `settings`/`channels`
+        // above instead of a second route tree under `/knowledge`.
+        {
+          path: "knowledge",
+          name: "agent-knowledge",
+          component: AgentKnowledge,
           meta: { contentMode: "contained" },
         },
       ],
@@ -246,12 +259,25 @@ const router = createRouter({
           name: "workspace-billing",
           component: WorkspaceBilling,
         },
+        // Task A10.8 (`.plan` item 7, API Issue #109): capability-gated
+        // audit of owner/member/access/settings changes — a separate
+        // surface from the personal notification history below, not a
+        // second bell/feed. `Audit.vue` decides its own permission-denied
+        // presentation from `useWorkspaceStore().canViewAudit`.
+        {
+          path: "audit",
+          name: "workspace-audit",
+          component: WorkspaceAudit,
+        },
       ],
     },
 
     // Profile and security: a route-driven shell (Task A5.9), mirroring
     // Workspace.vue — `ProfileShell.vue` teleports its `NavbarTabs` into the
     // Navbar and both children share its `contentMode: "contained"`.
+    // `notifications`/`help` (Task A10.8) join this same shell/tab family —
+    // both are permanent profile-menu entries per `.plan` item 7, not new
+    // route trees of their own.
     {
       path: "/profile",
       component: ProfileShell,
@@ -266,6 +292,16 @@ const router = createRouter({
           path: "security",
           name: "security",
           component: ProfileSecurity,
+        },
+        {
+          path: "notifications",
+          name: "notification-history",
+          component: ProfileNotificationHistory,
+        },
+        {
+          path: "help",
+          name: "help",
+          component: ProfileHelp,
         },
       ],
     },

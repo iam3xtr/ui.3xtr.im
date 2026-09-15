@@ -111,11 +111,40 @@ export const useApiKeysStore = defineStore("apiKeys", () => {
     return `••••${tail}`;
   }
 
+  /**
+   * Удаляет ключ из хранилища воркспейса безвозвратно (Task A10.2) — отдельная
+   * мгновенная команда от «отвязать ключ от агента»
+   * (`stores/agents.js#detachApiKey`): удаление стирает сам сохранённый
+   * секрет и затрагивает любого агента, который на него ссылается, тогда как
+   * отвязка меняет только один агент, оставляя ключ в воркспейсе для
+   * остальных. Вызывающая сторона (`ApiKeySelect.vue`) обязана сначала
+   * отвязать всех ссылающихся агентов через `agentsStore.detachApiKey` —
+   * этот стор ничего не знает о `stores/agents.js`, чтобы не заводить
+   * цикл импортов (`agents.js` уже импортирует `apiKeys.js`).
+   *
+   * @param {string} workspaceId
+   * @param {string} id
+   */
+  function deleteKey(workspaceId, id) {
+    const workspaceKeys = apiKeysByWorkspace.value[workspaceId];
+
+    if (!workspaceKeys) {
+      return;
+    }
+
+    const index = workspaceKeys.findIndex((key) => key.id === id);
+
+    if (index !== -1) {
+      workspaceKeys.splice(index, 1);
+    }
+  }
+
   return {
     apiKeysByWorkspace,
     listByWorkspace,
     getKey,
     createKey,
     maskSecret,
+    deleteKey,
   };
 });

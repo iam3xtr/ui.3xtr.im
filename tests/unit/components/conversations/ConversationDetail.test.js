@@ -9,6 +9,7 @@ import { conversationPropertiesKey } from "../../../../src/composables/conversat
 import ConversationDetail from "../../../../src/components/conversations/ConversationDetail.vue";
 import History from "../../../../src/components/conversations/History.vue";
 import Settings from "../../../../src/components/conversations/Settings.vue";
+import { useConversationsStore } from "../../../../src/stores/conversations.js";
 import { useDemoStore } from "../../../../src/stores/demo.js";
 import { useWorkspaceStore } from "../../../../src/stores/workspace.js";
 
@@ -89,7 +90,7 @@ async function mountConversationDetail({ agentId = "1", conversationId = "1", de
   await flushPromises();
 
   return {
-    wrapper, router, propertiesOpen, openProperties, closeProperties,
+    wrapper, router, propertiesOpen, openProperties, closeProperties, pinia,
   };
 }
 
@@ -200,5 +201,93 @@ describe("ConversationDetail.vue — настройки третьей коло�
     await flushPromises();
 
     expect(openProperties).toHaveBeenCalledOnce();
+  });
+});
+
+describe("ConversationDetail.vue — конфликт handoff в композере (Task A10.5)", () => {
+  // Conversation 5 (agentId 1): escalated, owned by Анна Смирнова with an
+  // active lease — the current operator (Иван Петров, `profile.js`) cannot
+  // send until they claim it or the owner releases/expires.
+  it("отправка блокируется, когда диалог ведёт другой оператор — текст остаётся в поле", async () => {
+    const { wrapper, pinia } = await mountConversationDetail({ agentId: "1", conversationId: "5" });
+    setActivePinia(pinia);
+    const store = useConversationsStore();
+    const before = store.getConversation("demo", 1, 5).messages.length;
+
+    const input = wrapper.find(".tr-conversation-composer-input input");
+    await input.setValue("Секретный ответ клиенту");
+
+    wrapper.find('[aria-label="Отправить"]').element
+      .dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Анна Смирнова");
+    expect(wrapper.text()).toContain("Сообщение не отправлено");
+    expect(store.getConversation("demo", 1, 5).messages.length).toBe(before);
+    expect(input.element.value).toBe("Секретный ответ клиенту");
+  });
+
+  // Conversation 1 (agentId 1): escalated but unclaimed — sending is also
+  // blocked until "Взять диалог" is used, distinct from the "owned by
+  // another" conflict above (no owner name to blame).
+  it("отправка блокируется в незанятом эскалированном диалоге до claim", async () => {
+    const { wrapper, pinia } = await mountConversationDetail({ agentId: "1", conversationId: "1" });
+    setActivePinia(pinia);
+    const store = useConversationsStore();
+    const before = store.getConversation("demo", 1, 1).messages.length;
+
+    const input = wrapper.find(".tr-conversation-composer-input input");
+    await input.setValue("Пробуем ответить без claim");
+
+    wrapper.find('[aria-label="Отправить"]').element
+      .dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Сообщение не отправлено");
+    expect(store.getConversation("demo", 1, 1).messages.length).toBe(before);
+  });
+
+  // Conversation 6 (agentId 3): escalated, owned by the current operator —
+  // sending must work exactly as a non-escalated dialog would.
+  it("владелец активного lease отправляет сообщение как обычно", async () => {
+    const { wrapper, pinia } = await mountConversationDetail({ agentId: "3", conversationId: "6" });
+    setActivePinia(pinia);
+    const store = useConversationsStore();
+    const before = store.getConversation("demo", 3, 6).messages.length;
+
+    const input = wrapper.find(".tr-conversation-composer-input input");
+    await input.setValue("Разобрался, отвечаю клиенту");
+
+    wrapper.find('[aria-label="Отправить"]').element
+      .dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain("Сообщение не отправлено");
+    expect(store.getConversation("demo", 3, 6).messages.length).toBe(before + 1);
+    expect(input.element.value).toBe("");
+  });
+
+  // Claiming from the header immediately unblocks the composer for the same
+  // dialog — «Взять диалог»/«Вернуть агенту» and sending are separate
+  // commands, but claiming is what turns a blocked send into an allowed one.
+  it("после «Взять диалог» отправка в ранее незанятом диалоге проходит", async () => {
+    const { wrapper, pinia } = await mountConversationDetail({ agentId: "1", conversationId: "1" });
+    setActivePinia(pinia);
+    const store = useConversationsStore();
+
+    wrapper.find(".tr-conversation-handoff-action").element
+      .dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    await flushPromises();
+
+    const before = store.getConversation("demo", 1, 1).messages.length;
+    const input = wrapper.find(".tr-conversation-composer-input input");
+    await input.setValue("Теперь я веду диалог");
+
+    wrapper.find('[aria-label="Отправить"]').element
+      .dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    await flushPromises();
+
+    expect(store.getConversation("demo", 1, 1).messages.length).toBe(before + 1);
+    expect(wrapper.text()).not.toContain("Сообщение не отправлено");
   });
 });

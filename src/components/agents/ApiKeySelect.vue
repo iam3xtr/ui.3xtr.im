@@ -2,7 +2,7 @@
   <div class="tr-api-key-select">
     <b-dropdown v-model="localValue" aria-role="list" expanded>
       <template #trigger>
-        <button type="button" class="button tr-api-key-select__trigger">
+        <button :id="inputId" type="button" class="button tr-api-key-select__trigger">
           <span class="tr-api-key-select__trigger-label">{{ selectedLabel }}</span>
           <b-icon icon="chevron-down" size="is-small" />
         </button>
@@ -14,7 +14,19 @@
         :value="key.id"
         aria-role="listitem"
       >
-        {{ key.label }} — {{ apiKeysStore.maskSecret(key) }}
+        <span class="tr-api-key-select__item">
+          <span class="tr-api-key-select__item-label">
+            {{ key.label }} — {{ apiKeysStore.maskSecret(key) }}
+          </span>
+          <button
+            type="button"
+            class="tr-api-key-select__item-delete"
+            :aria-label="`Удалить ключ «${key.label}»`"
+            @click.stop.prevent="confirmDeleteKey(key)"
+          >
+            <b-icon icon="trash-can-outline" size="is-small" />
+          </button>
+        </span>
       </b-dropdown-item>
 
       <b-dropdown-item v-if="keys.length === 0" disabled aria-role="listitem">
@@ -89,6 +101,7 @@
 import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
 
+import { useAgentsStore } from "../../stores/agents.js";
 import { useApiKeysStore } from "../../stores/apiKeys.js";
 import { useModalStore } from "../../stores/modal.js";
 import { useWorkspaceStore } from "../../stores/workspace.js";
@@ -99,13 +112,22 @@ import { useWorkspaceStore } from "../../stores/workspace.js";
 // добавляются на лету через модалку, тем же способом, что
 // `channels/ChannelFormModal.vue`/`workspace/InviteMemberForm.vue` открывают
 // свои модалки через `useModalStore`. Отдельного экрана управления ключами
-// (переименование/удаление) пока нет — вне scope этого прохода.
+// (переименование) пока нет; удаление — `confirmDeleteKey` ниже (Task A10.2).
 const modalKey = "agent-byok-key-create";
+
+// Stage A10 review fix: optional `id` for the native trigger button below,
+// so `FormErrorSummary`'s `document.getElementById(field)?.focus()` jump
+// (Task A10.1) has a real focusable target — omitted by every consumer that
+// doesn't need one (e.g. the wizard's `ExpertParameters.vue`).
+defineProps({
+  inputId: { type: String, default: null },
+});
 
 const localValue = defineModel({ type: String, default: null });
 
 const modalStore = useModalStore();
 const apiKeysStore = useApiKeysStore();
+const agentsStore = useAgentsStore();
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId } = storeToRefs(workspaceStore);
 
@@ -140,5 +162,47 @@ function submit() {
 
   localValue.value = key.id;
   modalStore.close(modalKey);
+}
+
+/**
+ * Удаление сохранённого ключа (Task A10.2) — отдельная мгновенная команда от
+ * выбора ключа/сохранения формы модели, с собственным подтверждением:
+ * стирает секрет из `apiKeysStore` безвозвратно и, в отличие от отвязки
+ * одного агента (`AgentSettings.vue`'s «Отвязать ключ», ограниченного
+ * агентом текущей формы), может затронуть любого агента воркспейса, у
+ * которого этот ключ выбран. Confirm называет их по имени, а не обобщённым
+ * предупреждением, и явно перечисляет обе fixture-последствия — секрет
+ * пропадает у всех, ссылавшиеся агенты возвращаются к обычной модели.
+ *
+ * @param {import("../../stores/apiKeys.js").ApiKey} key
+ */
+function confirmDeleteKey(key) {
+  const affectedAgents = agentsStore.listAgentsUsingApiKey(activeWorkspaceId.value, key.id);
+  const affectedNames = affectedAgents.map((agent) => agent.name);
+
+  modalStore.confirm({
+    title: `Удалить ключ «${key.label}»?`,
+    message: affectedNames.length > 0
+      ? `Ключ и его собственная модель OpenRouter пропадут без возможности `
+        + `восстановления. Затронутые агенты вернутся к обычной модели без `
+        + `собственного ключа: ${affectedNames.join(", ")}.`
+      : "Ключ не используется ни одним агентом сейчас. Он пропадёт без "
+        + "возможности восстановления.",
+    confirmText: "Удалить ключ",
+    cancelText: "Отмена",
+    type: "is-danger",
+    hasIcon: true,
+    onConfirm: () => {
+      for (const agent of affectedAgents) {
+        agentsStore.detachApiKey(activeWorkspaceId.value, agent.id);
+      }
+
+      apiKeysStore.deleteKey(activeWorkspaceId.value, key.id);
+
+      if (localValue.value === key.id) {
+        localValue.value = null;
+      }
+    },
+  });
 }
 </script>
