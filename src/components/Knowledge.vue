@@ -118,11 +118,7 @@ import { COLLECTION_TYPES, useKnowledgeStore } from "../stores/knowledge";
 import { useDemoStore } from "../stores/demo";
 import { useModalStore } from "../stores/modal";
 import { useWorkspaceStore } from "../stores/workspace";
-import AsyncState from "./common/AsyncState.vue";
-import ListAsyncState from "./common/ListAsyncState.vue";
-import Loader from "./common/Loader.vue";
-import Toolbar from "./common/Toolbar.vue";
-import ToolbarDropdown from "./common/ToolbarDropdown.vue";
+import { AsyncState, ListAsyncState, Loader, Toolbar, ToolbarDropdown } from "@iam3xtr/vue";
 import CollectionFormModal from "./knowledge/CollectionFormModal.vue";
 
 // Каталог коллекций (Task A5.6) — теперь только каталог: детали коллекции

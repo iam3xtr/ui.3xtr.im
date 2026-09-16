@@ -137,11 +137,7 @@ import {
 } from "../stores/conversations";
 import { useDemoStore } from "../stores/demo";
 import { useWorkspaceStore } from "../stores/workspace";
-import AsyncState from "./common/AsyncState.vue";
-import ListAsyncState from "./common/ListAsyncState.vue";
-import Loader from "./common/Loader.vue";
-import Toolbar from "./common/Toolbar.vue";
-import ToolbarDropdown from "./common/ToolbarDropdown.vue";
+import { AsyncState, ListAsyncState, Loader, Toolbar, ToolbarDropdown } from "@iam3xtr/vue";
 
 // List screen (Task A5.7), routed at `/conversations`. Task A8.4 nests the
 // `conversation` route under `conversations-agent` (`/conversations/:agentId`,

@@ -112,7 +112,7 @@
 <script setup>
 import { onUnmounted, reactive, ref, watch } from "vue";
 
-import PageHeader from "../common/PageHeader.vue";
+import { PageHeader } from "@iam3xtr/vue/navigation";
 
 const form = reactive({
   name: "Консультант",

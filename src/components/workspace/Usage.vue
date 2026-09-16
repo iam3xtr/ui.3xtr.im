@@ -88,8 +88,7 @@ import { RouterLink } from "vue-router";
 import { useSimulatedLoading } from "../../composables/useSimulatedLoading";
 import { useDemoStore } from "../../stores/demo";
 import { useWorkspaceStore } from "../../stores/workspace";
-import AsyncState from "../common/AsyncState.vue";
-import Loader from "../common/Loader.vue";
+import { AsyncState, Loader } from "@iam3xtr/vue";
 
 // Overview tab (Task A5.8), routed at `/workspace/` — equivalent of
 // get.3xtr.im's `workspace/components/Usage.vue` (there: `<LLMSummary

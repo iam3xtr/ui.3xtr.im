@@ -14,8 +14,8 @@
 <script setup>
 import { RouterView } from "vue-router";
 
-import NavbarMenu from "./common/NavbarMenu.vue";
-import NavbarTabs from "./common/NavbarTabs.vue";
+import { NavbarMenu } from "@iam3xtr/vue";
+import { NavbarTabs } from "@iam3xtr/vue/navigation";
 
 /**
  * @type {{ label: string, to: import("vue-router").RouteLocationRaw }[]}

@@ -245,7 +245,7 @@ import { useToasterStore } from "../../stores/toaster";
 import { useWorkspaceStore } from "../../stores/workspace";
 import DirtyExitModal from "../common/DirtyExitModal.vue";
 import FormErrorSummary from "../common/FormErrorSummary.vue";
-import PageHeader from "../common/PageHeader.vue";
+import { PageHeader } from "@iam3xtr/vue/navigation";
 import ApiKeySelect from "./ApiKeySelect.vue";
 import ModelSelect from "./ModelSelect.vue";
 

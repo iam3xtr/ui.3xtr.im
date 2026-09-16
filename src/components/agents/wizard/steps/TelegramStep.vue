@@ -169,7 +169,7 @@ import { computed, onBeforeUnmount, ref } from "vue";
 import { classifyTelegramToken, useWizardStore } from "../../../../stores/wizard";
 import { buildTelegramIdentity, useChannelsStore } from "../../../../stores/channels";
 import WizardHint from "../WizardHint.vue";
-import Loader from "../../../common/Loader.vue";
+import { Loader } from "@iam3xtr/vue";
 
 // Шаг «Telegram» (Task A9.7, `.plan` шаг 6 «Telegram и вариант QR»). T1
 // («Способ 1») рендерится как явно обозначенный демо-макет — QR/«Открыть

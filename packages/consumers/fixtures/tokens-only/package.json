@@ -1,0 +1,11 @@
+{
+  "name": "consumer-tokens-only-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node check.mjs"
+  },
+  "dependencies": {
+    "@iam3xtr/ui": "__UI_TARBALL__"
+  }
+}

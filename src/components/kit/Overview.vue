@@ -135,9 +135,8 @@
 <script setup>
 import { ref } from "vue";
 
-import CopyPre from "../common/CopyPre.vue";
-import Loader from "../common/Loader.vue";
-import PageHeader from "../common/PageHeader.vue";
+import { CopyPre, Loader } from "@iam3xtr/vue";
+import { PageHeader } from "@iam3xtr/vue/navigation";
 import TariffSelector from "../TariffSelector.vue";
 
 const selectedTariffId = ref("superior");

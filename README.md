@@ -1,206 +1,101 @@
-# Trickster UI Kit for Buefy
+# Trickster UI Kit
 
-Эталонная реализация UI/UX-контракта личного кабинета Trickster
-(`get.3xtr.im`), а не отдельная витрина Buefy. Кит — работающая упрощённая
-копия кабинета без бэкенда: те же маршруты, та же анатомия разметки, те же
-имена классов, тот же иконочный набор. Правка дизайна выполняется в ките,
-проверяется на всех его экранах за один проход и переносится в кабинет через
-`npm run ui-kit:update` кабинета. Контракт целиком описан в
-[`docs/design-system.md`](docs/design-system.md).
+Trickster UI Kit — backend-less эталон интерфейса личного кабинета 3xtr.im.
+Он повторяет маршруты, анатомию разметки, классы и иконки кабинета, но
+использует только fixture-данные. Реальные API, авторизация, права и
+persistence остаются в get.3xtr.im.
 
-## Планируемые библиотеки A11
+## Архитектура
 
-Текущий kit ещё использует локальные исходники и прежний `ui-kit:update`
-контракт. После Stage A11 он станет первым потребителем двух приватных npm
-пакетов из GitHub Packages:
+- `packages/ui/` — git submodule `@iam3xtr/ui`: токены, Bulma/Buefy-тема,
+  логотип и SVG-ассеты.
+- `packages/vue/` — git submodule `@iam3xtr/vue`: переносимые Vue-компоненты
+  и composables.
+- `packages/consumers/` — изолированные проверки поставки npm-пакетов.
+- `src/` — маршруты, экранные компоненты и in-memory Pinia fixtures кита.
+- `docs/design-system.md` — действующий визуальный и компонентный контракт.
+- `docs/agent-migration-guide.md` — правила переноса контракта в кабинет.
+- `docs/release-process.md` — выпуск библиотек и требования к доступам.
 
-- [`iam3xtr/ui`](https://github.com/iam3xtr/ui) / `@iam3xtr/ui` — визуальная
-  основа: tokens, CSS/SCSS-тема, логотип и shared SVG/loader assets;
-- [`iam3xtr/vue`](https://github.com/iam3xtr/vue) / `@iam3xtr/vue` —
-  переносимые Vue-компоненты и framework-level composables для UI-состояний,
-  focus и overlays.
+Kit и внешние приложения подключают только опубликованную exact-пару из
+GitHub Packages. Сабмодули `packages/ui` и `packages/vue` нужны для
+разработки библиотек и release-скриптов; production-сборка kit не использует
+их как file-зависимости.
 
-`@iam3xtr/vue` не является местом для API-клиентов, Pinia stores, RBAC,
-маршрутов, fixture-данных, локалей мастера или доменной политики. Они остаются
-в приложениях. Позднее исходники библиотек будут подключены в этом репозитории
-как `packages/ui` и `packages/vue` Git submodules; пока сабмодулей нет.
+## Установка и запуск
 
-## Состав
+    git clone https://github.com/iam3xtr/ui.3xtr.im.git
+    cd trickster-ui-kit
+    npm install
+    npm run dev
 
-- `src/styles/_trickster-tokens.scss` — фирменные цвета, нейтральная палитра, типографика, отступы и геометрия.
-- `src/styles/trickster-buefy.scss` — конфигурация Bulma/Buefy, светлая и тёмная темы, базовые стили приложения. Это **единственный** файл со стилями проекта.
-- `src/router.js`, `src/navigation.js` — маршруты кита повторяют реальные пути кабинета (`/`, `/agents/**`, `/conversations/**`, `/knowledge/**`, `/workspace/**`, `/profile/**`, `/auth/**`, `/users`, `/providers`, `/models`, `/tariffs`, `/requests`, `/kit/**`, `/404`) и реестр навигации основных и административных разделов приложения.
-- `src/components/Dashboard.vue` — главный экран рабочего пространства; `src/components/NotFound.vue` — экран `/404` на контракте `.tr-async-state`.
-- `src/components/{Agents,Knowledge,Conversations}.vue` — каталоги/списки сущностей на общем контракте `Toolbar` + каталог карточек или `b-table`; каждый ведёт на свой route-driven detail:
-  - `src/components/agents/AgentWizard.vue` + `src/components/agents/wizard/**` — единственный route-driven мастер создания агента (`/agents/new/:step?`, Stage A9), семь смысловых шагов backend-less пути от боли клиента до запуска в Telegram; полный контракт и явная граница с downstream API/product-решениями (draft persistence, тарифная матрица, Telegram correlation) — в `docs/design-system.md` («Мастер создания агента: contract и границы downstream») и `docs/agent-migration-guide.md` (раздел 19);
-  - `src/components/agents/{AgentDetail,AgentPlayground,AgentSettings}.vue` — `/agents/:id` (песочница/настройки) и `src/components/channels/{ChannelsView,ChannelCard,ChannelFormModal,ChannelLimits,TakeoverModal}.vue` — `/agents/:id/channels`;
-  - `src/components/knowledge/{CollectionDetail,Files,Settings,Statistics,CollectionFormModal,KnowledgeFileFormModal}.vue` — `/knowledge/:id` и его вкладки настроек/статистики;
-  - `src/components/conversations/{ConversationDetail,History,Settings,ConversationHeader,MessageDeliveryStatus}.vue` — `/conversations/:agentId/:conversationId` и его настройки.
-- `src/components/{Workspace,WorkspaceSettings,WorkspacePlans}.vue` и `src/components/workspace/{Usage,Members,InviteMemberForm,WorkspaceBilling,Audit}.vue` — шесть вкладок `/workspace/*` (обзор, настройки, участники, тарифы, биллинг, аудит изменений пространства — Task A10.8).
-- `src/components/profile/{ProfileShell,Settings,Security,NotificationHistory,Help}.vue` — `/profile`, `/profile/security` (форма профиля с переключателями уведомлений, активные сеансы), `/profile/notifications` и `/profile/help` (постоянно доступная история уведомлений и контекстная помощь, Task A10.8).
-- `src/components/auth/{AuthPage,LoginView,SignupView,ForgotView,VerifyView,InviteView,GoogleButton,WorkspaceSelector}.vue` — `/auth/{login,signup,forgot,verify,invite}` на общем контейнере `AuthPage`, без сетевых запросов.
-- `src/components/kit/{KitShell,Overview,Forms,Tables,NavigationStates,DialogsOverlays}.vue` — витрина-справочник контрактов Stage A3, разделённая на пять маршрутных подразделов (Task A8.6): `KitShell.vue` — route-driven shell (`NavbarMenu`/`NavbarTabs` + `<RouterView>`), подразделы — `/kit/overview` (алиас `/kit`, кнопки/теги/уведомления/лимиты/загрузчик/тариф), `/kit/forms` (поля формы, `b-upload`), `/kit/tables` (`b-table`, пагинация), `/kit/navigation-states` (`Toolbar`, вкладки, эталонная матрица всех шести значений `DEMO_MODES` — `ready`/`loading`/`empty`/`error`/`permission-denied`/`partial` — для контрактов `ListAsyncState`/`AsyncState`/`partial`-баннера, Task A7.6) и `/kit/dialogs-overlays` (диалог подтверждения, тост, `b-loading`/`b-skeleton`, `b-sidebar`, `b-modal`).
-- `src/components/administration/{Users,Providers,Models,Tariffs,Requests}.vue` — пять облегчённых операторских каталогов (`/users`, `/providers`, `/models`, `/tariffs`, `/requests`, Task A8.3): `Toolbar` + `b-table` на том же demo-контракте, что остальные каталоги, без форм, permissions и API — граница и связь с полноценными операторскими разделами `get.3xtr.im` описаны в `docs/design-system.md` («Административные каталоги»).
-- `src/components/common/` — общие примитивы, которых нет в Buefy: `Toolbar`/`ToolbarSearch`/`ToolbarDropdown`/`MobileFilters` (поиск, фильтры и действия над списком), `NavbarMenu`/`NavbarTabs` (маршрутные вкладки раздела в навбаре через Teleport), `PageHeader`, `AsyncState`/`ListAsyncState` (состояния `loading`/`empty`/`no-results`/`error`/`permission-denied`), `CopyPre`, `TariffSummaryCard`, `Icon`, `Loader`, `DirtyExitModal`/`FormErrorSummary` (общий save/dirty/conflict-контракт форм, Task A10.1). Подробный контракт каждого — в [`docs/design-system.md`](docs/design-system.md#общие-компоненты).
-- `src/composables/` — `navbarMenu.js` (provide/inject target для `NavbarMenu`), `useFocusTrap.js` (возврат фокуса для мобильных `mobile-modal` панелей), `useSimulatedLoading.js` (демо-задержка кит-экранов), `useSavableForm.js`/`useDirtyExitGuard.js` (draft/save/reset и dirty-exit guard, переиспользуемые всеми savable-формами A10.1).
-- `src/stores/` — Pinia-сторы демо-состояния, все in-memory: `modal.js`/`toaster.js` — тонкие адаптеры над программным API Buefy (`b-modal`/`b-sidebar`/`b-dialog`/`b-toast`); `workspace.js`, `agents.js`, `channels.js`, `knowledge.js`, `conversations.js`, `members.js`, `profile.js`, `auth.js` — доменные фикстуры экранов Stage A5; `administration.js` — платформенные фикстуры пяти облегчённых операторских каталогов (Task A8.3), не связанные с одноимёнными per-workspace сторами; `wizard.js` — состояние мастера создания агента (Stage A9), scoped per-workspace draft в памяти текущей сессии, без persistence между перезагрузками; `locale.js` — kit-wide fixture-переключатель RU/EN/ES общих форм (Task A10.9, `src/locales/common/**`), независимый от `wizard.js`'s собственного `draft.locale`. Реального API кит не вызывает.
-- `src/assets/icons/` — обоснованный набор кастомных SVG-иконок (вендоры LLM и виды моделей), см. раздел «Иконки».
+Для разработки библиотек или запуска release-скриптов дополнительно получите
+сабмодули:
 
-## Целевая версия
+    git submodule update --init --recursive
+    npm install
 
-Шаблон ориентирован на:
+Не используйте git submodule update --remote. Изменение библиотеки выполняется
+в её собственном репозитории; после публикации новой версии обновляется
+точный dependency pin UI Kit.
 
-- Vue 3 (чистый JavaScript, без TypeScript — `<script setup>` без `lang="ts"`);
-- Buefy 3.x;
-- Bulma 1.x;
-- Dart Sass.
+## Команды
 
-Для старого проекта на Vue 2 / Buefy 0.x потребуется legacy-вариант импортов.
+    npm run dev
+    npm run build
+    npm run lint:style
+    npm run test:unit
+    node packages/consumers/scripts/run-matrix.mjs
+    npm run release:ui
+    npm run release:vue
+    npm run release:all
 
-## Иконки
+Матрица потребителей требует предварительного npm ci в packages/ui и
+packages/vue. После неё удалите их вложенные node_modules, чтобы
+file-зависимости кита не резолвили дублирующие peer-зависимости.
 
-UI-иконки — только Material Design Icons (`b-icon`, `@mdi/font`). Собственный
-SVG допускается исключительно там, где у MDI нет эквивалента: иконки
-вендоров LLM и иконки видов моделей. Полный реестр кастомных иконок с
-обоснованием каждой — в [`docs/design-system.md`](docs/design-system.md#иконки);
-карта соответствия «имя из набора кабинета → MDI-имя» — в
-[`docs/agent-migration-guide.md`](docs/agent-migration-guide.md). Иконка без
-записи в реестре в набор не попадает.
+Команды release:ui, release:vue и release:all по умолчанию работают как dry
+run с patch bump. Для релиза передайте -Execute; для minor или major задайте
+уровень явно. release:all выпускает UI, дожидается его workflow и только затем
+выпускает совместимый Vue. release:vue перед созданием тега проверяет, что
+точная версия UI уже опубликована в GitHub Packages.
+Для следующего patch prerelease используйте -Alpha: например, 0.1.1 станет
+0.1.2-alpha.
+Чтобы выпустить уже указанную в manifests версию без bump, используйте
+-ReleaseCurrent -Execute.
+Сочетание -ReleaseCurrent -Alpha выпускает текущую стабильную версию как
+prerelease: 0.1.1 станет 0.1.1-alpha.
 
-## Загрузчик
+## Действующие правила
 
-Индикация загрузки — один компонент `Loader` (`src/components/common/Loader.vue`)
-с тремя размерами (`inline`/`section`/`screen`), темозависимым цветом через
-`currentColor` и статичным вариантом при `prefers-reduced-motion`. Правила
-описаны в [`docs/design-system.md`](docs/design-system.md#загрузчик).
+- Стили не размещаются в src/**/*.vue. Единственный источник темы —
+  @iam3xtr/ui/styles/theme.scss; guard npm run lint:style это проверяет.
+- Иконки интерфейса — MDI. SVG допустимы только для зарегистрированных
+  логотипов LLM-вендоров и типов моделей; registry подключается один раз в
+  src/main.js через provideIconRegistry.
+- Общие компоненты импортируются из @iam3xtr/vue и @iam3xtr/vue/navigation.
+  Локальные src/components/common/ содержат только kit-специфичные
+  DirtyExitModal и FormErrorSummary.
+- Все fixture stores in-memory. Не добавляйте сетевые запросы, ключи,
+  производственные URL, RBAC или серверную бизнес-логику.
+- Новые визуальные правила документируйте в docs/design-system.md; изменение
+  имени иконки или alias — также в docs/agent-migration-guide.md.
 
-## Стили
+## Маршруты и публикация
 
-Стили проекта живут только в `src/styles/trickster-buefy.scss` (и подключаемом
-им `_trickster-tokens.scss`). Файл структурирован по разделам с баннерами и
-оглавлением в шапке (токены, shell, навигация, toolbar, вкладки, таблицы,
-формы, карточки и каталоги, состояния, оверлеи, тарифы, диалоги, утилиты,
-responsive). Блоков `<style>` в `.vue`-компонентах кита быть не должно — это
-правило, а не соглашение: новые компоненты не заводят собственных `<style>`,
-существующие исключения снимаются по `.plan` (Stage A2).
+Kit покрывает dashboard, агентов и каналы, знания, диалоги, workspace,
+профиль, auth, операторские каталоги, справочник /kit и /404. Полный реестр
+находится в src/router.js.
 
-`npm run lint:style` запускает Stylelint (запрещает новый `!important` и
-дублирование селекторов) и guard `scripts/no-component-styles.js`, который
-падает, если какой-либо `src/**/*.vue` содержит `<style`. Guard можно
-вызвать отдельно: `npm run guard:no-component-styles`. Обе проверки не
-требуют сети и подключены в CI (`.github/workflows/deploy-pages.yml`).
-Существующие переопределения specificity Bulma/Buefy, перенесённые as-is из
-кабинета, помечены `stylelint-disable-next-line declaration-no-important` с
-комментарием `Stage A3 debt` и снимаются в рамках Stage A3 (Buefy-first).
+Тема переключается document.documentElement.dataset.theme значением light или
+dark и в примерах сохраняется под ключом trickster-theme.
 
-## Установка
-
-```bash
-npm install buefy bulma
-npm install --save-dev sass
-```
-
-## Подключение
-
-В `src/main.js`:
-
-```js
-import { createApp } from "vue";
-import Buefy from "buefy";
-import App from "./App.vue";
-
-import "./styles/trickster-buefy.scss";
-
-createApp(App)
-  .use(Buefy)
-  .mount("#app");
-```
-
-Не подключайте одновременно готовый `buefy.css`: SCSS-файл уже собирает Bulma и Buefy с нужными переменными.
-
-## Переключение темы
-
-```js
-document.documentElement.dataset.theme = "light";
-document.documentElement.dataset.theme = "dark";
-```
-
-В примерах тема сохраняется в `localStorage` под ключом `trickster-theme`.
-
-## Основные решения
-
-### Brand
-
-```scss
-$primary: hsl(264, 52%, 60%); // #8E64CE
-```
-
-Зелёный и оранжевый из исходного логотипа не используются как фирменные цвета.
-
-Зелёный, жёлтый и красный остаются только семантическими цветами:
-
-- success;
-- warning;
-- danger.
-
-### Тёмная тема
-
-Тёмная тема построена на нейтральных серых цветах:
-
-- фон приложения: `#151515`;
-- sidebar/topbar: `#191919`;
-- основные поверхности: `#1d1d1d`;
-- вложенные поверхности: `#232323`;
-- границы: `#383838`.
-
-Синие оттенки в нейтральной палитре не используются.
-
-### Геометрия
-
-- базовый radius: `6px`;
-- карточки: `8px`;
-- шаг отступов: `4px`;
-- sidebar: `232px`;
-- topbar: `64px`.
-
-## Сборка standalone CSS
-
-```bash
-npx sass \
-  --load-path=node_modules \
-  src/styles/trickster-buefy.scss \
-  dist/trickster-buefy.css
-```
-
-Готовый CSS не привязан к Vue-приложению кита и годится для standalone-проверки
-классов вне `npm run dev`.
-
-## Публикация на GitHub Pages
-
-Проект автоматически собирается и публикуется из ветки `main` через
-`.github/workflows/deploy-pages.yml`.
-
-После загрузки репозитория на GitHub:
-
-1. Откройте `Settings → Pages`.
-2. В разделе `Build and deployment` выберите `Source: GitHub Actions`.
-3. Отправьте изменения в ветку `main` или вручную запустите workflow
-   `Deploy to GitHub Pages` на вкладке `Actions`.
-
-Workflow получает базовый путь сайта из настроек GitHub Pages, поэтому проект
-работает как в корне домена, так и по адресу вида
-`https://username.github.io/repository/`. Для опубликованной версии роутер
-автоматически использует hash-режим, чтобы внутренние страницы открывались без
-серверной настройки SPA fallback.
+GitHub Pages собирается из main через .github/workflows/deploy-pages.yml.
+Workflow устанавливает точные опубликованные пакеты из GitHub Packages с
+`GITHUB_TOKEN` и разрешением `packages: read`; checkout сабмодулей и отдельный
+cross-repository secret ему не нужны. Порядок выпуска пакетов, разграничение
+токенов и registry gate описаны в docs/release-process.md.
 
 ## Лицензия
 
-Проект распространяется по лицензии [MIT](LICENSE).
-
-## Рекомендации по применению
-
-- Используйте Buefy-компоненты для поведения, accessibility и интерактивности.
-- Используйте классы `tr-*` для оболочки приложения, dashboard-карточек и композиции.
-- Не задавайте background/text прямо внутри отдельных Vue-компонентов: используйте CSS variables.
-- Переключатель пространства размещайте в верхней панели и не скрывайте внутри настроек.
-- Для нового компонента сначала используйте существующие токены; новый цвет или radius добавляйте только при отсутствии подходящего.
+[MIT](LICENSE)

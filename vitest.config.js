@@ -21,5 +21,22 @@ export default defineConfig({
 
   test: {
     environment: "jsdom",
+    // Published @iam3xtr/vue exports SFC source files. Inline it (and its UI
+    // companion) so Vite transforms those .vue imports instead of letting
+    // Node externalize them as an unsupported extension.
+    server: {
+      deps: {
+        inline: ["@iam3xtr/ui", "@iam3xtr/vue"],
+      },
+    },
+    // Scope to this repo's own suite only (as `npm run test:unit` is
+    // documented to do in CLAUDE.md). Without this, vitest's default include
+    // glob also picks up `packages/ui/tests/**` and `packages/vue/tests/**`
+    // whenever those git submodules have their own `node_modules` installed
+    // (e.g. for a standalone `npm test` there) — those packages ship their
+    // own `vitest.config.js` with different environments/deps, which this
+    // root config does not apply, causing spurious failures unrelated to
+    // this repo's own tests.
+    include: ["tests/unit/**/*.test.js"],
   },
 });

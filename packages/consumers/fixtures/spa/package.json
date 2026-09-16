@@ -1,0 +1,24 @@
+{
+  "name": "consumer-spa-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@iam3xtr/ui": "__UI_TARBALL__",
+    "@iam3xtr/vue": "__VUE_TARBALL__",
+    "vue": "^3.5.39",
+    "vue-router": "^4.6.4",
+    "buefy": "^3.0.8",
+    "bulma": "^1.0.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "@vue/test-utils": "^2.5.0",
+    "jsdom": "^30.0.1",
+    "vite": "^6.0.5",
+    "vitest": "^4.1.11"
+  }
+}

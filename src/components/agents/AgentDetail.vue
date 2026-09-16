@@ -40,10 +40,8 @@ import { useSimulatedLoading } from "../../composables/useSimulatedLoading";
 import { useAgentsStore } from "../../stores/agents";
 import { useDemoStore } from "../../stores/demo";
 import { useWorkspaceStore } from "../../stores/workspace";
-import AsyncState from "../common/AsyncState.vue";
-import ListAsyncState from "../common/ListAsyncState.vue";
-import NavbarMenu from "../common/NavbarMenu.vue";
-import NavbarTabs from "../common/NavbarTabs.vue";
+import { AsyncState, ListAsyncState, NavbarMenu } from "@iam3xtr/vue";
+import { NavbarTabs } from "@iam3xtr/vue/navigation";
 
 // Route-driven detail shell (Task A5.4; `agent-channels` tab added in
 // Task A5.5; `agent-knowledge` added in Task A10.3): resolves the agent by

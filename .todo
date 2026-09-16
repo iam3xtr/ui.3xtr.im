@@ -1,392 +1,307 @@
-# TODO: Stage A10 — Повседневная работа с агентами и сквозной UX кабинета
+# TODO: Stage A11 — Две приватные библиотеки ui / vue, Git-сабмодули и npm-поставка
 
-Дата актуализации: 2026-09-15
+Дата актуализации: 2026-09-17
 
-Статус: Stage A10 закрыт 2026-09-15 после stage-review; все задачи приняты.
+Статус: Stage A11 завершён 2026-09-17; все задачи приняты после registry-проверки и проверок UI Kit.
 
 ## Назначение
 
-Этот файл декомпозирует только Stage A10: backend-less эталон ежедневной работы после мастера A9 — безопасное редактирование, знания, диагностика, диалоги, ресурсы, workspace, помощь и локализация. Вне scope — сеть, server persistence, изменение API enum, реальная ETag/lease/ingestion/billing policy, Telegram API и соседние репозитории.
+Этот файл декомпозирует только Stage A11: выделение визуального контракта в
+`@iam3xtr/ui` и переносимого Vue-слоя в `@iam3xtr/vue`, их подключение к
+UI Kit как pinned Git submodules и проверяемую npm-поставку. Вне scope —
+реализация get #25–#27, API, Pinia stores, маршруты, fixtures и продуктовая
+бизнес-логика. Проверка 2026-09-15: в `iam3xtr/ui` и `iam3xtr/vue` нет
+открытых Issues; get #24 закрыт, get #25–#27 остаются открытыми внешними
+задачами и не дублируются здесь.
 
-Проверка дублей 2026-09-13: открыты только Issues #1 (release artifact) и #2 (сбор UI-багов) `iam3xtr/ui.3xtr.im`; отдельных Issues, дублирующих A10, нет. API #17/#87/#103/#106/#109/#114–#118 остаются внешним workstream.
+## Repository foundation
 
-## Forms and configuration
+### Ownership, manifests and submodules
 
-### Save, dirty and conflict contract
+### [P0] Task A11.1. Зафиксировать границы пакетов и подключить pinned submodules
 
-### [P0] Task A10.1. Ввести fixture-контракт сохранения и dirty-exit форм
+Статус: done — 2026-09-17 подтверждены submodules, publish manifests и registry-поставка опубликованной пары `0.1.1-alpha`; UI Kit больше не использует file-зависимости для runtime-сборки.
 
-Статус: done
+Источник: Stage A11 `.plan`, разделы «Репозитории, границы и источники истины» и «Разработка через сабмодули».
 
-Источник: Stage A10 `.plan`, «Явное сохранение и безопасное редактирование».
-
-Описание: Настройки агента, знаний, каналов, workspace и профиля должны различать чистую форму, правки, pending, success, error и conflict, не теряя ввод при неудаче или выходе.
-
-Уточнённые требования:
-
-- Независимые операции пароля, ключа, профиля и конфигурации не становятся одной транзакцией.
-- Повторный submit в pending не создаёт второй fixture-эффект; unknown timeout требует сверить состояние.
-- Dirty-exit для route/workspace/locale предлагает «Сохранить / Выйти без сохранения / Остаться»; conflict сохраняет локальную копию.
-
-План реализации:
-
-1. Инвентаризировать формы и добавить минимальный shared fixture-adapter состояний без сети.
-2. Подключить save, field errors, keyboard summary и guard выхода.
-3. Написать tests pending/error/conflict/retry/dirty navigation.
-
-Область:
-
-- `src/components/{agents,knowledge,channels,workspace,profile}/**`
-- `src/components/{WorkspaceSettings,WorkspacePlans}.vue`
-- `src/composables/**`
-- `src/stores/**`
-- `tests/unit/{agents,components,stores}/**`
-
-Критерии приёмки:
-
-- Ошибка не очищает ввод, первая ошибка достижима клавиатурой.
-- Правки не пропадают без явного выбора пользователя.
-- Tests фиксируют idempotent submit и conflict без auto-overwrite.
-
-### [P0] Task A10.2. Отделить мгновенные команды от сохранения агента и каналов
-
-Статус: done
-
-Источник: Stage A10 `.plan`, «Явное сохранение и безопасное редактирование»; S2 Stage A9.
-
-Описание: Пауза, handoff, отвязка и смена ключа должны быть отдельными командами с собственным результатом; конфигурация работающего агента применяется только после save.
+Описание: Создать воспроизводимую основу для двух библиотек: `ui` владеет визуальным контрактом, `vue` — переиспользуемыми Vue-примитивами. UI Kit должен ссылаться ровно на два доступных SHA, а не на локальные копии или движущиеся ветки.
 
 Уточнённые требования:
 
-- Маска ключа не редактируется как секрет; удаление ключа и отвязка от агента имеют разные последствия.
-- Save объясняет влияние на следующие ответы, но не создаёт live/draft-версии или историю промптов.
-- Destructive confirm называет реальные fixture-последствия без вымышленного Undo/каскада.
+- Проверить назначение private repos и доступность `@iam3xtr/ui`/`@iam3xtr/vue` до переноса исходников.
+- Оба manifest задают version, exports, files, repository и publishConfig; корневой kit остаётся `private`.
+- В `packages/ui` и `packages/vue` добавляются gitlinks конкретных SHA; `.gitmodules` не содержит credentials.
+- В `vue` не допускаются API, Pinia, router, fixtures, product URLs, RBAC и доменные локали; циклической зависимости `ui ↔ vue` нет.
 
 План реализации:
 
-1. Актуализировать AgentSettings, ChannelsView и action contracts stores.
-2. Добавить confirmation-copy и S2-проекции мгновенных действий.
-3. Покрыть pause/resume, key detach/delete, confirm и duplicate actions.
+1. Описать ownership, public-boundary и initial manifests/README в каждом library repo.
+2. Подключить оба репозитория в kit как submodules и зафиксировать SHA, layout и команды init/update.
+3. Добавить проверки чистого clone, missing SHA/access и отсутствие secret/file/workspace ссылок в publish manifests.
 
 Область:
 
-- `src/components/agents/{AgentSettings,AgentDetail,ModelSelect,ApiKeySelect}.vue`
-- `src/components/channels/**`
-- `src/stores/{agents,apiKeys,channels}.js`
-- `tests/unit/{agents,components,stores}/**`
+- `iam3xtr/ui`: `package.json`, README, package configuration
+- `iam3xtr/vue`: `package.json`, README, package configuration
+- UI Kit: `.gitmodules`, `packages/ui`, `packages/vue`, `package.json`, docs
 
 Критерии приёмки:
 
-- Save не выполняет мгновенную команду и наоборот.
-- Confirm называет только затрагиваемые fixture-сущности.
-- Component/store tests проходят без сети.
+- Чистый clone UI Kit с `git submodule update --init --recursive` восстанавливает ровно два pinned SHA.
+- Library manifests готовы к publish и не публикуют secrets, fixtures, app sources или `node_modules`.
+- Документированы ownership, отсутствие обратной зависимости и порядок работы с веткой внутри submodule.
 
-## Knowledge lifecycle
+## UI package
 
-### Post-wizard sources
+### Tokens, theme and assets
 
-### [P0] Task A10.3. Продолжить работу со знаниями агента через default collection A9
+### [P0] Task A11.2. Выпустить публичный контракт @iam3xtr/ui
 
-Статус: done
+Статус: done — 2026-09-17 `@iam3xtr/ui@0.1.1-alpha` подтверждён в GitHub Packages; UI Kit собирается с его registry-артефактом.
 
-Источник: Stage A10 `.plan`, «Знания после завершения мастера»; Stage A9 A9.4.
+Источник: Stage A11 `.plan`, «Публичный контракт @iam3xtr/ui»; managed stylesheets UI Kit.
 
-Описание: Из detail агента пользователь добавляет, редактирует, повторяет обработку и безопасно удаляет материалы той же default collection, не создавая новую при каждом визите.
+Описание: Перенести единственные рукописные tokens/theme и shared visual assets в UI-пакет с устойчивыми public exports. Потребитель должен отдельно выбирать tokens-only или полную Buefy/Bulma тему без дублирования global CSS.
 
 Уточнённые требования:
 
-- Простой путь не требует collection, embedding profile или chunk parameters; общие коллекции остаются expert surface.
-- Различаются upload, processing, ready, partial, error, limit и unknown; неподтверждённый процент не рисуется.
-- Убрать связь, удалить source и удалить collection — разные действия с доступными impacted agents.
+- Tokens-only не включает reset, Vue/Buefy runtime и глобальную тему кабинета.
+- Полная тема, SCSS entrypoints и assets имеют документированные exports без deep import в `src`.
+- Пути SVG, logo, loader и шрифтов работают при произвольном application base path; MDI подключается явно и единожды.
+- Пакет не включает fixtures, `.env`, build secrets или вторую копию theme.
 
 План реализации:
 
-1. Связать AgentDetail/Knowledge с существующей `collectionId` и source actions.
-2. Добавить states/retry/replace/remove и предложение повторить sandbox.
-3. Покрыть повторный вход, одинаковые имена, partial/error и delete impact.
+1. Перенести tokens, тему и approved assets с origin path/commit в `ui`; определить exports и `sideEffects`.
+2. Настроить сборку CSS/SCSS и asset paths, включая tokens-only consumer.
+3. Добавить tests/pack inspection для exports, content allowlist, base path и отсутствия Vue runtime в tokens-only.
 
 Область:
 
-- `src/components/{Agents,Knowledge}.vue`
-- `src/components/agents/**`
-- `src/components/knowledge/**`
-- `src/stores/{agents,knowledge,wizard}.js`
-- `tests/unit/{components,stores}/**`
+- `iam3xtr/ui`: `src/styles/**`, `src/assets/**`, package build, tests, README
+- UI Kit: adapters/import points только после готовности пакета
 
 Критерии приёмки:
 
-- Повторный визит использует ID-связь и не создаёт второй collection.
-- Error/partial/unknown не выглядят ready, доступное исправление видно рядом.
-- Удаление не затрагивает чужие collections/agents.
+- `@iam3xtr/ui` собирает tokens-only, полную тему и documented SCSS/assets exports.
+- Установка packed tarball вне workspace не использует absolute kit paths и не подтягивает Vue/Buefy для tokens-only.
+- Проверки build/style/pack и asset/base-path consumer test проходят.
 
-## Agent operations
+## Vue package
 
-### Dashboard diagnostics
+### Component and composable API
 
-### [P0] Task A10.4. Собрать непустой dashboard вокруг S2-причин и исправлений
+### [P0] Task A11.3. Сформировать переносимый API @iam3xtr/vue
 
-Статус: done
+Статус: done — 2026-09-17 `@iam3xtr/vue@0.1.1-alpha` подтверждён в GitHub Packages; Vitest UI Kit inline-трансформирует его SFC exports и 602 unit tests проходят.
 
-Источник: Stage A10 `.plan`, «Ежедневный dashboard и диагностика агента»; Stage A9 A9.6.
+Источник: Stage A11 `.plan`, «Публичный контракт @iam3xtr/vue»; `docs/design-system.md` раздел common components.
 
-Описание: После A9 dashboard сначала показывает «Требует внимания», затем последние агенты, диалоги и метрики с периодом и временем обновления.
+Описание: Выделить общие примитивы и framework-level composables в Vue-пакет без привязки к приложению. Потребитель получает документированные exports, props/events/slots и доступность, но сохраняет собственные stores, router, контент и локали.
 
 Уточнённые требования:
 
-- Пустой dashboard сохраняет вход A9; draft продолжается, новый агент создаётся тем же мастером.
-- Attention покрывает incomplete setup, knowledge, channel, handoff и limit; ошибка одного channel не скрывает рабочие остальные.
-- Unknown, zero, empty и error различаются; delivery не называется качеством помощи.
+- В scope: Icon, Loader, AsyncState, ListAsyncState, PageHeader, CopyPre, Toolbar family, NavbarMenu/Tabs, presentation TariffSummaryCard и общие composables.
+- Vue, Buefy и Vue Router (только navigation exports) — compatible peer dependencies и externalized runtime; пакет не вызывает `createApp`/`app.use`.
+- Core import не требует router shell, `window` или `document`; browser-side listeners имеют lifecycle cleanup.
+- Нет `@/src` aliases, vite-svg-loader requirement, Pinia/API/fixtures/route URL или wizard locales в published output.
 
 План реализации:
 
-1. Добавить dashboard selector из agents/channels/knowledge/conversations/resources fixtures.
-2. Отрисовать cards с конкретным route/action, period и timestamp.
-3. Покрыть S2 partial failure, resume draft, empty/error/unknown metrics.
+1. Зафиксировать inventory и public API каждого компонента/composable, включая props/events/slots/a11y и translation adapter boundary.
+2. Перенести core и navigation exports в `vue` с library build, asset registry и peer ranges, сохранив явный setup Buefy/icons.
+3. Добавить component/API, SSR-import/hydration и cleanup tests; описать JSDoc/IDE contract.
 
 Область:
 
-- `src/components/{Dashboard,Agents}.vue`
-- `src/stores/{agents,channels,knowledge,conversations,wizard,workspace}.js`
-- `src/styles/trickster-buefy.scss`
-- `tests/unit/components/{Dashboard,Agents}.test.js`
+- `iam3xtr/vue`: `src/components/**`, `src/composables/**`, registry, build, tests, README
+- `iam3xtr/ui`: peer compatibility and documented theme contract
 
 Критерии приёмки:
 
-- Каждая attention card ведёт к исправлению или объяснимому blocker.
-- Partial channel failure не отключает работающего агента.
-- Метрики не подменяют unknown нулём.
+- Public exports импортируются без kit aliases, Pinia/router shell или browser globals на SSR.
+- Peer matrix не устанавливает вторую Vue/тему; Buefy/icon setup является явным.
+- Component, accessibility, SSR/hydration and listener-cleanup tests проходят.
 
-### Conversation handoff and delivery
+## Kit adoption
 
-### [P0] Task A10.5. Дополнить очередь диалогов handoff, lease и delivery states
+### Imports and single source of truth
 
-Статус: done
+### [P1] Task A11.4. Перевести UI Kit на пакеты ui и vue
 
-Источник: Stage A10 `.plan`, «Диалоги и работа оператора»; API Issues #87/#103.
+Статус: done — 2026-09-17 UI Kit подключён к точным registry-зависимостям `@iam3xtr/ui@0.1.1-alpha` и `@iam3xtr/vue@0.1.1-alpha`; lockfile содержит их resolved URLs и integrity, без file:-links.
+(`packages/ui`, `packages/vue`, symlink через `npm install`, без nested `node_modules` в сабмодулях —
+иначе дублируется `vue-router`, ломая `RouterLink`-контракт `NavbarTabs`/`PageHeader`/
+`TariffSummaryCard`). `src/main.js` подключает `@iam3xtr/ui/styles/theme.scss` и строит icon
+registry из `@iam3xtr/ui/assets/icons/**` через `provideIconRegistry`; `App.vue`'s `navbarMenuKey`
+теперь импортируется из `@iam3xtr/vue` (не из своего больше не существующего composable) — это
+было необходимо, иначе `NavbarMenu`/`NavbarTabs` из пакета инжектировались бы по другому Symbol и
+молча не рендерились. Все 39 экранов/сторов, использовавших `common/{Icon,Loader,AsyncState,
+ListAsyncState,CopyPre,Toolbar,ToolbarDropdown,ToolbarSearch,MobileFilters,NavbarMenu}.vue` и
+`common/{NavbarTabs,PageHeader,TariffSummaryCard}.vue`, переключены на `@iam3xtr/vue`/
+`@iam3xtr/vue/navigation`; `src/components/common/` хранит только некит-специфичные
+`DirtyExitModal.vue`/`FormErrorSummary.vue`, которые в пакет не переносились. Удалены как вторая
+редактируемая копия: `src/styles/trickster-buefy.scss`, `src/styles/_trickster-tokens.scss`,
+`src/assets/icons/**`, `src/assets/logo.svg`, `src/assets/loader-mono*.svg`,
+`src/composables/navbarMenu.js`. `npm run lint:style` упростён до `guard:no-component-styles`
+(Stylelint для kit-local SCSS больше не нужен — стилей не осталось; линт темы теперь только в
+`packages/ui`). `npm run build`, `npm run lint:style`/`guard:no-component-styles` и все 673
+Vitest-теста (`npm run test:unit`) проходят; `git diff --check` чист. `docs/design-system.md` и
+`docs/agent-migration-guide.md` обновлены на факт переключения (включая явную пометку, что
+`get.3xtr.im`'s `ui-kit:update`/`ui-kit.lock.json` теперь рассинхронизированы до отдельной задачи
+миграции кабинета — get.3xtr.im#27) и CLAUDE.md — на новые "Styling rule"/"Icons"/"Loader"/
+"Structure"/"Downstream sync" разделы. `get.3xtr.im` не трогался — вне области этой задачи.
 
-Описание: List/detail диалогов дают понятную очередь участия, владение handoff и безопасные действия без имитации несогласованного server routing.
+Источник: Stage A11 `.plan`, «Переключение кита и последующий перенос кабинета».
+
+Описание: Сделать UI Kit первым consumer выпущенных library sources, сохранив его страницы, fixtures, маршруты и A9/A10 journeys. После миграции общая тема и примитивы имеют одну редактируемую реализацию в submodules.
 
 Уточнённые требования:
 
-- «Взять диалог»/«Вернуть агенту» — отдельные fixture-команды; конфликт не отправляет чужой текст.
-- queued/sending/delivered/read/failed/cancelled различаются; retry есть лишь в retryable-state.
-- URL, mobile return, selected dialog и filters сохраняют контекст; unavailable объект имеет безопасный выход.
+- Kit импортирует только public exports и не сохраняет вторую редактируемую копию перенесённых styles/assets/common primitives.
+- Page-specific сценарии, Pinia fixtures, router, demo state и adapters остаются в kit и не публикуются.
+- No-component-styles guard остаётся рабочим для kit и library boundaries; не подключаются одновременно legacy и package theme.
+- Старый directory sync не удаляется и продолжает обслуживать немигрированных потребителей до get #27.
 
 План реализации:
 
-1. Расширить conversation fixtures owner/lease/delivery без API claims.
-2. Обновить controls, conflict copy и draft-message preservation.
-3. Покрыть filters, lease expiry, retry guard, routes и unavailable detail.
+1. Переключить styles/assets/common imports на package exports и удалить только подтверждённо заменённые локальные исходники.
+2. Адаптировать kit shell/navigation/slots к public Vue API без переноса domain logic.
+3. Обновить unit/component tests, Vite/scripts/CI и проверить отсутствие duplicated CSS/Vue/runtime imports.
 
 Область:
 
-- `src/components/Conversations.vue`
-- `src/components/conversations/**`
-- `src/stores/conversations.js`
-- `src/router.js`
-- `tests/unit/components/{Conversations,conversations/**}.test.js`
+- UI Kit: `src/**`, `package.json`, lockfile, Vite/scripts/CI, tests
+- `iam3xtr/ui`, `iam3xtr/vue`: public export fixes only
 
 Критерии приёмки:
 
-- Handoff owner/lease не выводятся из времени сообщения.
-- Non-retryable action недоступен и не меняет fixture-state.
-- Конфликт сохраняет текст и предлагает обновить состояние.
+- Kit build/test/style guards используют оба пакета и не находят второй editable source общих primitives/theme.
+- Все существующие routes, fixtures и A9/A10 journeys сохраняются без сетевых вызовов.
+- Старый sync contract не ломается до отдельного downstream migration.
 
-## Workspace and resources
+## Delivery verification
 
-### Resource limits and billing semantics
+### Packed and registry consumers
 
-### [P1] Task A10.6. Нормализовать resources, limits и BYOK fixture-представление
+### [P1] Task A11.5. Проверить pair delivery через tarball, registry и consumer matrix
 
-Статус: done
+Статус: done — 2026-09-17 tarball-матрица сохранена, а опубликованная registry-пара дополнительно подтверждена точными `npm view` запросами и чистой registry-установкой UI Kit.
+consumer fixtures (`fixtures/spa` — Vue SPA/Vite/Vue Router/Buefy, `fixtures/tokens-only`,
+`fixtures/ssr-hydration` — server render + jsdom hydration без Nuxt, `fixtures/peer-mismatch`
+— негативный сценарий) и `scripts/run-matrix.mjs`, который пакует обе библиотеки `npm pack`,
+устанавливает каждый fixture в изолированную директорию вне workspace (только по
+`file:<tarball>`, без symlink — проверяется явно) и прогоняет их build/test/check. Проверены
+также два registry-сценария без учётных данных: `npm view vue@0.0.0-does-not-exist`
+(существующий пакет, несуществующая версия) и `npm view @iam3xtr/ui --registry
+https://npm.pkg.github.com` без токена — оба дают чистый 404, что документирует
+неразличимость "нет пакета" и "нет доступа" на GitHub Packages. Все 8 сценариев проходят
+(`node packages/consumers/scripts/run-matrix.mjs`). Реальная публикация в registry не
+выполнялась — нет write-доступа в этом окружении и это отдельное операционное действие;
+`packages/consumers/README.md` фиксирует compatibility matrix (единственная рекомендуемая
+пара `@iam3xtr/ui@^0.2.0`/`@iam3xtr/vue@^0.2.0`), порядок публикации (сначала ui, затем vue),
+процедуру partial-publish recovery и rollback (никогда не unpublish, только новая версия +
+сдвиг рекомендации) и требование exact versions/lockfile в одном consumer PR. Добавлена
+"Releasing"-секция в `packages/ui/README.md` и `packages/vue/README.md`; этот текст
+закоммичен и запушен в рамках Task A11.6 ("ci: add scoped CI and release workflows",
+`packages/ui`/`packages/vue`), не отдельным коммитом A11.5.
+Побочная находка при прогоне: `npm ci` внутри `packages/ui`/`packages/vue` (нужен, чтобы
+собрать/протестировать их автономно) оставляет там nested `node_modules`, из-за чего кит
+резолвит второй `vue-router` через `file:`-symlink и `npm run test:unit` даёт 111 ложных
+падений — задокументировано в `packages/consumers/README.md` ("Do not leave ... installed") и
+`CLAUDE.md`; корневой `vitest.config.js` также обновлён (`test.include:
+["tests/unit/**/*.test.js"]`), поскольку без явного include он неявно подхватывал
+`packages/*/tests/**`, если у сабмодулей есть свой `node_modules` — это соответствует
+задокументированному в CLAUDE.md факту, что `test:unit` — это `tests/unit/**`, а не факту
+поведения конфига. `npm run build`, `npm run lint:style`, `npm run test:unit` (602/602) и
+`git diff --check` чисты после `rm -rf packages/{ui,vue}/node_modules`. `docs/design-system.md`
+и `CLAUDE.md` обновлены (ссылка на `packages/consumers/`, команда матрицы, структура). Область
+`iam3xtr/ui`/`iam3xtr/vue` ограничена README; никаких изменений в их exports/contract-тестах
+не потребовалось — pack/exports контракт уже был закрыт A11.2/A11.3.
 
-Источник: Stage A10 `.plan`, «Ресурсы, расходы и тарифные возможности»; API Issue #106.
+Источник: Stage A11 `.plan`, «Разработка через сабмодули и воспроизводимый checkout» и «Версии, публикация и права CI».
 
-Описание: Workspace plans/billing и обзор агента показывают одинаковые лимиты, период и расход без вымышленных денег, прогнозов или API-полей.
+Описание: Доказать, что package pair работает вне workspace и не зависит от локальных symlink, checkout или unpublished source. Рекомендованная пара версий выпускается и обновляется согласованно, но без ложного обещания атомарной registry-транзакции.
 
 Уточнённые требования:
 
-- Сохраняются ключи `workspace_members`, `agents`, `knowledge_collections`, `knowledge_objects`, `channels`, `knowledge_extracted_bytes`, `active_conversations_monthly`.
-- Zero, unlimited, unknown, exhausted и temporary error имеют разные text states; unknown не рисует 0%.
-- Platform billing и BYOK объясняются раздельно; create entry остаётся видимым при limits/pagination.
+- Consumer tests устанавливают `npm pack` tarballs вне workspace, затем точную registry-пару без git clone библиотек.
+- Проверяются Vue SPA, Nuxt SSR/hydration, tokens-only, peer incompatibility, missing package/SHA/access и отсутствие duplicate CSS/Vue.
+- Сначала выпускается ui, затем compatible vue; partial publish не обновляет consumer recommendation, опубликованная версия не перезаписывается.
+- Exact versions и lockfile обновляются одним consumer PR; `latest`, branch и submodule не используются как consumer dependencies.
 
 План реализации:
 
-1. Привести workspace/agent selectors к одному fixture schema и formatters.
-2. Обновить Plans/Billing/agent overview со state-specific copy.
-3. Добавить tests всех limit states и ключей.
+1. Добавить isolated consumer fixtures and pack/registry matrix for both libraries.
+2. Зафиксировать compatibility matrix, recommended pairs, failed-second-publish recovery and rollback procedure.
+3. Выполнить clean-install evidence для tarball/registry и negative access/peer scenarios.
 
 Область:
 
-- `src/components/{WorkspacePlans,Workspace}.vue`
-- `src/components/workspace/{Usage,WorkspaceBilling}.vue`
-- `src/components/agents/**`
-- `src/stores/{workspace,models,apiKeys}.js`
-- `tests/unit/{components,stores}/**`
+- `iam3xtr/ui`: pack/release tests and docs
+- `iam3xtr/vue`: pack/release tests and docs
+- UI Kit: integration consumer fixtures and lockfile
 
 Критерии приёмки:
 
-- Семь ключей имеют корректные единицы и период.
-- Unknown/zero/unlimited/error различимы текстом.
-- UI не обещает стоимость/прогноз без данных.
+- Packed and registry consumers проходят с exact compatible pair; tokens-only remains runtime-independent.
+- SSR/hydration и SPA tests не показывают browser-global, asset, peer или duplicate-runtime failure.
+- Partial release/revert и отказ доступа имеют documented safe outcome without changing consumer pair.
 
-### Workspace context and registration
+### CI permissions, release workflow and operational docs
 
-### [P1] Task A10.7. Уточнить W1/W2-контекст, signup и invite fixtures
+### [P1] Task A11.6. Настроить защищённый выпуск и задокументировать эксплуатационный контракт
 
-Статус: done
+Статус: done — 2026-09-17 release workflows публикуют prerelease с dist-tag, Vue проверяет опубликованный UI; Pages workflow устанавливает registry-пару с `packages: read` и не checkout'ит сабмодули.
+(`.github/workflows/ci.yml`, `.github/workflows/release.yml`, запушено в оба submodule
+repo): `ci.yml` — `contents: read`, `npm ci`/lint/build (ui)/`npm test`/`npm pack
+--dry-run` на каждый push/PR; `release.yml` — триггер только по тегу `vX.Y.Z`, job
+`release` под GitHub `environment: release` — единственное место, где запрошен
+`packages: write`, с guard'ами «тег ≡ `package.json` version» и «версия уже
+опубликована» перед `npm publish` (immutable tag/version policy). `iam3xtr/vue`'s
+`file:../ui` devDependency восстанавливается в CI отдельным sibling-checkout `iam3xtr/ui`
+через `CROSS_REPO_READ_TOKEN` (`contents: read`, чужой repo — default `GITHUB_TOKEN`
+для этого недостаточен). UI Kit's `deploy-pages.yml` дополнен pinned
+`submodules: recursive` checkout (без `--remote`) тем же `CROSS_REPO_READ_TOKEN`,
+поскольку `@iam3xtr/ui`/`@iam3xtr/vue` — `file:packages/{ui,vue}`-зависимости, а не
+registry-пакеты. `packages/consumers/README.md` получил раздел «CI, release workflow and
+credentials»: полное разделение credentials (`GITHUB_TOKEN` только в release job,
+`CROSS_REPO_READ_TOKEN` только `contents: read`, без `packages:write`), denied-access
+diagnostics (fail checkout / `403` на publish без скрытого fallback), явное указание,
+что реальная публикация и провижининг secrets/`environment` reviewers — админская
+операция вне этого репозитория. `CLAUDE.md` ("Deployment", реестр `packages/consumers/`)
+и `README.md` обеих библиотек ("Releasing") обновлены ссылками на этот раздел без
+дублирования нормативного текста; get #25–#27 остаются отдельным downstream handoff,
+не помечены выполненными. Проверки: YAML пяти workflow-файлов валиден (node
+`yaml`/`js-yaml` parse), `npm run lint:style`, `npm run build` и `git diff --check` кита
+проходят; `git diff --check` в обоих submodule чист. Никаких secrets/токенов в файлах —
+только `${{ secrets.* }}` ссылки.
 
-Источник: Stage A10 `.plan`, «Пространство и регистрация без лишнего обязательного выбора»; API Issue #17.
+Источник: Stage A11 `.plan`, «Версии, публикация и права CI» и «Документация и проверяемый выпуск»; get #25–#27.
 
-Описание: Workspace остаётся ненавязчивым default context, но tenant isolation, invite и смена пространства должны быть прозрачными и безопасными.
+Описание: Сделать release и checkout воспроизводимыми и безопасными, а границы пакетов — понятными для kit и downstream consumers. Права Git, package registry и publication разделяются; credentials не попадают в репозиторий или logs.
 
 Уточнённые требования:
 
-- Self-registration формирует редактируемое default workspace name и передаёт поле fixture-контракту.
-- Invite не спрашивает имя workspace и не создаёт tenant приглашённому.
-- Switch изолирует selection/history/forms; team link не выдаёт права и не создаёт workspace.
+- CI использует pinned checkout без `--remote`; cross-repo submodule read и packages read/write разделены по минимальным правам.
+- `packages:write` доступен только доверенному release context; secrets отсутствуют в `.gitmodules`, `.npmrc`, artifacts и logs.
+- README/CLAUDE/design-system/migration guide обновляются только по фактически перенесённым exports и ownership; нормативные копии не дублируются.
+- get #25–#27 получают package handoff после опубликованной пары; их реализация не входит в Stage A11.
 
 План реализации:
 
-1. Актуализировать workspace selector/navigation и signup/invite flows.
-2. Добавить default-name, expired/retry/validation states и switch cleanup guards.
-3. Покрыть registration/invite/no-extra-workspace и isolation tests.
+1. Создать release workflows с clean checkout, test/guard/build/pack/consumer gates and immutable tag/version policy.
+2. Configure and test scoped credentials, denied-access diagnostics, pair publication and rollback/recovery.
+3. Update library and kit documentation for layout, exports, submodule/release/rollback commands and downstream handoff.
 
 Область:
 
-- `src/components/{Navbar,Workspace}.vue`
-- `src/components/auth/**`
-- `src/components/workspace/**`
-- `src/stores/{workspace,auth}.js`
-- `tests/unit/{components,stores}/**`
+- `iam3xtr/ui`: workflows, docs, release configuration
+- `iam3xtr/vue`: workflows, docs, release configuration
+- UI Kit: CI/submodule configuration, README, `CLAUDE.md`, `docs/design-system.md`, `docs/agent-migration-guide.md`, `.plan`
 
 Критерии приёмки:
 
-- Invite-flow не создаёт owner workspace и не отправляет поле workspace.
-- Один workspace не перегружает путь выбором, несколько имеют switcher.
-- Смена контекста не переносит tenant data/form edits без выбора.
-
-Отложено (решение пользователя, ревью Stage A10, 2026-09-15): `InviteView.vue`
-не получил отдельные expired/retry/validation states, обещанные шагом 2 плана
-реализации выше — сейчас один общий статус "invalid" на просроченное/отозванное/
-уже использованное приглашение и только общий `demoStore.isError` AsyncState без
-invite-специфичного retry. Буквальные acceptance-критерии этой задачи не
-нарушены (invite всё ещё не создаёт tenant и не отправляет поле `workspace`).
-Разделение состояний — отдельная будущая задача, не часть A10.7.
-
-## Help, history and accessibility
-
-### Help, notifications and workspace audit
-
-### [P1] Task A10.8. Добавить route-backed помощь, notification history и workspace audit fixture
-
-Статус: done
-
-Источник: Stage A10 `.plan`, «Повторно доступная помощь и две разные истории»; API Issue #109.
-
-Описание: После исчезновения bell пользователь сохраняет путь к истории уведомлений и помощи, не смешивая персональную ленту с workspace audit.
-
-Уточнённые требования:
-
-- History поддерживает all/unread, pagination, read-all snapshot и per-recipient read; read не удаляет запись.
-- Empty, error/retry, deleted target и retention — отдельные states; history не называется полным audit.
-- Audit показывает только разрешённые actor/action/time/gaps и никогда password/key/payload.
-
-План реализации:
-
-1. Добавить named routes, profile/help navigation и fixture screens/selectors.
-2. Расширить notifications fixtures и capability-gated audit presentation.
-3. Покрыть unread snapshot, isolation, pagination, retention и secret absence.
-
-Область:
-
-- `src/components/{Navbar}.vue`
-- `src/components/profile/**`
-- `src/components/workspace/**`
-- `src/components/common/**`
-- `src/stores/{notifications,profile,workspace}.js`
-- `src/router.js`
-- `src/navigation.js`
-- `tests/unit/{components,stores}/**`
-
-Критерии приёмки:
-
-- History доступна при zero unread, bell всё ещё может скрываться.
-- Read одного recipient не меняет другого.
-- Audit не раскрывает секреты и объясняет отсутствие данных/прав.
-
-### Locales, accessibility and journey evidence
-
-### [P1] Task A10.9. Распространить scoped RU/EN/ES и accessibility-contract на A10 screens
-
-Статус: done
-
-Источник: Stage A10 `.plan`, «RU/EN/ES и доступность».
-
-Описание: Общие cross-cutting компоненты A10 (save/dirty-exit, error summary) и переключатель языка имеют одинаковый набор RU/EN/ES key paths; все client surfaces A10 не зависят от цвета, hover или мыши для обязательных действий.
-
-Сужено по факту реализации (решение пользователя, ревью Stage A10, 2026-09-15): RU/EN/ES scope — `common/DirtyExitModal.vue`, `common/FormErrorSummary.vue` и управляющий ими переключатель языка в `Navbar.vue`, а не все перечисленные ниже экраны целиком. Остальные A10 client surfaces (dashboard, agents/detail/settings, playground, channels, conversations/detail, knowledge/detail/settings, workspace/*, profile/security, auth, help/history) остаются фиксированным русским текстом — тот же принцип «kit остаётся без kit-wide i18n infra» (`CLAUDE.md`), которым уже ограничен scope wizard-словарей A9.5. Accessibility-contract (icon-only names, focus, keyboard) остаётся в scope для всех перечисленных экранов без сужения.
-
-Уточнённые требования:
-
-- Перевод не меняет user data, instructions, response language, money или rights; `/kit`/administration вне scope.
-- Icon-only actions имеют accessible names; overlays возвращают focus, multiline не submit-ится случайно, pagination keyboard-accessible.
-- Manual light/dark/mobile/zoom matrix документируется диагностически, не как acceptance gate.
-
-План реализации:
-
-1. Добавить scoped dictionaries/adapter без kit-wide i18n library — для общих save/dirty-exit/error-summary компонентов, не для каждого экрана.
-2. Обновить accessible labels, focus/error/overlay semantics и responsive contract — на всех перечисленных экранах.
-3. Написать locale key parity и accessibility regression tests.
-
-Область:
-
-- `src/components/{Dashboard,Agents,Conversations,Knowledge,Navbar}.vue`
-- `src/components/{agents,channels,conversations,knowledge,workspace,profile,auth}/**`
-- `src/locales/**`
-- `src/styles/trickster-buefy.scss`
-- `tests/unit/**`
-
-Критерии приёмки:
-
-- RU/EN/ES dictionaries охватывают общие save/dirty-exit/error-summary компоненты и переключатель языка, с одинаковыми ключами, не переводят user data.
-- Critical save/error/overlay/pagination paths работают с keyboard и текстовым статусом на всех перечисленных экранах.
-- Нет новых `<style>` в Vue и глобальной i18n-зависимости.
-
-## Contract and verification
-
-### A10 journeys and downstream boundaries
-
-### [P1] Task A10.10. Зафиксировать daily-work пути и границы kit/API контракта
-
-Статус: done
-
-Источник: Stage A10 `.plan`, «Завершение пользовательских путей и документация».
-
-Описание: Документация описывает реализованные daily-work surfaces как fixture specification, отделяя их от API, permissions и бизнес-результатов.
-
-Уточнённые требования:
-
-- Документируются journeys: исправить ответ через знания, восстановить channel, handoff, limit, notification и следующий агент — включая fallback/error.
-- Таблица расхождений различает kit/get/API; route/states/locales не попадают в CSS allowlist автоматически.
-- `docs/ux-review-2026-09-11.md` и его разделы 8/9 не редактируются; `CHANGELOG.md` не создаётся.
-
-План реализации:
-
-1. Обновить docs только по фактической реализации A10.1–A10.9.
-2. Зафиксировать accessibility diagnostics, API dependencies и отсутствие сети/persistence.
-3. Сверить docs с tests, router и managed stylesheets.
-
-Область:
-
-- `docs/design-system.md`
-- `docs/agent-migration-guide.md`
-- `README.md`
-- `.plan`
-- `tests/unit/**`
-
-Критерии приёмки:
-
-- Docs не выдают fixture за production integration или business result.
-- Каждый journey имеет экран, действие и безопасный fallback.
-- После реализации проходят `npm run test:unit`, `npm run lint:style`, `npm run guard:no-component-styles`, `npm run build`, `git diff --check`.
+- Release workflow publishes only validated immutable versions and separates checkout/package permissions.
+- Clean CI proves allowed install and denied access without leaking credentials.
+- Docs describe actual package API and ownership; get #25–#27 are linked as downstream work without being marked complete.

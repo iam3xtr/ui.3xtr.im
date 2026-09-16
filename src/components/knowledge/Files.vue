@@ -121,9 +121,7 @@ import { useDemoStore } from "../../stores/demo";
 import { useKnowledgeStore } from "../../stores/knowledge";
 import { useModalStore } from "../../stores/modal";
 import { useWorkspaceStore } from "../../stores/workspace";
-import Loader from "../common/Loader.vue";
-import ListAsyncState from "../common/ListAsyncState.vue";
-import Toolbar from "../common/Toolbar.vue";
+import { Loader, ListAsyncState, Toolbar } from "@iam3xtr/vue";
 import KnowledgeFileFormModal from "./KnowledgeFileFormModal.vue";
 
 // Files tab (Task A5.6), routed at `/knowledge/:id`. Adding a source is

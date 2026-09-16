@@ -1,0 +1,8 @@
+[submodule "packages/ui"]
+	path = packages/ui
+	url = https://github.com/iam3xtr/ui.git
+	branch = main
+[submodule "packages/vue"]
+	path = packages/vue
+	url = https://github.com/iam3xtr/vue.git
+	branch = main

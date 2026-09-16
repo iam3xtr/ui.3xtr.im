@@ -231,8 +231,7 @@ import { useProfileStore } from "../stores/profile";
 import { getLimitsNeedingAttention, useWorkspaceStore } from "../stores/workspace";
 import { useWizardStore, WIZARD_STEPS } from "../stores/wizard";
 
-import AsyncState from "./common/AsyncState.vue";
-import Loader from "./common/Loader.vue";
+import { AsyncState, Loader } from "@iam3xtr/vue";
 
 // Demo-режим (Stage A7, Task A7.5): та же схема, что у каталогов Task A7.3 —
 // `Loader` на загрузку, прямой `AsyncState` на permission-denied/error,

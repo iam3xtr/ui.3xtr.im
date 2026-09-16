@@ -31,7 +31,7 @@
 </template>
 
 <script setup>
-import PageHeader from "../common/PageHeader.vue";
+import { PageHeader } from "@iam3xtr/vue/navigation";
 
 // Route-backed «Помощь» (Task A10.8, `.plan` item 7: "Контекстная помощь
 // доступна из постоянного пункта меню профиля/помощи и соответствующего

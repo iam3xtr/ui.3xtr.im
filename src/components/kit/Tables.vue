@@ -109,7 +109,7 @@
 <script setup>
 import { ref } from "vue";
 
-import PageHeader from "../common/PageHeader.vue";
+import { PageHeader } from "@iam3xtr/vue/navigation";
 
 const paginationPage = ref(1);
 

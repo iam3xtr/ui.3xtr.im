@@ -16,7 +16,7 @@
 <script setup>
 import { RouterLink } from "vue-router";
 
-import AsyncState from "./common/AsyncState.vue";
+import { AsyncState } from "@iam3xtr/vue";
 
 // `/404` and the catch-all fallback (see router.js) both render this screen
 // instead of the generic SectionPlaceholder — Task A5.3 requires a useful

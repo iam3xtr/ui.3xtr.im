@@ -11,8 +11,8 @@
 <script setup>
 import { RouterView } from "vue-router";
 
-import NavbarMenu from "../common/NavbarMenu.vue";
-import NavbarTabs from "../common/NavbarTabs.vue";
+import { NavbarMenu } from "@iam3xtr/vue";
+import { NavbarTabs } from "@iam3xtr/vue/navigation";
 
 // Route-driven shell for `/kit` (Task A8.6), mirroring `ProfileShell.vue`/
 // `Workspace.vue`: a bare wrapper that only teleports `NavbarTabs` into the

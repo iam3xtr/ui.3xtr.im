@@ -79,9 +79,7 @@ import { computed } from "vue";
 import { useSimulatedLoading } from "../../composables/useSimulatedLoading";
 import { useDemoStore } from "../../stores/demo";
 import { getAuditLogFor, useWorkspaceStore } from "../../stores/workspace";
-import AsyncState from "../common/AsyncState.vue";
-import Loader from "../common/Loader.vue";
-import ListAsyncState from "../common/ListAsyncState.vue";
+import { AsyncState, Loader, ListAsyncState } from "@iam3xtr/vue";
 
 // Workspace audit (Task A10.8, `.plan` item 7, API Issue #109): a capability-
 // gated tab separate from the personal notification feed

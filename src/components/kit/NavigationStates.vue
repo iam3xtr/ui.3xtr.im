@@ -213,11 +213,8 @@ import { computed, reactive, ref } from "vue";
 
 import { DEMO_MODE_LABELS, useDemoStore } from "../../stores/demo";
 import { useToasterStore } from "../../stores/toaster";
-import AsyncState from "../common/AsyncState.vue";
-import ListAsyncState from "../common/ListAsyncState.vue";
-import PageHeader from "../common/PageHeader.vue";
-import Toolbar from "../common/Toolbar.vue";
-import ToolbarDropdown from "../common/ToolbarDropdown.vue";
+import { AsyncState, ListAsyncState, Toolbar, ToolbarDropdown } from "@iam3xtr/vue";
+import { PageHeader } from "@iam3xtr/vue/navigation";
 
 const activeTab = ref(0);
 const toolbarDemoQuery = ref("");

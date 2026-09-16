@@ -1,0 +1,21 @@
+{
+  "name": "consumer-ssr-hydration-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "vitest run"
+  },
+  "dependencies": {
+    "@iam3xtr/ui": "__UI_TARBALL__",
+    "@iam3xtr/vue": "__VUE_TARBALL__",
+    "vue": "^3.5.39",
+    "buefy": "^3.0.8"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "@vue/server-renderer": "^3.5.39",
+    "jsdom": "^30.0.1",
+    "vite": "^6.0.5",
+    "vitest": "^4.1.11"
+  }
+}

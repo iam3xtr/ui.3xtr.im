@@ -95,9 +95,8 @@ import { storeToRefs } from "pinia";
 import { useAuthStore } from "../../stores/auth";
 import { useDemoStore } from "../../stores/demo";
 import { useWorkspaceStore } from "../../stores/workspace";
-import AsyncState from "../common/AsyncState.vue";
+import { AsyncState, Loader } from "@iam3xtr/vue";
 import AuthPage from "./AuthPage.vue";
-import Loader from "../common/Loader.vue";
 
 const route = useRoute();
 const router = useRouter();

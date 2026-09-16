@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Guard: fails when any src/**/*.vue file still contains a <style block.
 //
-// Stage A2 requires all component styling to live in
-// src/styles/trickster-buefy.scss — no <style> blocks in Vue components.
-// This script needs no network access; it only walks the local filesystem.
+// Stage A2 requires all component styling to live in the managed stylesheet
+// (packages/ui's trickster-buefy.scss / theme.scss since Task A11.4) — no
+// <style> blocks in Vue components. This script needs no network access; it
+// only walks the local filesystem.
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -34,12 +35,12 @@ for (const file of walk(srcDir)) {
 }
 
 if (violations.length > 0) {
-  console.error("no-component-styles: found <style> blocks outside trickster-buefy.scss:");
+  console.error("no-component-styles: found <style> blocks outside the managed stylesheet:");
   for (const file of violations) {
     console.error(`  - ${file}`);
   }
   console.error(
-    `\n${violations.length} file(s) violate Stage A2: move component rules into src/styles/trickster-buefy.scss.`
+    `\n${violations.length} file(s) violate Stage A2: move component rules into packages/ui's trickster-buefy.scss/theme.scss.`
   );
   process.exit(1);
 }

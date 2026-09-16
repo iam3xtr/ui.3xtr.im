@@ -43,8 +43,7 @@ import {
   getResourceLimitLabel,
   useWorkspaceStore,
 } from "../stores/workspace";
-import AsyncState from "./common/AsyncState.vue";
-import Loader from "./common/Loader.vue";
+import { AsyncState, Loader } from "@iam3xtr/vue";
 import TariffSelector from "./TariffSelector.vue";
 
 // Demo-режим (Stage A7, Task A7.5): loading/permission-denied/error через

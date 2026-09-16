@@ -8,10 +8,15 @@
     "build": "vite build",
     "preview": "vite preview",
     "guard:no-component-styles": "node scripts/no-component-styles.js",
-    "lint:style": "stylelint \"src/**/*.{css,scss}\" && npm run guard:no-component-styles",
-    "test:unit": "vitest run"
+    "lint:style": "npm run guard:no-component-styles",
+    "test:unit": "vitest run",
+    "release:ui": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/release-packages.ps1 -Package ui",
+    "release:vue": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/release-packages.ps1 -Package vue",
+    "release:all": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/release-packages.ps1 -Package all"
   },
   "dependencies": {
+    "@iam3xtr/ui": "0.1.1-alpha",
+    "@iam3xtr/vue": "0.1.1-alpha",
     "@mdi/font": "^7.4.47",
     "buefy": "^3.0.8",
     "bulma": "^1.0.4",

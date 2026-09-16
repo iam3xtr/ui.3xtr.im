@@ -166,9 +166,7 @@ import { useDemoStore } from "../../stores/demo";
 import { useKnowledgeStore } from "../../stores/knowledge";
 import { useModalStore } from "../../stores/modal";
 import { useWorkspaceStore } from "../../stores/workspace";
-import AsyncState from "../common/AsyncState.vue";
-import ListAsyncState from "../common/ListAsyncState.vue";
-import Loader from "../common/Loader.vue";
+import { AsyncState, ListAsyncState, Loader } from "@iam3xtr/vue";
 
 // «Знания» agent-detail tab (Task A10.3, `.plan` Stage A10 «Знания после
 // завершения мастера»), routed at `/agents/:id/knowledge` — nested under

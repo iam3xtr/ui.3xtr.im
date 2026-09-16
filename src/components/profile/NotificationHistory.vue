@@ -127,10 +127,8 @@ import { useDemoStore } from "../../stores/demo";
 import { useNotificationsStore } from "../../stores/notifications";
 import { useToasterStore } from "../../stores/toaster";
 import { useWorkspaceStore } from "../../stores/workspace";
-import AsyncState from "../common/AsyncState.vue";
-import Loader from "../common/Loader.vue";
-import ListAsyncState from "../common/ListAsyncState.vue";
-import PageHeader from "../common/PageHeader.vue";
+import { AsyncState, Loader, ListAsyncState } from "@iam3xtr/vue";
+import { PageHeader } from "@iam3xtr/vue/navigation";
 
 // Route-backed «История уведомлений» (Task A10.8, `.plan` item 7): a
 // permanent profile-menu entry (`Navbar.vue`'s user dropdown) over the same

@@ -87,10 +87,8 @@ import { useDemoStore } from "../../stores/demo";
 import { useModalStore } from "../../stores/modal";
 import { useProfileStore } from "../../stores/profile";
 import { useToasterStore } from "../../stores/toaster";
-import AsyncState from "../common/AsyncState.vue";
-import Loader from "../common/Loader.vue";
-import ListAsyncState from "../common/ListAsyncState.vue";
-import PageHeader from "../common/PageHeader.vue";
+import { AsyncState, Loader, ListAsyncState } from "@iam3xtr/vue";
+import { PageHeader } from "@iam3xtr/vue/navigation";
 
 // Security tab (Task A5.9), routed at `/profile/security` — cabinet
 // equivalent: `profile/components/Security.vue`, minus its password-change

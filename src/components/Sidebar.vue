@@ -39,7 +39,7 @@ import {
   mainNavigationItems,
 } from "../navigation";
 import { useWorkspaceStore } from "../stores/workspace";
-import TariffSummaryCard from "./common/TariffSummaryCard.vue";
+import { TariffSummaryCard } from "@iam3xtr/vue/navigation";
 
 const route = useRoute();
 const workspaceStore = useWorkspaceStore();

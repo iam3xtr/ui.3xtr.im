@@ -22,7 +22,7 @@
 // get.3xtr.im's own `workspace/components/WorkspaceBilling.vue` (which
 // likewise renders one `AsyncState`/comingSoon block, no billing API on
 // either side yet).
-import AsyncState from "../common/AsyncState.vue";
+import { AsyncState } from "@iam3xtr/vue";
 
 // Task A10.6: called out separately from BYOK, per `.plan`'s "Платформенная
 // оплата и BYOK имеют разные пояснения" — this billing surface is for the

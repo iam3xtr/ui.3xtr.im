@@ -89,11 +89,7 @@ import { computed, ref } from "vue";
 import { useSimulatedLoading } from "../../composables/useSimulatedLoading";
 import { useAdministrationStore } from "../../stores/administration";
 import { useDemoStore } from "../../stores/demo";
-import AsyncState from "../common/AsyncState.vue";
-import ListAsyncState from "../common/ListAsyncState.vue";
-import Loader from "../common/Loader.vue";
-import Toolbar from "../common/Toolbar.vue";
-import ToolbarDropdown from "../common/ToolbarDropdown.vue";
+import { AsyncState, ListAsyncState, Loader, Toolbar, ToolbarDropdown } from "@iam3xtr/vue";
 
 // Облегчённый каталог пользователей (Task A8.3) — платформенный, не
 // per-workspace список (в отличие от `workspace/Members.vue`): читает

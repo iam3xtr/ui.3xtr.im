@@ -111,7 +111,7 @@ import {
 import { useToasterStore } from "../../stores/toaster";
 import DirtyExitModal from "../common/DirtyExitModal.vue";
 import FormErrorSummary from "../common/FormErrorSummary.vue";
-import PageHeader from "../common/PageHeader.vue";
+import { PageHeader } from "@iam3xtr/vue/navigation";
 
 // Profile settings tab (Task A5.9), routed at `/profile` — cabinet
 // equivalent: `profile/components/Settings.vue`. The cabinet gates `id` edits

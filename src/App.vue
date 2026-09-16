@@ -57,9 +57,10 @@ import {
   isNavigationFailure, RouterView, useRoute, useRouter,
 } from "vue-router";
 
+import { navbarMenuKey } from "@iam3xtr/vue";
+
 import Navbar from "./components/Navbar.vue";
 import Sidebar from "./components/Sidebar.vue";
-import { navbarMenuKey } from "./composables/navbarMenu";
 import { useAuthStore } from "./stores/auth";
 import { useWorkspaceStore } from "./stores/workspace";
 

@@ -147,7 +147,7 @@ import { ref } from "vue";
 
 import { useModalStore } from "../../stores/modal";
 import { useToasterStore } from "../../stores/toaster";
-import PageHeader from "../common/PageHeader.vue";
+import { PageHeader } from "@iam3xtr/vue/navigation";
 
 const modalStore = useModalStore();
 const toaster = useToasterStore();

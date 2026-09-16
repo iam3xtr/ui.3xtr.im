@@ -148,11 +148,7 @@ import { useChannelsStore } from "../stores/channels";
 import { useDemoStore } from "../stores/demo";
 import { getModelClassLabel, MODEL_CLASS_IDS, useModelsStore } from "../stores/models";
 import { useWorkspaceStore } from "../stores/workspace";
-import AsyncState from "./common/AsyncState.vue";
-import ListAsyncState from "./common/ListAsyncState.vue";
-import Loader from "./common/Loader.vue";
-import Toolbar from "./common/Toolbar.vue";
-import ToolbarDropdown from "./common/ToolbarDropdown.vue";
+import { AsyncState, ListAsyncState, Loader, Toolbar, ToolbarDropdown } from "@iam3xtr/vue";
 
 // Demo-режим (Stage A7, Task A7.3): каталог агентов читает
 // `useDemoStore()` (Task A7.1) и рендерит loading/empty/error через

@@ -117,7 +117,7 @@ import { useRoute, useRouter } from "vue-router";
 
 import { isStepComplete, isStepReachable, useWizardStore, WIZARD_STEPS } from "../../stores/wizard";
 import { useWorkspaceStore } from "../../stores/workspace";
-import PageHeader from "../common/PageHeader.vue";
+import { PageHeader } from "@iam3xtr/vue/navigation";
 import PainStep from "./wizard/steps/PainStep.vue";
 import ContextStep from "./wizard/steps/ContextStep.vue";
 import RulesStep from "./wizard/steps/RulesStep.vue";

@@ -21,5 +21,5 @@
 // здесь только визуальный контракт кнопки: disabled `button`, иконка вендора
 // `google` (уже в реестре, `docs/design-system.md#иконки`) через общий
 // `Icon.vue`.
-import Icon from "../common/Icon.vue";
+import { Icon } from "@iam3xtr/vue";
 </script>

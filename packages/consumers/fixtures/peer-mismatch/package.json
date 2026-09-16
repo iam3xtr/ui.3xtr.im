@@ -1,0 +1,12 @@
+{
+  "name": "consumer-peer-mismatch-fixture",
+  "private": true,
+  "type": "module",
+  "description": "Negative fixture: pins an incompatible vue major against @iam3xtr/vue's peerDependency (^3.5.0) on purpose. `npm install` here is expected to fail with ERESOLVE, not to silently install a broken pair.",
+  "dependencies": {
+    "@iam3xtr/ui": "__UI_TARBALL__",
+    "@iam3xtr/vue": "__VUE_TARBALL__",
+    "vue": "^2.7.16",
+    "buefy": "^3.0.8"
+  }
+}

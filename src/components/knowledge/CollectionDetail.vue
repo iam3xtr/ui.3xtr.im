@@ -46,11 +46,8 @@ import { useSimulatedLoading } from "../../composables/useSimulatedLoading";
 import { useDemoStore } from "../../stores/demo";
 import { useKnowledgeStore } from "../../stores/knowledge";
 import { useWorkspaceStore } from "../../stores/workspace";
-import AsyncState from "../common/AsyncState.vue";
-import ListAsyncState from "../common/ListAsyncState.vue";
-import NavbarMenu from "../common/NavbarMenu.vue";
-import NavbarTabs from "../common/NavbarTabs.vue";
-import PageHeader from "../common/PageHeader.vue";
+import { AsyncState, ListAsyncState, NavbarMenu } from "@iam3xtr/vue";
+import { NavbarTabs, PageHeader } from "@iam3xtr/vue/navigation";
 
 // Route-driven detail shell (Task A5.6), the knowledge counterpart of
 // `agents/AgentDetail.vue` (Task A5.4): resolves the collection by the `:id`

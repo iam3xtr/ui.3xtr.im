@@ -11,7 +11,7 @@ import Forms from "../../../../src/components/kit/Forms.vue";
 import Tables from "../../../../src/components/kit/Tables.vue";
 import NavigationStates from "../../../../src/components/kit/NavigationStates.vue";
 import DialogsOverlays from "../../../../src/components/kit/DialogsOverlays.vue";
-import { navbarMenuKey } from "../../../../src/composables/navbarMenu.js";
+import { navbarMenuKey } from "@iam3xtr/vue";
 import { useDemoStore } from "../../../../src/stores/demo.js";
 
 // jsdom has no `matchMedia` — `Loader.vue` (mounted in Overview) reads it on
