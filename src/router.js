@@ -1,6 +1,5 @@
 import {
   createRouter,
-  createWebHashHistory,
   createWebHistory,
 } from "vue-router";
 
@@ -63,10 +62,10 @@ import WorkspaceUsage from "./components/workspace/Usage.vue";
 // paths and width (`requests` is a kit-only top-level addition — see the
 // route block below).
 const router = createRouter({
-  history:
-    import.meta.env.VITE_ROUTER_MODE === "hash"
-      ? createWebHashHistory(import.meta.env.BASE_URL)
-      : createWebHistory(import.meta.env.BASE_URL),
+  // GitHub Pages serves 404.html for a direct deep link; that fallback stores
+  // the requested path and returns to this history-mode app (see main.js).
+  // Local development and every other host use the same clean URLs.
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: "/",

@@ -96,6 +96,10 @@ Workflow устанавливает точные опубликованные п
 cross-repository secret ему не нужны. Порядок выпуска пакетов, разграничение
 токенов и registry gate описаны в docs/release-process.md.
 
+Роутер использует history mode, поэтому адреса на Pages не содержат `#`.
+`404.html` сохраняет прямой deep link и возвращает его приложению; это
+клиентский fallback статического GitHub Pages, а не server-side rewrite.
+
 ## Лицензия
 
 [MIT](LICENSE)

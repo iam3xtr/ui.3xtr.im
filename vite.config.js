@@ -6,6 +6,15 @@ import svgLoader from "vite-svg-loader";
 export default defineConfig({
   plugins: [vue(), svgLoader()],
 
+  build: {
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL("./index.html", import.meta.url)),
+        404: fileURLToPath(new URL("./404.html", import.meta.url)),
+      },
+    },
+  },
+
   resolve: {
     alias: [
       { find: "@", replacement: fileURLToPath(new URL("./src", import.meta.url)) },

@@ -45,8 +45,6 @@ jobs:
         run: npm run lint:style
 
       - name: Build
-        env:
-          VITE_ROUTER_MODE: hash
         run: npm run build -- --base="${{ steps.pages.outputs.base_path }}/"
 
       - name: Upload GitHub Pages artifact

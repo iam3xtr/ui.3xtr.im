@@ -7,6 +7,25 @@ import { Icon, provideIconRegistry } from "@iam3xtr/vue";
 import App from "./App.vue";
 import router from "./router";
 
+const pagesFallbackRouteKey = "trickster-ui-kit:pages-fallback-route";
+
+function restorePagesFallbackRoute() {
+  const requestedUrl = window.sessionStorage.getItem(pagesFallbackRouteKey);
+  if (!requestedUrl) {
+    return;
+  }
+  window.sessionStorage.removeItem(pagesFallbackRouteKey);
+
+  const requested = new URL(requestedUrl, window.location.origin);
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const path =
+    base && requested.pathname.startsWith(`${base}/`)
+      ? requested.pathname.slice(base.length) || "/"
+      : requested.pathname;
+
+  router.replace(`${path}${requested.search}${requested.hash}`);
+}
+
 // Полная тема из @iam3xtr/ui (Task A11.4): собственной копии Bulma/Buefy
 // SCSS в ките больше нет — единственная редактируемая реализация живёт в
 // packages/ui. Не подключайте одновременно buefy/dist/css/buefy.css.
@@ -91,6 +110,7 @@ app.use(Buefy, {
   defaultContainerElement: "#app",
 });
 app.use(router);
+restorePagesFallbackRoute();
 
 provideIconRegistry(app, iconRegistry);
 // Имя "icon" совпадает с кабинетом, чтобы разметка <icon name="..."> в

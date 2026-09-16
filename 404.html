@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Opening Trickster UI Kit…</title>
+    <script>
+      (() => {
+        const key = "trickster-ui-kit:pages-fallback-route";
+        const requested = window.location.pathname + window.location.search + window.location.hash;
+        window.sessionStorage.setItem(key, requested);
+        window.location.replace(window.location.origin + "%BASE_URL%");
+      })();
+    </script>
+  </head>
+  <body>
+    <p>Opening the requested page…</p>
+  </body>
+</html>
