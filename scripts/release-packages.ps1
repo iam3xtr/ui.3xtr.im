@@ -183,6 +183,20 @@ function Assert-TagAvailable {
     }
 }
 
+function Test-LocalReleaseTag {
+    param(
+        [string]$Path,
+        [string]$Tag
+    )
+
+    # A paired resume can legitimately be interrupted after UI has published
+    # but before Vue has a release commit.  Check the local tag without
+    # treating its absence as an error, then choose between a Vue resume and
+    # a new Vue release below.
+    & git -C $Path rev-parse --verify --quiet "refs/tags/$Tag" *> $null
+    return $LASTEXITCODE -eq 0
+}
+
 function Get-RemoteTagCommit {
     param(
         [string]$Path,
@@ -456,7 +470,7 @@ function Release-Ui {
         return
     }
 
-    if (-not $ReleaseCurrent -or $Alpha) {
+    if ((Get-PackageVersion -Path $uiPath) -ne $Version) {
         Invoke-External -File npm -Arguments @("version", $Version, "--no-git-tag-version", "--ignore-scripts") -WorkingDirectory $uiPath
     }
     Commit-ReleaseChanges -Path $uiPath -Message "chore(release): $tag" -Files @("package.json", "package-lock.json") | Out-Null
@@ -469,10 +483,13 @@ function Release-Ui {
 }
 
 function Release-Vue {
-    param([string]$Version)
+    param(
+        [string]$Version,
+        [switch]$ContinueRelease
+    )
 
     $tag = "v$Version"
-    if ($Resume) {
+    if ($ContinueRelease) {
         Assert-UiPublished -Version $Version
         Assert-ResumeRelease -Path $vuePath -Label "@iam3xtr/vue" -Tag $tag
         Push-ReleaseRefs -Path $vuePath -Label "@iam3xtr/vue" -Tag $tag
@@ -493,7 +510,7 @@ function Release-Vue {
     $uiSha = Get-UiReleaseSha -Tag $tag
     Write-Host "Planned Vue release: @iam3xtr/vue@$Version against published @iam3xtr/ui@$Version."
     Set-VueCompatibility -UiVersion $Version -UiSha $uiSha
-    if (-not $ReleaseCurrent -or $Alpha) {
+    if ((Get-PackageVersion -Path $vuePath) -ne $Version) {
         Invoke-External -File npm -Arguments @("version", $Version, "--no-git-tag-version", "--ignore-scripts") -WorkingDirectory $vuePath
     }
     Commit-ReleaseChanges -Path $vuePath -Message "chore(release): $tag" -Files @("package.json", "package-lock.json", ".ui-compat-ref") | Out-Null
@@ -528,23 +545,33 @@ try {
             Assert-CleanMain -Path $vuePath -Label "@iam3xtr/vue"
         }
         $vueReleaseVersion = Get-RequestedReleaseVersion -Path $vuePath
-        Release-Vue -Version $vueReleaseVersion
+        Release-Vue -Version $vueReleaseVersion -ContinueRelease:$Resume
         if ($Execute) { Sync-UiKitDependencies -VueVersion $vueReleaseVersion }
     } else {
         if (-not $Resume) {
             Assert-CleanMain -Path $root -Label "UI Kit"
             Assert-CleanMain -Path $uiPath -Label "@iam3xtr/ui"
             Assert-CleanMain -Path $vuePath -Label "@iam3xtr/vue"
+        } else {
+            # The UI submodule is expected to differ after its release commit,
+            # but unrelated kit edits must not be discovered only after Vue
+            # has been published and the dependency pins are about to sync.
+            Assert-UiKitMainAtOrigin -AllowedSubmodules @("packages/ui", "packages/vue")
         }
         $uiVersion = Get-PackageVersion -Path $uiPath
         $vueVersion = Get-PackageVersion -Path $vuePath
-        if ($uiVersion -ne $vueVersion) {
+        if (-not $Resume -and $uiVersion -ne $vueVersion) {
             throw "Package versions differ ($uiVersion vs $vueVersion). Align them before releasing a paired version."
         }
         $nextVersion = Get-RequestedReleaseVersion -Path $uiPath
         Write-Host "Planned paired release: @iam3xtr/ui@$nextVersion, then @iam3xtr/vue@$nextVersion."
         Release-Ui -Version $nextVersion
-        Release-Vue -Version $nextVersion
+        $continueVueRelease = $Resume -and (Test-LocalReleaseTag -Path $vuePath -Tag "v$nextVersion")
+        if ($Resume -and -not $continueVueRelease) {
+            Write-Host "Vue has no local release tag v$nextVersion; starting its pending release after the published UI package."
+            Assert-CleanMain -Path $vuePath -Label "@iam3xtr/vue"
+        }
+        Release-Vue -Version $nextVersion -ContinueRelease:$continueVueRelease
         if ($Execute) {
             Sync-UiKitDependencies -UiVersion $nextVersion -VueVersion $nextVersion
             Write-Host "Published pair v$nextVersion. Run the documented exact-version registry gate before declaring it recommended for consumers."

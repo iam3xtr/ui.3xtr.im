@@ -153,13 +153,17 @@ npm run release:ui -- -Resume -Execute
 npm run release:vue -- -Resume -Execute
 ```
 
-`-Resume` не вычисляет новую версию и не меняет файлы. Он требует: clean
-`main`, локальный annotated tag `v<package.json.version>` ровно на `HEAD`,
-отсутствие новых commits на `origin/main` и отсутствие одноимённого remote
-tag на другом commit. Затем он допушивает только недостающий ref и ждёт
-release workflow. Если UI уже опубликован, но Vue ещё даже не начал
-release-транзакцию, используйте обычную команду Vue с `-ReleaseCurrent
--Execute`, а не `-Resume`.
+`-Resume` не вычисляет новую версию и не меняет файлы для уже начатого
+package-релиза. Он требует: clean `main`, локальный annotated tag
+`v<package.json.version>` ровно на `HEAD`, отсутствие новых commits на
+`origin/main` и отсутствие одноимённого remote tag на другом commit. Затем
+он допушивает только недостающий ref и ждёт release workflow. У
+`release:all -Resume -Execute` есть дополнительная логика восстановления:
+если UI уже опубликован, а у Vue ещё нет release-тега той же версии, команда
+начинает недостающий Vue-релиз с этой UI-версией. Поэтому различие текущих
+версий UI и Vue в этом конкретном состоянии допустимо. Для отдельного
+`release:vue` по-прежнему используйте обычный запуск с
+`-ReleaseCurrent -Execute`, если Vue release-транзакция ещё не была начата.
 
 Нет атомарной multi-package registry-транзакции — каждый `npm publish`
 независим. Безопасный порядок:
