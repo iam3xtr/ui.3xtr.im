@@ -16,8 +16,8 @@
                     "release:all":  "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/release-packages.ps1 -Package all"
                 },
     "dependencies":  {
-                         "@iam3xtr/ui":  "0.1.2-alpha",
-                         "@iam3xtr/vue":  "0.1.2-alpha",
+                         "@iam3xtr/ui":  "0.1.2",
+                         "@iam3xtr/vue":  "0.1.2",
                          "@mdi/font":  "^7.4.47",
                          "buefy":  "^3.0.8",
                          "bulma":  "^1.0.4",
