@@ -285,7 +285,10 @@ GitHub Actions workflow, а собственный `deploy-pages.yml` UI Kit'а 
 - **`ci.yml`** (оба библиотечных репозитория): запускается на каждый push в
   `main` и на каждый pull request. Только `permissions: contents: read` — он
   никогда не запрашивает `packages:write`. Шаги: `npm ci` → lint (только ui)
-  → build (только ui) → `npm test` → `npm pack --dry-run`. `package.json`
+  → build (только ui) → `npm test` → `npm pack --dry-run`. Перед установкой
+  Vue его workflow отдельно выполняет `npm ci` и `npm run build` в pinned UI:
+  экспорт `@iam3xtr/ui/icons` указывает на генерируемый `dist/icons.js`,
+  которого нет в чистом git checkout. `package.json`
   пакета `iam3xtr/vue` объявляет `"@iam3xtr/ui": "file:../ui"` как
   devDependency (та же submodule-sibling раскладка, что использует этот kit
   под `packages/`); у самостоятельного клона `iam3xtr/vue` такого соседа
