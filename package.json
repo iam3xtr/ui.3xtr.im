@@ -1,40 +1,40 @@
 {
-  "name": "trickster-ui-kit",
-  "private": true,
-  "license": "MIT",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "build:pages": "vite build --mode pages",
-    "preview": "vite preview",
-    "guard:no-component-styles": "node scripts/no-component-styles.js",
-    "lint:style": "npm run guard:no-component-styles",
-    "test:unit": "vitest run",
-    "release:ui": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/release-packages.ps1 -Package ui",
-    "release:vue": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/release-packages.ps1 -Package vue",
-    "release:all": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/release-packages.ps1 -Package all"
-  },
-  "dependencies": {
-    "@iam3xtr/ui": "0.1.1-alpha",
-    "@iam3xtr/vue": "0.1.1-alpha",
-    "@mdi/font": "^7.4.47",
-    "buefy": "^3.0.8",
-    "bulma": "^1.0.4",
-    "pinia": "^3.0.4",
-    "vue": "^3.5.39",
-    "vue-router": "^4.6.4"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^5.2.1",
-    "@vue/test-utils": "^2.5.0",
-    "jsdom": "^30.0.1",
-    "postcss-scss": "^4.0.9",
-    "sass": "^1.101.0",
-    "stylelint": "^17.14.1",
-    "stylelint-config-recommended": "^18.0.0",
-    "vite": "^6.0.5",
-    "vite-svg-loader": "^5.1.1",
-    "vitest": "^4.1.11"
-  }
+    "name":  "trickster-ui-kit",
+    "private":  true,
+    "license":  "MIT",
+    "type":  "module",
+    "scripts":  {
+                    "dev":  "vite",
+                    "build":  "vite build",
+                    "build:pages":  "vite build --mode pages",
+                    "preview":  "vite preview",
+                    "guard:no-component-styles":  "node scripts/no-component-styles.js",
+                    "lint:style":  "npm run guard:no-component-styles",
+                    "test:unit":  "vitest run",
+                    "release:ui":  "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/release-packages.ps1 -Package ui",
+                    "release:vue":  "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/release-packages.ps1 -Package vue",
+                    "release:all":  "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/release-packages.ps1 -Package all"
+                },
+    "dependencies":  {
+                         "@iam3xtr/ui":  "0.1.2-alpha",
+                         "@iam3xtr/vue":  "0.1.2-alpha",
+                         "@mdi/font":  "^7.4.47",
+                         "buefy":  "^3.0.8",
+                         "bulma":  "^1.0.4",
+                         "pinia":  "^3.0.4",
+                         "vue":  "^3.5.39",
+                         "vue-router":  "^4.6.4"
+                     },
+    "devDependencies":  {
+                            "@vitejs/plugin-vue":  "^5.2.1",
+                            "@vue/test-utils":  "^2.5.0",
+                            "jsdom":  "^30.0.1",
+                            "postcss-scss":  "^4.0.9",
+                            "sass":  "^1.101.0",
+                            "stylelint":  "^17.14.1",
+                            "stylelint-config-recommended":  "^18.0.0",
+                            "vite":  "^6.0.5",
+                            "vite-svg-loader":  "^5.1.1",
+                            "vitest":  "^4.1.11"
+                        }
 }
