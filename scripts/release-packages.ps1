@@ -191,7 +191,14 @@ function Get-RemoteTagCommit {
 
     # Release tags are annotated. The peeled ^{} reference is the commit the
     # tag names, which is what must match HEAD during a safe resume.
-    $line = (& git -C $Path ls-remote origin "refs/tags/$Tag^{}").Trim()
+    # `git ls-remote` emits no output when the tag does not exist remotely.
+    # That is the expected state before the first push, so normalize an empty
+    # command result before trimming it.
+    $output = @(& git -C $Path ls-remote origin "refs/tags/$Tag^{}")
+    if ($LASTEXITCODE -ne 0) {
+        throw "Cannot query remote tag $Tag in $Path."
+    }
+    $line = ($output -join [Environment]::NewLine).Trim()
     if (-not $line) {
         return $null
     }
@@ -548,7 +555,7 @@ try {
         Write-Host "Dry run only. Re-run with -Execute to create commits, tags, and push them."
     }
 } catch {
-    Write-Error $_
+    Write-Error ("Release failed: {0}" -f $_.Exception.Message)
     if ($Package -eq "all" -and $nextVersion -and (& git -C $uiPath tag --list "v$nextVersion")) {
         Write-Error "UI tag v$nextVersion may already be pushed or published. Do not delete or reuse it; release Vue separately after confirming the UI package is available."
     }
