@@ -27,5 +27,6 @@ const kitTabs = [
   { label: "Таблицы", to: { name: "kit-tables" } },
   { label: "Навигация и состояния", to: { name: "kit-navigation-states" } },
   { label: "Диалоги и оверлеи", to: { name: "kit-dialogs-overlays" } },
+  { label: "Application shell", to: { name: "kit-application-shell" } },
 ];
 </script>

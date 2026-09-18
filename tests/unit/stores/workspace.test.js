@@ -20,13 +20,13 @@ import {
 describe("stores/workspace — семиключевой контракт ресурсов (Task A10.6)", () => {
   it("RESOURCE_LIMIT_KEYS — ровно семь ключей API-контракта, без credits", () => {
     expect(RESOURCE_LIMIT_KEYS).toEqual([
-      "workspace_members",
+      "members",
       "agents",
-      "knowledge_collections",
-      "knowledge_objects",
       "channels",
-      "knowledge_extracted_bytes",
-      "active_conversations_monthly",
+      "conversations",
+      "collections",
+      "objects",
+      "extracted",
     ]);
     expect(RESOURCE_LIMIT_KEYS).not.toContain("credits");
   });
@@ -48,7 +48,7 @@ describe("stores/workspace — семиключевой контракт рес�
     store.activeWorkspaceId = "demo";
 
     const bytes = store.activeWorkspaceTariff.limits
-      .find((limit) => limit.key === "knowledge_extracted_bytes");
+      .find((limit) => limit.key === "extracted");
 
     expect(bytes.state).toBe("unknown");
     expect(bytes.progress).toBeNull();
@@ -78,7 +78,7 @@ describe("stores/workspace — семиключевой контракт рес�
     store.activeWorkspaceId = "trickster";
 
     const conversations = store.activeWorkspaceTariff.limits
-      .find((limit) => limit.key === "active_conversations_monthly");
+      .find((limit) => limit.key === "conversations");
 
     expect(conversations.state).toBe("unlimited");
     expect(conversations.progress).toBeNull();
@@ -93,7 +93,7 @@ describe("stores/workspace — семиключевой контракт рес�
     store.activeWorkspaceId = "demo";
 
     const objects = store.activeWorkspaceTariff.limits
-      .find((limit) => limit.key === "knowledge_objects");
+      .find((limit) => limit.key === "objects");
 
     expect(objects.state).toBe("exhausted");
     expect(objects.progress).toBe(100);
@@ -119,9 +119,9 @@ describe("stores/workspace — семиключевой контракт рес�
     const attention = getLimitsNeedingAttention(store.activeWorkspaceTariff.limits);
     const attentionKeys = attention.map((limit) => limit.key);
 
-    expect(attentionKeys).toContain("knowledge_objects"); // exhausted
+    expect(attentionKeys).toContain("objects"); // exhausted
     expect(attentionKeys).not.toContain("channels"); // zero
-    expect(attentionKeys).not.toContain("knowledge_extracted_bytes"); // unknown
+    expect(attentionKeys).not.toContain("extracted"); // unknown
   });
 
   it("getLimitsNeedingAttention: пусто, когда всё в норме или unlimited (trickster)", () => {
@@ -135,10 +135,10 @@ describe("stores/workspace — семиключевой контракт рес�
   it("formatResourceCapCaption различает unlimited/zero/измеренный cap теми же словами, что лимиты", () => {
     expect(formatResourceCapCaption("channels", 0)).toBe("Не входит в тариф");
     expect(formatResourceCapCaption("agents", null)).toBe("Без ограничений");
-    expect(formatResourceCapCaption("active_conversations_monthly", null))
+    expect(formatResourceCapCaption("conversations", null))
       .toBe("Без ограничений в этом месяце");
-    expect(formatResourceCapCaption("workspace_members", 25)).toBe("До 25");
-    expect(formatResourceCapCaption("knowledge_extracted_bytes", 50_000_000))
+    expect(formatResourceCapCaption("members", 25)).toBe("До 25");
+    expect(formatResourceCapCaption("extracted", 50_000_000))
       .toMatch(/^До .+ в этом месяце$/);
   });
 

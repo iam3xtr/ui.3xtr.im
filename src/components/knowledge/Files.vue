@@ -2,6 +2,13 @@
   <section class="tr-knowledge-files">
     <Toolbar v-model:search="query" search-placeholder="Поиск файлов">
       <template #actions>
+        <b-upload v-model="pickedFiles" multiple>
+          <a class="button is-small">
+            <b-icon icon="upload" size="is-small" />
+            <span>Загрузить файлы</span>
+          </a>
+        </b-upload>
+
         <b-dropdown position="is-bottom-left" aria-role="list">
           <template #trigger>
             <b-button icon-left="plus" size="is-small" type="is-primary">
@@ -18,19 +25,6 @@
       </template>
     </Toolbar>
 
-    <b-upload
-      v-model="pickedFiles"
-      drag-drop
-      multiple
-      expanded
-      class="tr-knowledge-files__upload"
-    >
-      <div class="has-text-centered tr-upload-dropzone__hint">
-        <p><b-icon icon="upload" size="is-medium" /></p>
-        <p>Перетащите файлы сюда или нажмите для выбора</p>
-      </div>
-    </b-upload>
-
     <Loader v-if="isLoading" size="section" />
 
     <template v-else>
@@ -43,66 +37,68 @@
         временной ошибки. Остальные файлы ниже — актуальны.
       </b-message>
 
-      <ListAsyncState
-        :empty="objects.length === 0 || demoStore.isEmpty"
-        empty-icon="file-plus-outline"
-        empty-title="В коллекции пока нет файлов"
-        empty-message="Добавьте файл, ссылку или текстовый документ."
-      >
-        <div class="tr-knowledge__items-header">
-          <span>{{ objects.length }} {{ objectsLabel }}</span>
-          <span class="tr-muted">{{ formatBytes(totalSize) }}</span>
-        </div>
+      <FileDropTarget @files="enqueueFiles">
+        <ListAsyncState
+          :empty="objects.length === 0 || demoStore.isEmpty"
+          empty-icon="file-plus-outline"
+          empty-title="В коллекции пока нет файлов"
+          empty-message="Добавьте файл, ссылку или текстовый документ."
+        >
+          <div class="tr-knowledge__items-header">
+            <span>{{ objects.length }} {{ objectsLabel }}</span>
+            <span class="tr-muted">{{ formatBytes(totalSize) }}</span>
+          </div>
 
-        <div class="tr-card">
-          <b-table :data="displayObjects" :row-key="(row) => row._demoKey ?? row.id" hoverable mobile-cards>
-            <b-table-column field="name" label="Название" v-slot="{ row }">
-              <span class="tr-row">
-                <b-icon :icon="getObjectKind(row.kind).icon" size="is-small" />
-                <span>
-                  <strong>{{ row.name }}</strong>
-                  <br v-if="row.sourceLabel" />
-                  <small v-if="row.sourceLabel" class="tr-muted">{{ row.sourceLabel }}</small>
+          <div class="tr-card">
+            <b-table :data="displayObjects" :row-key="(row) => row._demoKey ?? row.id" hoverable mobile-cards>
+              <b-table-column field="name" label="Название" v-slot="{ row }">
+                <span class="tr-row">
+                  <b-icon :icon="getObjectKind(row.kind).icon" size="is-small" />
+                  <span>
+                    <strong>{{ row.name }}</strong>
+                    <br v-if="row.sourceLabel" />
+                    <small v-if="row.sourceLabel" class="tr-muted">{{ row.sourceLabel }}</small>
+                  </span>
                 </span>
-              </span>
-            </b-table-column>
+              </b-table-column>
 
-            <b-table-column field="status" label="Статус" v-slot="{ row }">
-              <b-tag size="is-small" :type="getObjectStatus(row.status).tagType">
-                {{ getObjectStatus(row.status).label }}
-              </b-tag>
-            </b-table-column>
+              <b-table-column field="status" label="Статус" v-slot="{ row }">
+                <b-tag size="is-small" :type="getObjectStatus(row.status).tagType">
+                  {{ getObjectStatus(row.status).label }}
+                </b-tag>
+              </b-table-column>
 
-            <b-table-column field="size" label="Размер" v-slot="{ row }">
-              {{ formatBytes(row.size) }}
-            </b-table-column>
+              <b-table-column field="size" label="Размер" v-slot="{ row }">
+                {{ formatBytes(row.size) }}
+              </b-table-column>
 
-            <b-table-column field="updatedLabel" label="Обновлено" v-slot="{ row }">
-              {{ row.updatedLabel }}
-            </b-table-column>
+              <b-table-column field="updatedLabel" label="Обновлено" v-slot="{ row }">
+                {{ row.updatedLabel }}
+              </b-table-column>
 
-            <b-table-column v-slot="{ row }" width="56">
-              <b-dropdown position="is-bottom-left" aria-role="list" append-to-body>
-                <template #trigger>
-                  <b-button
-                    type="is-text"
-                    icon-left="dots-horizontal"
-                    size="is-small"
-                    :aria-label="`Действия с файлом «${row.name}»`"
-                  />
-                </template>
-                <b-dropdown-item aria-role="listitem" @click="removeObject(row)">
-                  Удалить
-                </b-dropdown-item>
-              </b-dropdown>
-            </b-table-column>
-          </b-table>
-        </div>
+              <b-table-column v-slot="{ row }" width="56">
+                <b-dropdown position="is-bottom-left" aria-role="list" append-to-body>
+                  <template #trigger>
+                    <b-button
+                      type="is-text"
+                      icon-left="dots-horizontal"
+                      size="is-small"
+                      :aria-label="`Действия с файлом «${row.name}»`"
+                    />
+                  </template>
+                  <b-dropdown-item aria-role="listitem" @click="removeObject(row)">
+                    Удалить
+                  </b-dropdown-item>
+                </b-dropdown>
+              </b-table-column>
+            </b-table>
+          </div>
 
-        <p v-if="filteredObjects.length === 0 && objects.length > 0" class="tr-catalog-empty">
-          По вашему запросу файлы не найдены.
-        </p>
-      </ListAsyncState>
+          <p v-if="filteredObjects.length === 0 && objects.length > 0" class="tr-catalog-empty">
+            По вашему запросу файлы не найдены.
+          </p>
+        </ListAsyncState>
+      </FileDropTarget>
     </template>
 
     <KnowledgeFileFormModal :collection-id="route.params.id" :initial-tab="objectFormTab" />
@@ -121,19 +117,25 @@ import { useDemoStore } from "../../stores/demo";
 import { useKnowledgeStore } from "../../stores/knowledge";
 import { useModalStore } from "../../stores/modal";
 import { useWorkspaceStore } from "../../stores/workspace";
-import { Loader, ListAsyncState, Toolbar } from "@iam3xtr/vue";
+import { Loader, ListAsyncState, Toolbar, FileDropTarget } from "@iam3xtr/vue";
 import KnowledgeFileFormModal from "./KnowledgeFileFormModal.vue";
 
-// Files tab (Task A5.6), routed at `/knowledge/:id`. Adding a source is
-// b-upload's own drag-drop zone for files (no custom dropzone/uploader
-// component — the .plan's "зона перетаскивания" is exactly what `drag-drop`
-// already gives `b-upload`) plus a Buefy modal with tabs
-// (`KnowledgeFileFormModal.vue`) for pasted text/links, matching
-// get.3xtr.im's `Files.vue` + `KnowledgeFileForm.vue` split. A freshly added
-// object starts in `indexing` and settles to `indexed`/`error` on a fire-
-// and-forget timer — the same convention as `KnowledgeFileFormModal.vue`'s
-// `addObject` — so switching tabs before it fires can't leave the object
-// stuck in `indexing` forever.
+// Files tab (Task A5.6), routed at `/knowledge/:id`. Adding a file has two
+// equal entry points (Task 3.2): the explicit `b-upload` control in the
+// toolbar (a plain button, not its own drag-drop dropzone) and `FileDropTarget`
+// (`@iam3xtr/vue`) wrapping the table's ready-state surface (`ListAsyncState`)
+// so a file can be dropped anywhere over the table, including its empty/
+// partial states, without turning any row/cell into a `<label>` or blocking
+// row actions, search or mobile cards — `FileDropTarget` is a semantically
+// neutral overlay, see its own doc comment. Both channels call the same
+// `enqueueFiles` helper below, so the fixture object lifecycle (indexing →
+// settle) never forks between picker and drop. This still matches
+// get.3xtr.im's `Files.vue` + `KnowledgeFileForm.vue` split for pasted
+// text/links via `KnowledgeFileFormModal.vue`. A freshly added object starts
+// in `indexing` and settles to `indexed`/`error` on a fire-and-forget timer —
+// the same convention as `KnowledgeFileFormModal.vue`'s `addObject` — so
+// switching tabs before it fires can't leave the object stuck in `indexing`
+// forever.
 //
 // Demo-режим (Stage A7, Task A7.4): the parent shell
 // (`knowledge/CollectionDetail.vue`) already gates loading/error/
@@ -241,7 +243,11 @@ function scheduleSettle(objectId, outcome) {
   }, 1500);
 }
 
-watch(pickedFiles, (files) => {
+// Shared enqueue helper (Task 3.2): both the `b-upload` picker (via the
+// `pickedFiles` watcher below) and `FileDropTarget`'s `files` event call this
+// with the same `File[]` shape, so the demo indexing/settle behavior is
+// defined exactly once regardless of which channel added the file.
+function enqueueFiles(files) {
   if (!files.length) {
     return;
   }
@@ -260,7 +266,14 @@ watch(pickedFiles, (files) => {
       scheduleSettle(object.id, (objects.value.length + index) % 3 === 2 ? "error" : "indexed");
     }
   });
+}
 
+watch(pickedFiles, (files) => {
+  if (!files.length) {
+    return;
+  }
+
+  enqueueFiles(files);
   pickedFiles.value = [];
 });
 

@@ -33,10 +33,12 @@ describe("consumer SPA fixture", () => {
 
     expect(wrapper.find(".tr-page-header").exists()).toBe(true);
     expect(wrapper.find(".tr-loader").exists()).toBe(true);
-    // Unregistered icon name falls back to the documented placeholder
-    // rather than throwing — proves the injected-registry contract works
-    // end to end from a packed install, not just from the package's own
-    // source-level tests.
-    expect(wrapper.find(".tr-icon--placeholder").exists()).toBe(true);
+    // "cog" is neither in the (empty here) injected consumer registry nor
+    // in @iam3xtr/ui's default SVG set — with Buefy installed (as this
+    // fixture does), Icon falls through to its Buefy/MDI fallback instead
+    // of the placeholder, proving that precedence step end to end from a
+    // packed install, not just from the package's own source-level tests.
+    expect(wrapper.find(".tr-icon--placeholder").exists()).toBe(false);
+    expect(wrapper.find(".mdi-cog").exists()).toBe(true);
   });
 });

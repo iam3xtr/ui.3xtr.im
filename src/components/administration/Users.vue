@@ -52,7 +52,7 @@
           </b-table-column>
 
           <b-table-column field="role" label="Роль" v-slot="{ row }">
-            {{ row.role }}
+            <AdminMarker domain="role" :value="row.role" />
           </b-table-column>
 
           <b-table-column field="workspaces" label="Пространства" v-slot="{ row }">
@@ -61,7 +61,7 @@
 
           <b-table-column field="status" label="Статус" v-slot="{ row }">
             <b-tag :type="row.status === 'Активен' ? 'is-primary' : 'is-danger'" size="is-small">
-              {{ row.status }}
+              <AdminMarker domain="status" :value="row.status" />
             </b-tag>
           </b-table-column>
 
@@ -90,6 +90,7 @@ import { useSimulatedLoading } from "../../composables/useSimulatedLoading";
 import { useAdministrationStore } from "../../stores/administration";
 import { useDemoStore } from "../../stores/demo";
 import { AsyncState, ListAsyncState, Loader, Toolbar, ToolbarDropdown } from "@iam3xtr/vue";
+import AdminMarker from "./AdminMarker.vue";
 
 // Облегчённый каталог пользователей (Task A8.3) — платформенный, не
 // per-workspace список (в отличие от `workspace/Members.vue`): читает

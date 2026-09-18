@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { createMemoryHistory, createRouter } from "vue-router";
@@ -128,7 +128,33 @@ describe("Dashboard.vue — demo-состояния (Task A7.5)", () => {
   });
 });
 
+// Issue #13.1 (`.todo` "Dashboard attention queue"): navigation helpers for
+// the session-scoped queue — one active `.tr-dashboard-attention__item` at
+// a time, moved with the accessible previous/next controls.
+function activeAttentionText(wrapper) {
+  return wrapper.find(".tr-dashboard-attention__item").text();
+}
+async function goNextAttentionItem(wrapper) {
+  await wrapper.find("[aria-label='Следующее уведомление']").trigger("click");
+  await flushPromises();
+}
+async function goPreviousAttentionItem(wrapper) {
+  await wrapper.find("[aria-label='Предыдущее уведомление']").trigger("click");
+  await flushPromises();
+}
+async function dismissActiveAttentionItem(wrapper) {
+  await wrapper.find("[aria-label='Скрыть до конца сессии']").trigger("click");
+  await flushPromises();
+}
+
 describe("Dashboard.vue — S2 «Требует внимания» (Task A10.4)", () => {
+  // Issue #13.1: `sessionStorage` persists across tests in the same file
+  // (jsdom keeps it for the whole run), so each test starts from a clean
+  // dismiss state regardless of workspace/order.
+  beforeEach(() => {
+    window.sessionStorage.clear();
+  });
+
   it("собирает непустой список причин для демо-пространства: черновик, знания, канал, handoff", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
@@ -165,10 +191,16 @@ describe("Dashboard.vue — S2 «Требует внимания» (Task A10.4)"
     vi.useRealTimers();
     await flushPromises();
 
-    const items = wrapper.findAll(".tr-dashboard-attention__item");
-    expect(items.length).toBeGreaterThan(0);
+    // Only one card is active at a time (Issue #13.1) — step through the
+    // whole queue with "Следующее уведомление" to see every reason.
+    expect(wrapper.findAll(".tr-dashboard-attention__item").length).toBe(1);
+    const seenText = [activeAttentionText(wrapper)];
+    while (wrapper.find("[aria-label='Следующее уведомление']").attributes("disabled") === undefined) {
+      await goNextAttentionItem(wrapper);
+      seenText.push(activeAttentionText(wrapper));
+    }
+    const text = seenText.join(" ");
 
-    const text = wrapper.find(".tr-dashboard-attention").text();
     expect(text).toContain("Настройка агента не завершена");
     expect(text).toContain("требует внимания"); // knowledge collection card
     expect(text).toContain("не отвечает"); // channel card
@@ -176,19 +208,148 @@ describe("Dashboard.vue — S2 «Требует внимания» (Task A10.4)"
   });
 
   it("карточка исчерпанного лимита не противоречит себе (Stage A10 review fix)", async () => {
-    // demo-пространство: `knowledge_objects` уже `exhausted` (used: 200,
+    // demo-пространство: `objects` уже `exhausted` (used: 200,
     // limit: 200, `src/stores/workspace.js`) — заголовок карточки не должен
     // говорить «почти исчерпан», когда caption рядом уже говорит «лимит
     // исчерпан».
     const { wrapper } = await mountDashboard();
 
-    const limitItem = wrapper.findAll(".tr-dashboard-attention__item")
-      .find((item) => item.text().includes("Материалы знаний"));
+    let limitText = null;
+    let card = activeAttentionText(wrapper);
+    for (let guard = 0; guard < 20 && limitText === null; guard += 1) {
+      if (card.includes("Объекты")) {
+        limitText = card;
+        break;
+      }
+      if (wrapper.find("[aria-label='Следующее уведомление']").attributes("disabled") !== undefined) {
+        break;
+      }
+      await goNextAttentionItem(wrapper);
+      card = activeAttentionText(wrapper);
+    }
 
-    expect(limitItem).toBeDefined();
-    expect(limitItem.text()).toContain("Лимит «Материалы знаний» исчерпан");
-    expect(limitItem.text()).not.toContain("почти исчерпан");
-    expect(limitItem.text()).toContain("лимит исчерпан");
+    expect(limitText).not.toBeNull();
+    expect(limitText).toContain("Лимит «Объекты» исчерпан");
+    expect(limitText).not.toContain("почти исчерпан");
+    expect(limitText).toContain("лимит исчерпан");
+  });
+
+  it("many: показывает позицию и accessible previous/next с disabled-поведением на границах", async () => {
+    const { wrapper } = await mountDashboard();
+
+    const nav = wrapper.find(".tr-dashboard-attention__nav");
+    expect(nav.exists()).toBe(true);
+    expect(nav.text()).toMatch(/^1 из \d+$/);
+    expect(wrapper.find("[aria-label='Предыдущее уведомление']").attributes("disabled")).toBeDefined();
+
+    const firstCard = activeAttentionText(wrapper);
+    await goNextAttentionItem(wrapper);
+
+    expect(nav.text()).toMatch(/^2 из \d+$/);
+    expect(activeAttentionText(wrapper)).not.toBe(firstCard);
+    expect(wrapper.find("[aria-label='Предыдущее уведомление']").attributes("disabled")).toBeUndefined();
+
+    await goPreviousAttentionItem(wrapper);
+    expect(nav.text()).toMatch(/^1 из \d+$/);
+    expect(activeAttentionText(wrapper)).toBe(firstCard);
+  });
+
+  it("ровно 1 item: карточка видна без accessible previous/next controls", async () => {
+    const { wrapper } = await mountDashboard();
+
+    // Reduce the default multi-item source down to exactly one remaining
+    // reason by dismissing every other one — the nav (position text and
+    // previous/next buttons) must disappear entirely, not just disable.
+    let total = Number(wrapper.find(".tr-dashboard-attention__nav").text().match(/из (\d+)/)[1]);
+    while (total > 1) {
+      await dismissActiveAttentionItem(wrapper);
+      total -= 1;
+    }
+
+    expect(wrapper.find(".tr-dashboard-attention__item").exists()).toBe(true);
+    expect(wrapper.find(".tr-dashboard-attention__nav").exists()).toBe(false);
+    expect(wrapper.find("[aria-label='Следующее уведомление']").exists()).toBe(false);
+    expect(wrapper.find("[aria-label='Предыдущее уведомление']").exists()).toBe(false);
+  });
+
+  it("dismiss скрывает только активную карточку, выбирает соседнюю и восстанавливается без reload", async () => {
+    const { wrapper } = await mountDashboard();
+
+    const total = Number(wrapper.find(".tr-dashboard-attention__nav").text().match(/из (\d+)/)[1]);
+    const firstCard = activeAttentionText(wrapper);
+
+    await dismissActiveAttentionItem(wrapper);
+    await flushPromises();
+
+    // A neighbour became active, the dismissed card is gone, and the
+    // section is still one item smaller — but never fully removed while
+    // other reasons remain.
+    expect(activeAttentionText(wrapper)).not.toBe(firstCard);
+    expect(wrapper.findAll(".tr-dashboard-attention__item").length).toBe(1);
+    if (total > 1) {
+      expect(wrapper.find(".tr-dashboard-attention__nav").text()).toMatch(new RegExp(`из ${total - 1}$`));
+    }
+
+    // Dismiss every remaining item — the section keeps existing (source
+    // still has reasons) but switches to the restore affordance instead of
+    // rendering an empty/broken card.
+    while (wrapper.find(".tr-dashboard-attention__item").exists()) {
+      await dismissActiveAttentionItem(wrapper);
+    }
+    expect(wrapper.find(".tr-dashboard-attention").exists()).toBe(true);
+    const restore = wrapper.find(".tr-dashboard-attention__restore");
+    expect(restore.exists()).toBe(true);
+    expect(restore.text()).toContain(`${total}`);
+
+    await restore.find("button").trigger("click");
+    await flushPromises();
+
+    // Restored without a reload — the section is back to a single active
+    // card straight away.
+    expect(wrapper.find(".tr-dashboard-attention__item").exists()).toBe(true);
+    expect(wrapper.find(".tr-dashboard-attention__restore").exists()).toBe(false);
+  });
+
+  it("dismiss изолирован по workspace + browser session: другое пространство не видит скрытие", async () => {
+    const { wrapper: demoWrapper } = await mountDashboard({ workspaceId: "demo" });
+    const demoFirstCard = activeAttentionText(demoWrapper);
+    await dismissActiveAttentionItem(demoWrapper);
+    expect(activeAttentionText(demoWrapper)).not.toBe(demoFirstCard);
+
+    // A fresh mount for the same "demo" workspace, same browser session
+    // (same `sessionStorage`, new Pinia instance — dismiss must have been
+    // persisted, not just in-memory component state).
+    const { wrapper: demoAgain } = await mountDashboard({ workspaceId: "demo" });
+    expect(activeAttentionText(demoAgain)).not.toBe(demoFirstCard);
+
+    // Isolation is checked directly at the storage layer: the dismiss for
+    // "demo" only ever wrote a "demo"-scoped key, so nothing else in this
+    // session — including a different workspace — could have seen it.
+    const dismissedKeys = Object.keys(window.sessionStorage)
+      .filter((key) => key.startsWith("trickster-ui-kit:dashboard-attention:dismissed:"));
+    expect(dismissedKeys).toEqual(["trickster-ui-kit:dashboard-attention:dismissed:demo"]);
+  });
+
+  it("стабильный key сохраняет правильный активный элемент при обновлении источника", async () => {
+    const { wrapper } = await mountDashboard();
+    const channelsStore = useChannelsStore();
+
+    const activeBefore = activeAttentionText(wrapper);
+
+    // Source update unrelated to the active reason: a new failing channel
+    // is added for a different agent, growing `attentionItems` from the
+    // front-to-back order the derivation builds it in. The active card
+    // must stay the same one, found by its stable key — not shift to
+    // whatever is now first.
+    const channels = channelsStore.channelsByWorkspaceAndAgent.demo;
+    const anyAgentId = Object.keys(channels)[0];
+    channels[anyAgentId] = [
+      ...channels[anyAgentId],
+      { id: "extra-channel", name: "Тестовый канал", status: "error", runtimeReason: "тест" },
+    ];
+    await flushPromises();
+
+    expect(activeAttentionText(wrapper)).toBe(activeBefore);
   });
 
   it("сбой одного канала не скрывает работающих агентов/остальные карточки", async () => {

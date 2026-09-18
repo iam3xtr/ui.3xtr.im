@@ -7,6 +7,7 @@
 
     npm run dev
     npm run build
+    npm run build:pages
     npm run preview
     npm run lint:style
     npm run guard:no-component-styles
@@ -37,9 +38,12 @@ Switch -ReleaseCurrent выпускает уже указанную в manifests
 демонстрации текущего контракта экранов.
 
 Визуальная основа находится в packages/ui (@iam3xtr/ui), переносимые
-компоненты — в packages/vue (@iam3xtr/vue). Сабмодули используются только для
-разработки библиотек и release-скриптов. UI Kit и внешние приложения
-устанавливают опубликованные exact версии; file:packages/* не является
+компоненты — в packages/vue (@iam3xtr/vue). `npm run dev` намеренно резолвит
+их исходники из сабмодулей через Vite aliases, чтобы изменения библиотек были
+видны без публикации; SVG registry собирается Vite напрямую из
+`packages/ui/src/assets/icons`. Обычные production-сборки
+(`npm run build`, `npm run build:pages`) и внешние приложения используют
+опубликованные exact версии из node_modules; file:packages/* не является
 допустимой зависимостью runtime-сборки.
 
 ## Стили, иконки и компоненты
@@ -88,6 +92,14 @@ GitHub Pages workflow устанавливает exact package-пару из reg
 cross-repository secret. `GITHUB_TOKEN` с правом публикации используется
 только в release workflow самих библиотек; секреты не хранятся в
 .gitmodules, .npmrc, артефактах или логах.
+
+deploy-pages.yml собирает demo через `npm run build:pages` (Vite mode
+`pages`) — единственная команда, включающая `__VUE_PROD_DEVTOOLS__` для
+inspection публичного demo через Vue Devtools browser extension. `npm run
+build` (обычный production mode) и публикуемые artifacts packages/ui и
+packages/vue этот флаг не трогают и остаются с prod devtools выключенными;
+никакого in-DOM devtools UI, remote server, open-editor endpoint или secret
+это не добавляет.
 
 Исторический sync кабинета обслуживает только потребителей, которые ещё не
 перешли на пакеты. Не восстанавливайте в kit удалённые локальные stylesheet

@@ -1,307 +1,890 @@
-# TODO: Stage A11 — Две приватные библиотеки ui / vue, Git-сабмодули и npm-поставка
+# TODO: Следующий релиз ui / vue — issues #3–#14
 
-Дата актуализации: 2026-09-17
+Дата актуализации: 2026-09-18
 
-Статус: Stage A11 завершён 2026-09-17; все задачи приняты после registry-проверки и проверок UI Kit.
+Статус: этап закрыт 2026-09-18 — implementation и review issues #3–#14 завершены; commit, фиксация gitlink SHA, публикация exact package-пары и внешний handoff issue выполняются отдельным post-stage release-проходом.
 
 ## Назначение
 
-Этот файл декомпозирует только Stage A11: выделение визуального контракта в
-`@iam3xtr/ui` и переносимого Vue-слоя в `@iam3xtr/vue`, их подключение к
-UI Kit как pinned Git submodules и проверяемую npm-поставку. Вне scope —
-реализация get #25–#27, API, Pinia stores, маршруты, fixtures и продуктовая
-бизнес-логика. Проверка 2026-09-15: в `iam3xtr/ui` и `iam3xtr/vue` нет
-открытых Issues; get #24 закрыт, get #25–#27 остаются открытыми внешними
-задачами и не дублируются здесь.
-
-## Repository foundation
-
-### Ownership, manifests and submodules
-
-### [P0] Task A11.1. Зафиксировать границы пакетов и подключить pinned submodules
-
-Статус: done — 2026-09-17 подтверждены submodules, publish manifests и registry-поставка опубликованной пары `0.1.1-alpha`; UI Kit больше не использует file-зависимости для runtime-сборки.
-
-Источник: Stage A11 `.plan`, разделы «Репозитории, границы и источники истины» и «Разработка через сабмодули».
-
-Описание: Создать воспроизводимую основу для двух библиотек: `ui` владеет визуальным контрактом, `vue` — переиспользуемыми Vue-примитивами. UI Kit должен ссылаться ровно на два доступных SHA, а не на локальные копии или движущиеся ветки.
-
-Уточнённые требования:
-
-- Проверить назначение private repos и доступность `@iam3xtr/ui`/`@iam3xtr/vue` до переноса исходников.
-- Оба manifest задают version, exports, files, repository и publishConfig; корневой kit остаётся `private`.
-- В `packages/ui` и `packages/vue` добавляются gitlinks конкретных SHA; `.gitmodules` не содержит credentials.
-- В `vue` не допускаются API, Pinia, router, fixtures, product URLs, RBAC и доменные локали; циклической зависимости `ui ↔ vue` нет.
-
-План реализации:
-
-1. Описать ownership, public-boundary и initial manifests/README в каждом library repo.
-2. Подключить оба репозитория в kit как submodules и зафиксировать SHA, layout и команды init/update.
-3. Добавить проверки чистого clone, missing SHA/access и отсутствие secret/file/workspace ссылок в publish manifests.
-
-Область:
-
-- `iam3xtr/ui`: `package.json`, README, package configuration
-- `iam3xtr/vue`: `package.json`, README, package configuration
-- UI Kit: `.gitmodules`, `packages/ui`, `packages/vue`, `package.json`, docs
-
-Критерии приёмки:
-
-- Чистый clone UI Kit с `git submodule update --init --recursive` восстанавливает ровно два pinned SHA.
-- Library manifests готовы к publish и не публикуют secrets, fixtures, app sources или `node_modules`.
-- Документированы ownership, отсутствие обратной зависимости и порядок работы с веткой внутри submodule.
-
-## UI package
-
-### Tokens, theme and assets
-
-### [P0] Task A11.2. Выпустить публичный контракт @iam3xtr/ui
-
-Статус: done — 2026-09-17 `@iam3xtr/ui@0.1.1-alpha` подтверждён в GitHub Packages; UI Kit собирается с его registry-артефактом.
-
-Источник: Stage A11 `.plan`, «Публичный контракт @iam3xtr/ui»; managed stylesheets UI Kit.
-
-Описание: Перенести единственные рукописные tokens/theme и shared visual assets в UI-пакет с устойчивыми public exports. Потребитель должен отдельно выбирать tokens-only или полную Buefy/Bulma тему без дублирования global CSS.
-
-Уточнённые требования:
-
-- Tokens-only не включает reset, Vue/Buefy runtime и глобальную тему кабинета.
-- Полная тема, SCSS entrypoints и assets имеют документированные exports без deep import в `src`.
-- Пути SVG, logo, loader и шрифтов работают при произвольном application base path; MDI подключается явно и единожды.
-- Пакет не включает fixtures, `.env`, build secrets или вторую копию theme.
-
-План реализации:
-
-1. Перенести tokens, тему и approved assets с origin path/commit в `ui`; определить exports и `sideEffects`.
-2. Настроить сборку CSS/SCSS и asset paths, включая tokens-only consumer.
-3. Добавить tests/pack inspection для exports, content allowlist, base path и отсутствия Vue runtime в tokens-only.
-
-Область:
-
-- `iam3xtr/ui`: `src/styles/**`, `src/assets/**`, package build, tests, README
-- UI Kit: adapters/import points только после готовности пакета
-
-Критерии приёмки:
-
-- `@iam3xtr/ui` собирает tokens-only, полную тему и documented SCSS/assets exports.
-- Установка packed tarball вне workspace не использует absolute kit paths и не подтягивает Vue/Buefy для tokens-only.
-- Проверки build/style/pack и asset/base-path consumer test проходят.
+Этот файл декомпозирует только открытые issues #3–#14: переносимые компоненты,
+plugin/icon contracts, точечные UX-изменения UI Kit, Pages inspection и выпуск
+совместимой package-пары. Последней задачей задано создание подробного handoff
+issue для `get.3xtr.im`; его реализация остаётся за границами этого репозитория.
+Вне scope — API/upload transport, persisted queues, доменная валидация и
+фактическая публикация без утверждённого release контекста.
 
 ## Vue package
 
-### Component and composable API
+### Upload interaction
 
-### [P0] Task A11.3. Сформировать переносимый API @iam3xtr/vue
+### [P1] Issue #3.1. Добавить public FileDropTarget
 
-Статус: done — 2026-09-17 `@iam3xtr/vue@0.1.1-alpha` подтверждён в GitHub Packages; Vitest UI Kit inline-трансформирует его SFC exports и 602 unit tests проходят.
+Статус: done
 
-Источник: Stage A11 `.plan`, «Публичный контракт @iam3xtr/vue»; `docs/design-system.md` раздел common components.
+Источник: ui.3xtr.im #3.
 
-Описание: Выделить общие примитивы и framework-level composables в Vue-пакет без привязки к приложению. Потребитель получает документированные exports, props/events/slots и доступность, но сохраняет собственные stores, router, контент и локали.
-
-Уточнённые требования:
-
-- В scope: Icon, Loader, AsyncState, ListAsyncState, PageHeader, CopyPre, Toolbar family, NavbarMenu/Tabs, presentation TariffSummaryCard и общие composables.
-- Vue, Buefy и Vue Router (только navigation exports) — compatible peer dependencies и externalized runtime; пакет не вызывает `createApp`/`app.use`.
-- Core import не требует router shell, `window` или `document`; browser-side listeners имеют lifecycle cleanup.
-- Нет `@/src` aliases, vite-svg-loader requirement, Pinia/API/fixtures/route URL или wizard locales в published output.
-
-План реализации:
-
-1. Зафиксировать inventory и public API каждого компонента/composable, включая props/events/slots/a11y и translation adapter boundary.
-2. Перенести core и navigation exports в `vue` с library build, asset registry и peer ranges, сохранив явный setup Buefy/icons.
-3. Добавить component/API, SSR-import/hydration и cleanup tests; описать JSDoc/IDE contract.
-
-Область:
-
-- `iam3xtr/vue`: `src/components/**`, `src/composables/**`, registry, build, tests, README
-- `iam3xtr/ui`: peer compatibility and documented theme contract
-
-Критерии приёмки:
-
-- Public exports импортируются без kit aliases, Pinia/router shell или browser globals на SSR.
-- Peer matrix не устанавливает вторую Vue/тему; Buefy/icon setup является явным.
-- Component, accessibility, SSR/hydration and listener-cleanup tests проходят.
-
-## Kit adoption
-
-### Imports and single source of truth
-
-### [P1] Task A11.4. Перевести UI Kit на пакеты ui и vue
-
-Статус: done — 2026-09-17 UI Kit подключён к точным registry-зависимостям `@iam3xtr/ui@0.1.1-alpha` и `@iam3xtr/vue@0.1.1-alpha`; lockfile содержит их resolved URLs и integrity, без file:-links.
-(`packages/ui`, `packages/vue`, symlink через `npm install`, без nested `node_modules` в сабмодулях —
-иначе дублируется `vue-router`, ломая `RouterLink`-контракт `NavbarTabs`/`PageHeader`/
-`TariffSummaryCard`). `src/main.js` подключает `@iam3xtr/ui/styles/theme.scss` и строит icon
-registry из `@iam3xtr/ui/assets/icons/**` через `provideIconRegistry`; `App.vue`'s `navbarMenuKey`
-теперь импортируется из `@iam3xtr/vue` (не из своего больше не существующего composable) — это
-было необходимо, иначе `NavbarMenu`/`NavbarTabs` из пакета инжектировались бы по другому Symbol и
-молча не рендерились. Все 39 экранов/сторов, использовавших `common/{Icon,Loader,AsyncState,
-ListAsyncState,CopyPre,Toolbar,ToolbarDropdown,ToolbarSearch,MobileFilters,NavbarMenu}.vue` и
-`common/{NavbarTabs,PageHeader,TariffSummaryCard}.vue`, переключены на `@iam3xtr/vue`/
-`@iam3xtr/vue/navigation`; `src/components/common/` хранит только некит-специфичные
-`DirtyExitModal.vue`/`FormErrorSummary.vue`, которые в пакет не переносились. Удалены как вторая
-редактируемая копия: `src/styles/trickster-buefy.scss`, `src/styles/_trickster-tokens.scss`,
-`src/assets/icons/**`, `src/assets/logo.svg`, `src/assets/loader-mono*.svg`,
-`src/composables/navbarMenu.js`. `npm run lint:style` упростён до `guard:no-component-styles`
-(Stylelint для kit-local SCSS больше не нужен — стилей не осталось; линт темы теперь только в
-`packages/ui`). `npm run build`, `npm run lint:style`/`guard:no-component-styles` и все 673
-Vitest-теста (`npm run test:unit`) проходят; `git diff --check` чист. `docs/design-system.md` и
-`docs/agent-migration-guide.md` обновлены на факт переключения (включая явную пометку, что
-`get.3xtr.im`'s `ui-kit:update`/`ui-kit.lock.json` теперь рассинхронизированы до отдельной задачи
-миграции кабинета — get.3xtr.im#27) и CLAUDE.md — на новые "Styling rule"/"Icons"/"Loader"/
-"Structure"/"Downstream sync" разделы. `get.3xtr.im` не трогался — вне области этой задачи.
-
-Источник: Stage A11 `.plan`, «Переключение кита и последующий перенос кабинета».
-
-Описание: Сделать UI Kit первым consumer выпущенных library sources, сохранив его страницы, fixtures, маршруты и A9/A10 journeys. После миграции общая тема и примитивы имеют одну редактируемую реализацию в submodules.
+Описание: Вернуть переносимую drop-поверхность поверх интерактивного
+slot-контента, в частности `b-table`, не превращая таблицу в `label` и не
+перенося transport или доменный uploader в библиотеку.
 
 Уточнённые требования:
 
-- Kit импортирует только public exports и не сохраняет вторую редактируемую копию перенесённых styles/assets/common primitives.
-- Page-specific сценарии, Pinia fixtures, router, demo state и adapters остаются в kit и не публикуются.
-- No-component-styles guard остаётся рабочим для kit и library boundaries; не подключаются одновременно legacy и package theme.
-- Старый directory sync не удаляется и продолжает обслуживать немигрированных потребителей до get #27.
+- Компонент экспортируется из core entrypoint `@iam3xtr/vue` и принимает
+  `disabled`, `multiple`, `accept`; по drop эмитит единственное событие
+  `files` с `File[]`.
+- Обычный клик, focus, сортировка и dropdown-операции дочернего контента не
+  открывают picker и не блокируются overlay; drag без файлов игнорируется.
+- Drag-depth корректно удерживает overlay при переходах по вложенным узлам;
+  disabled не показывает приём и не эмитит файлы.
+- `accept` — только клиентская подсказка/ранняя фильтрация, не security
+  boundary; компонент не знает об upload, progress, retry, cancel или API.
+- Overlay видим только во время file drag и сообщает состояние assistive
+  technology через доступный live-status.
 
 План реализации:
 
-1. Переключить styles/assets/common imports на package exports и удалить только подтверждённо заменённые локальные исходники.
-2. Адаптировать kit shell/navigation/slots к public Vue API без переноса domain logic.
-3. Обновить unit/component tests, Vite/scripts/CI и проверить отсутствие duplicated CSS/Vue/runtime imports.
+1. Реализовать `FileDropTarget.vue` на семантически нейтральном контейнере,
+   с обработкой DataTransfer и вложенного drag lifecycle без picker behavior.
+2. Добавить public export, JSDoc/README contract, записи в design-system и
+   migration guide, а также минимальные theme-class requirements в
+   координации с ui package.
+3. Добавить component tests на drop, `multiple`/`accept`, disabled, non-file
+   drag, nested dragleave и сохранность slot interaction; проверить SSR import.
 
 Область:
 
-- UI Kit: `src/**`, `package.json`, lockfile, Vite/scripts/CI, tests
-- `iam3xtr/ui`, `iam3xtr/vue`: public export fixes only
+- `packages/vue/src/components/FileDropTarget.vue`
+- `packages/vue/src/index.js`, `packages/vue/tests/**`, `packages/vue/README.md`
+- `packages/ui/src/styles/theme.scss` — только согласованные classes overlay
+- `docs/design-system.md`, `docs/agent-migration-guide.md`
 
 Критерии приёмки:
 
-- Kit build/test/style guards используют оба пакета и не находят второй editable source общих primitives/theme.
-- Все существующие routes, fixtures и A9/A10 journeys сохраняются без сетевых вызовов.
-- Старый sync contract не ломается до отдельного downstream migration.
+- Core import экспортирует `FileDropTarget`; drop над slot-контентом эмитит
+  ожидаемый массив и не вызывает input/picker или транспорт.
+- Overlay не мерцает на вложенных drag events и не остаётся после drop/leave.
+- Тесты компонента и SSR/import-проверка пакета проходят.
 
-## Delivery verification
+### Form drawer
 
-### Packed and registry consumers
+### [P1] Issue #4.1. Добавить public FormDrawer поверх Buefy sidebar
 
-### [P1] Task A11.5. Проверить pair delivery через tarball, registry и consumer matrix
+Статус: done
 
-Статус: done — 2026-09-17 tarball-матрица сохранена, а опубликованная registry-пара дополнительно подтверждена точными `npm view` запросами и чистой registry-установкой UI Kit.
-consumer fixtures (`fixtures/spa` — Vue SPA/Vite/Vue Router/Buefy, `fixtures/tokens-only`,
-`fixtures/ssr-hydration` — server render + jsdom hydration без Nuxt, `fixtures/peer-mismatch`
-— негативный сценарий) и `scripts/run-matrix.mjs`, который пакует обе библиотеки `npm pack`,
-устанавливает каждый fixture в изолированную директорию вне workspace (только по
-`file:<tarball>`, без symlink — проверяется явно) и прогоняет их build/test/check. Проверены
-также два registry-сценария без учётных данных: `npm view vue@0.0.0-does-not-exist`
-(существующий пакет, несуществующая версия) и `npm view @iam3xtr/ui --registry
-https://npm.pkg.github.com` без токена — оба дают чистый 404, что документирует
-неразличимость "нет пакета" и "нет доступа" на GitHub Packages. Все 8 сценариев проходят
-(`node packages/consumers/scripts/run-matrix.mjs`). Реальная публикация в registry не
-выполнялась — нет write-доступа в этом окружении и это отдельное операционное действие;
-`packages/consumers/README.md` фиксирует compatibility matrix (единственная рекомендуемая
-пара `@iam3xtr/ui@^0.2.0`/`@iam3xtr/vue@^0.2.0`), порядок публикации (сначала ui, затем vue),
-процедуру partial-publish recovery и rollback (никогда не unpublish, только новая версия +
-сдвиг рекомендации) и требование exact versions/lockfile в одном consumer PR. Добавлена
-"Releasing"-секция в `packages/ui/README.md` и `packages/vue/README.md`; этот текст
-закоммичен и запушен в рамках Task A11.6 ("ci: add scoped CI and release workflows",
-`packages/ui`/`packages/vue`), не отдельным коммитом A11.5.
-Побочная находка при прогоне: `npm ci` внутри `packages/ui`/`packages/vue` (нужен, чтобы
-собрать/протестировать их автономно) оставляет там nested `node_modules`, из-за чего кит
-резолвит второй `vue-router` через `file:`-symlink и `npm run test:unit` даёт 111 ложных
-падений — задокументировано в `packages/consumers/README.md` ("Do not leave ... installed") и
-`CLAUDE.md`; корневой `vitest.config.js` также обновлён (`test.include:
-["tests/unit/**/*.test.js"]`), поскольку без явного include он неявно подхватывал
-`packages/*/tests/**`, если у сабмодулей есть свой `node_modules` — это соответствует
-задокументированному в CLAUDE.md факту, что `test:unit` — это `tests/unit/**`, а не факту
-поведения конфига. `npm run build`, `npm run lint:style`, `npm run test:unit` (602/602) и
-`git diff --check` чисты после `rm -rf packages/{ui,vue}/node_modules`. `docs/design-system.md`
-и `CLAUDE.md` обновлены (ссылка на `packages/consumers/`, команда матрицы, структура). Область
-`iam3xtr/ui`/`iam3xtr/vue` ограничена README; никаких изменений в их exports/contract-тестах
-не потребовалось — pack/exports контракт уже был закрыт A11.2/A11.3.
+Источник: ui.3xtr.im #4.
 
-Источник: Stage A11 `.plan`, «Разработка через сабмодули и воспроизводимый checkout» и «Версии, публикация и права CI».
-
-Описание: Доказать, что package pair работает вне workspace и не зависит от локальных symlink, checkout или unpublished source. Рекомендованная пара версий выпускается и обновляется согласованно, но без ложного обещания атомарной registry-транзакции.
+Описание: Зафиксировать единый каркас правой формы, чтобы потребители не
+собирали sidebar-header/body/footer и submit semantics заново на каждом
+экране, сохранив ответственность за конкретные поля и сохранение в приложении.
 
 Уточнённые требования:
 
-- Consumer tests устанавливают `npm pack` tarballs вне workspace, затем точную registry-пару без git clone библиотек.
-- Проверяются Vue SPA, Nuxt SSR/hydration, tokens-only, peer incompatibility, missing package/SHA/access и отсутствие duplicate CSS/Vue.
-- Сначала выпускается ui, затем compatible vue; partial publish не обновляет consumer recommendation, опубликованная версия не перезаписывается.
-- Exact versions и lockfile обновляются одним consumer PR; `latest`, branch и submodule не используются как consumer dependencies.
+- `FormDrawer` экспортируется из `@iam3xtr/vue`, использует штатный
+  `b-sidebar` справа с overlay и поддерживает `v-model`, `title`, `busy`,
+  `disabled`, close и событие `submit`.
+- Header содержит title и доступную close-кнопку; default slot — form body,
+  `footer` slot — действия. Body прокручивается независимо, footer остаётся
+  доступным на длинной форме и малой ширине.
+- Escape, backdrop, focus trap, возврат фокуса и scroll lock остаются
+  контрактом Buefy; пакет не подменяет его самодельным overlay.
+- Native form submit доступен с клавиатуры и не дублируется во время `busy`;
+  component не реализует validation, dirty guard, API или draft model.
 
 План реализации:
 
-1. Добавить isolated consumer fixtures and pack/registry matrix for both libraries.
-2. Зафиксировать compatibility matrix, recommended pairs, failed-second-publish recovery and rollback procedure.
-3. Выполнить clean-install evidence для tarball/registry и negative access/peer scenarios.
+1. Описать props/events/slots и реализовать Vue-composition вокруг `b-sidebar`
+   с native form, close path и busy/disabled guard.
+2. Добавить public export, README API table, записи в design-system/migration
+   guide и component/SSR tests.
+3. Проверить opening/close, submit, busy, slots, Escape/backdrop и focus
+   restoration с Buefy test setup; зафиксировать явные ограничения Buefy.
 
 Область:
 
-- `iam3xtr/ui`: pack/release tests and docs
-- `iam3xtr/vue`: pack/release tests and docs
-- UI Kit: integration consumer fixtures and lockfile
+- `packages/vue/src/components/FormDrawer.vue`
+- `packages/vue/src/index.js`, `packages/vue/tests/**`, `packages/vue/README.md`
+- `docs/design-system.md`, `docs/agent-migration-guide.md`
 
 Критерии приёмки:
 
-- Packed and registry consumers проходят с exact compatible pair; tokens-only remains runtime-independent.
-- SSR/hydration и SPA tests не показывают browser-global, asset, peer или duplicate-runtime failure.
-- Partial release/revert и отказ доступа имеют documented safe outcome without changing consumer pair.
+- Drawer открывается справа, имеет title/close, scrollable body и fixed footer
+  без доменных полей или сетевой логики.
+- Submit эмитится единожды и блокируется на время busy; keyboard/focus close
+  соответствует Buefy.
+- Public API и component/SSR tests проходят.
 
-### CI permissions, release workflow and operational docs
+## UI package
 
-### [P1] Task A11.6. Настроить защищённый выпуск и задокументировать эксплуатационный контракт
+### Theme contracts
 
-Статус: done — 2026-09-17 release workflows публикуют prerelease с dist-tag, Vue проверяет опубликованный UI; Pages workflow устанавливает registry-пару с `packages: read` и не checkout'ит сабмодули.
-(`.github/workflows/ci.yml`, `.github/workflows/release.yml`, запушено в оба submodule
-repo): `ci.yml` — `contents: read`, `npm ci`/lint/build (ui)/`npm test`/`npm pack
---dry-run` на каждый push/PR; `release.yml` — триггер только по тегу `vX.Y.Z`, job
-`release` под GitHub `environment: release` — единственное место, где запрошен
-`packages: write`, с guard'ами «тег ≡ `package.json` version» и «версия уже
-опубликована» перед `npm publish` (immutable tag/version policy). `iam3xtr/vue`'s
-`file:../ui` devDependency восстанавливается в CI отдельным sibling-checkout `iam3xtr/ui`
-через `CROSS_REPO_READ_TOKEN` (`contents: read`, чужой repo — default `GITHUB_TOKEN`
-для этого недостаточен). UI Kit's `deploy-pages.yml` дополнен pinned
-`submodules: recursive` checkout (без `--remote`) тем же `CROSS_REPO_READ_TOKEN`,
-поскольку `@iam3xtr/ui`/`@iam3xtr/vue` — `file:packages/{ui,vue}`-зависимости, а не
-registry-пакеты. `packages/consumers/README.md` получил раздел «CI, release workflow and
-credentials»: полное разделение credentials (`GITHUB_TOKEN` только в release job,
-`CROSS_REPO_READ_TOKEN` только `contents: read`, без `packages:write`), denied-access
-diagnostics (fail checkout / `403` на publish без скрытого fallback), явное указание,
-что реальная публикация и провижининг secrets/`environment` reviewers — админская
-операция вне этого репозитория. `CLAUDE.md` ("Deployment", реестр `packages/consumers/`)
-и `README.md` обеих библиотек ("Releasing") обновлены ссылками на этот раздел без
-дублирования нормативного текста; get #25–#27 остаются отдельным downstream handoff,
-не помечены выполненными. Проверки: YAML пяти workflow-файлов валиден (node
-`yaml`/`js-yaml` parse), `npm run lint:style`, `npm run build` и `git diff --check` кита
-проходят; `git diff --check` в обоих submodule чист. Никаких secrets/токенов в файлах —
-только `${{ secrets.* }}` ссылки.
+### [P1] Issues #4/#5.2. Оформить drawer и исправить mobile filters selector
 
-Источник: Stage A11 `.plan`, «Версии, публикация и права CI» и «Документация и проверяемый выпуск»; get #25–#27.
+Статус: done
 
-Описание: Сделать release и checkout воспроизводимыми и безопасными, а границы пакетов — понятными для kit и downstream consumers. Права Git, package registry и publication разделяются; credentials не попадают в репозиторий или logs.
+Источник: ui.3xtr.im #4 и #5.
+
+Описание: Дать `FormDrawer` единый theme contract и устранить правило,
+которое скрывает одинаковый class как в inline toolbar, так и в mobile panel,
+оставляя последнюю пустой на <=768px.
 
 Уточнённые требования:
 
-- CI использует pinned checkout без `--remote`; cross-repo submodule read и packages read/write разделены по минимальным правам.
-- `packages:write` доступен только доверенному release context; secrets отсутствуют в `.gitmodules`, `.npmrc`, artifacts и logs.
-- README/CLAUDE/design-system/migration guide обновляются только по фактически перенесённым exports и ownership; нормативные копии не дублируются.
-- get #25–#27 получают package handoff после опубликованной пары; их реализация не входит в Stage A11.
+- Theme предоставляет только `tr-*` classes для header/body/footer drawer,
+  правой панели, fixed footer, layering и полноэкранного mobile режима;
+  локальные style blocks и вторая тема не создаются.
+- Breakpoint rule скрывает `.tr-page-toolbar__filter` исключительно в inline
+  `.tr-page-toolbar__filters`, но не в `.tr-mobile-filters__content`.
+- Сохранены существующие размеры, flex layout toolbar, Buefy dropdown
+  stacking и theme behavior вне затронутых контрактов.
 
 План реализации:
 
-1. Создать release workflows с clean checkout, test/guard/build/pack/consumer gates and immutable tag/version policy.
-2. Configure and test scoped credentials, denied-access diagnostics, pair publication and rollback/recovery.
-3. Update library and kit documentation for layout, exports, submodule/release/rollback commands and downstream handoff.
+1. Добавить минимальные токенизированные theme rules, которые использует
+   `FormDrawer`, включая narrow viewport and long-body behavior.
+2. Сузить responsive selector filters и добавить regression assertion через
+   showcase/consumer class contract.
+3. Обновить ui README/style tests и прогнать build, stylelint, pack и
+   relevant consumer fixture.
 
 Область:
 
-- `iam3xtr/ui`: workflows, docs, release configuration
-- `iam3xtr/vue`: workflows, docs, release configuration
-- UI Kit: CI/submodule configuration, README, `CLAUDE.md`, `docs/design-system.md`, `docs/agent-migration-guide.md`, `.plan`
+- `packages/ui/src/styles/theme.scss`, `packages/ui/tests/**`, `packages/ui/README.md`
+- `packages/consumers/**` — только если нужно доказать compiled theme contract
 
 Критерии приёмки:
 
-- Release workflow publishes only validated immutable versions and separates checkout/package permissions.
-- Clean CI proves allowed install and denied access without leaking credentials.
-- Docs describe actual package API and ownership; get #25–#27 are linked as downstream work without being marked complete.
+- На mobile inline pills скрыты, а копия в `.tr-mobile-filters__content`
+  остаётся отображаемой без consumer override.
+- FormDrawer styles работают с long body/fixed footer и не создают hardcoded
+  component styles или новый overlay framework.
+- UI package style/build/pack checks проходят.
+
+## UI Kit adoption
+
+### Knowledge files
+
+### [P1] Issue #3.2. Подключить drop к таблице материалов через общую demo-очередь
+
+Статус: done
+
+Источник: ui.3xtr.im #3.
+
+Описание: Сделать `/knowledge/:id` эталоном двух равноправных входов файлов:
+явный Buefy picker и drop непосредственно над таблицей, которые вызывают одну
+fixture-only функцию постановки объектов в очередь.
+
+Уточнённые требования:
+
+- `b-upload` остаётся кнопкой/контролом выбора, а `FileDropTarget` оборачивает
+  только таблицу или её ready-state surface, не отдельную постоянно видимую
+  dropzone.
+- Picker и drop передают `File[]` в общий enqueue helper; статус indexing и
+  demo-settle behavior не дублируются между каналами.
+- Изменения не добавляют upload API/network code и не нарушают row actions,
+  search, empty/partial/loading states либо mobile cards.
+
+План реализации:
+
+1. Вынести текущую watch-логику `pickedFiles` в общий enqueue helper и
+   адаптировать picker к его вызову.
+2. Разместить `FileDropTarget` над таблицей, подключить overlay text и
+   disabled state из demo upload flow.
+3. Обновить focused knowledge component tests: picker/drop equivalence,
+   row action and disabled behavior.
+
+Область:
+
+- `src/components/knowledge/Files.vue`
+- `tests/unit/components/knowledge/**`
+- `docs/design-system.md`, `docs/agent-migration-guide.md`
+
+Критерии приёмки:
+
+- Файл можно бросить на любую область таблицы; picker остаётся доступен и оба
+  пути создают одинаковый fixture object lifecycle.
+- Интерактивность таблицы не регрессирует, в kit нет сетевых вызовов.
+- Focused unit tests и root guards проходят.
+
+### Overlays showcase and documentation
+
+### [P1] Issue #4.3. Добавить эталон FormDrawer и обновить правила применения
+
+Статус: done
+
+Источник: ui.3xtr.im #4.
+
+Описание: Документировать границу FormDrawer/Buefy sidebar/modal/dialog и
+дать проверяемый kit example с длинным body, fixed actions и busy submit,
+не превращая эталон в доменную форму.
+
+Уточнённые требования:
+
+- `/kit` показывает интерактивный presentation-only drawer с полями через
+  slots, длинным content, primary/secondary footer actions и busy state.
+- Прямой `b-sidebar` остаётся для неформовых панелей; `b-modal` — для коротких
+  форм, `b-dialog` — только для confirmation.
+- Documentation фиксирует фактические props/slots/a11y и правило применения;
+  migration guide не описывает API или demo state как production behavior.
+
+План реализации:
+
+1. Заменить/дополнить overlay showcase импортом `FormDrawer` и local fixture
+   state для open/close/busy без store/API.
+2. Добавить kit tests на visible header/body/footer и user paths, которые
+   поддерживает Buefy.
+3. Обновить design-system, migration guide и package README ссылками на
+   публичный contract.
+
+Область:
+
+- `src/components/kit/DialogsOverlays.vue`, `tests/unit/components/kit/**`
+- `docs/design-system.md`, `docs/agent-migration-guide.md`
+- `packages/vue/README.md`
+
+Критерии приёмки:
+
+- Kit демонстрирует drawer на desktop/mobile с длинным form body и доступными
+  footer actions.
+- Документы различают FormDrawer, direct b-sidebar, b-modal и b-dialog.
+- Targeted kit tests и docs review подтверждают контракт.
+
+## Regression fixes
+
+### Async state localization
+
+### [P1] Issue #6.1. Передать текст AsyncState loading в Loader label
+
+Статус: done
+
+Источник: ui.3xtr.im #6.
+
+Описание: Восстановить задокументированный contract textual props: loading
+variant должен давать Loader локализованное accessible name вместо
+неожиданного русского default label для non-Russian consumer.
+
+Уточнённые требования:
+
+- Для `variant="loading"` `title` имеет приоритет и передаётся в `Loader`
+  `label`; `message` используется fallback. При отсутствии обоих сохраняется
+  documented Loader default.
+- Изменение не добавляет visible AsyncState title/message рядом со spinner,
+  не меняет role/live ownership Loader и не влияет на empty/error/
+  permission-denied variants.
+- README фиксирует precedence и требование consumer передавать translated
+  strings, не вводя package locale.
+
+План реализации:
+
+1. Передать computed title/message fallback в loading branch `AsyncState`.
+2. Расширить unit/SSR tests на title, message fallback, no-text default и
+   неизменность остальных variants.
+3. Обновить public API documentation и выполнить focused package checks.
+
+Область:
+
+- `packages/vue/src/components/AsyncState.vue`
+- `packages/vue/tests/AsyncState.test.js`, `packages/vue/tests/ssr.test.js`
+- `packages/vue/README.md`, `docs/design-system.md`
+
+Критерии приёмки:
+
+- Loading `AsyncState` с translated title/message рендерит соответствующий
+  `Loader` label; без текстов сохранён default Loader.
+- Остальные варианты и accessibility roles не регрессируют.
+- Focused component/SSR tests проходят.
+
+## Delivery
+
+### Compatible minor pair
+
+### [P1] Release.1. Выпустить и подтвердить следующую совместимую пару пакетов
+
+Статус: done
+
+Источник: ui.3xtr.im #3–#14; `docs/release-process.md`.
+
+Прогон (dry run только, без -Execute, без публикации):
+
+- Пункт 1 плана выполнен: `npm ci`/`build`/`lint:style`/`test`/
+  `pack --dry-run` зелёные в `packages/ui` (17 тестов) и `packages/vue`
+  (108 тестов); корневые `guard:no-component-styles`, `build`,
+  `test:unit` зелёные (631 тест, 59 файлов) — по пути исправлен реальный
+  regression в `tests/unit/components/Sidebar.test.js`: тестовый router не
+  регистрировал `workspace-plans`, нужный `TariffSummaryCard` внутри
+  `Sidebar.vue` (та же route уже явно регистрируется в
+  `tests/unit/components/Dashboard.test.js`); `node
+  packages/consumers/scripts/run-matrix.mjs` — 7/8, единственный
+  фейл ("missing/inaccessible private package") — артефакт локальной машины:
+  в `%USERPROFILE%\.npmrc` уже настроен реальный classic PAT для
+  `npm.pkg.github.com` (как и предписывает "Перед продвижением
+  Рекомендуемого пина" в `docs/release-process.md`), поэтому сценарий "нет
+  доступа" не воспроизводится здесь — не регрессия матрицы. Временный
+  `node_modules` в обоих сабмодулях удалён после прогона.
+- Пункт 2 — черновик, без изменения манифестов: следующий minor — `0.2.0`
+  для обоих пакетов (`npm version minor --dry-run` от текущего
+  `0.1.1-alpha`; `-Alpha` в `scripts/release-packages.ps1` поддерживает
+  только patch, поэтому minor-релиз выходит без `-alpha` суффикса).
+  `packages/ui/package.json`/`packages/vue/package.json` НЕ менялись —
+  версии определяются "от manifest версии непосредственно перед release"
+  и не должны фиксироваться заранее черновиком. Реальный запуск
+  `release:ui`/`release:vue`/`release:all` (даже без `-Execute`) и сама
+  публикация в registry намеренно не выполнялись в этом прогоне — оставлены
+  пользователю/CI с approved credentials/environment.
+- Пункт 3 и критерии приёмки, требующие реальной публикации ("Registry
+  содержит две новые immutable совместимые minor-версии", "Kit использует
+  exact released pair") — невыполнимы в этом прогоне: нет write-кредов и
+  запрет на -Execute/публикацию. Дополнительно: issues #3–#14, которые
+  Release.1 должен поставить одним пакетом, сейчас все в статусе `review`
+  (не `done`) — их review/merge — предпосылка перед реальным release.
+
+Описание: Поставить все issues #3–#14 одним совместимым minor update обоих
+пакетов, сохранив порядок ui → vue и exact-pair правило для потребителей.
+
+Уточнённые требования:
+
+- Новые public components, plugin и icon registry требуют minor bump; точные номера определяются от
+  manifest версии непосредственно перед release, без перезаписи published
+  version или продвижения partial pair.
+- Сначала выпускается `@iam3xtr/ui`, затем `@iam3xtr/vue` с compatible ui
+  peer range; root lockfile/exact pins и consumer recommendation обновляются
+  вместе только после успешных публикаций.
+- Release не выполняется без утверждённого credentials/environment; при
+  сбое второго publish consumer recommendation остаётся на прежней паре и
+  применяется documented recovery procedure.
+
+План реализации:
+
+1. Выполнить package tests/build/style/pack, root guards/build/tests и
+   tarball consumer matrix на финальных commits.
+2. Подготовить minor manifests, changelog/release notes и peer compatibility;
+   запустить approved ui release, затем vue release.
+3. Проверить registry exact versions, чистую consumer install/matrix и
+   обновить kit pins/lock/docs одним follow-up PR.
+
+Область:
+
+- `packages/ui/package.json`, `packages/vue/package.json`, release workflows/docs
+- root `package.json`, lockfile, `packages/consumers/**`, `docs/release-process.md`
+
+Критерии приёмки:
+
+- Registry содержит две новые immutable совместимые minor-версии; Vue
+  peer range принимает выпущенный UI.
+- Packed и registry consumers проходят matrix без symlink/duplicate runtime
+  or duplicate theme.
+- Kit использует exact released pair; release evidence и recovery outcome
+  документированы.
+
+## Vue package
+
+### Plugin registration
+
+### [P1] Issue #7.1. Экспортировать полный trVue plugin
+
+Статус: done
+
+Источник: ui.3xtr.im #7.
+
+Описание: Дать приложениям один документированный способ подключить весь
+публичный `@iam3xtr/vue`, сохранив named imports для bundle-sensitive сценариев.
+
+Уточнённые требования:
+
+- Root export `trVue` реализует idempotent `install(app)` и регистрирует все
+  core и navigation public components под зафиксированными namespaced `tr-*`
+  именами; глобальный `icon` добавляется после готовности #8.
+- Plugin не устанавливает Vue Router/Buefy и не импортирует theme CSS; порядок
+  потребителя: Router → Buefy → trVue.
+- Existing named imports и separate `./navigation` entrypoint не меняются.
+
+План реализации:
+
+1. Сформировать единственный inventory public exports и table global names.
+2. Реализовать plugin и защиту от повторной установки без Vue warnings.
+3. Добавить unit/SSR and consumer smoke с Router+Buefy, обновить README.
+
+Область:
+
+- `packages/vue/src/index.js`, plugin module, `packages/vue/tests/**`, `packages/vue/README.md`
+- `packages/consumers/**`
+
+Критерии приёмки:
+
+- `app.use(trVue)` рендерит core и navigation components; второй install безопасен.
+- Named imports работают как прежде; Buefy/CSS не получают hidden side effect.
+- README содержит `main.js`, порядок setup и реестр global names.
+
+### Icon registry and adapter
+
+### [P1] Issue #8.1. Опубликовать bundler-neutral SVG registry из ui
+
+Статус: done
+
+Источник: ui.3xtr.im #8.
+
+Описание: Убрать из consumer app Vite-specific imports всех vendor SVG и дать
+Vue-слою публичную map name → SVG markup без alias, glob или loader contract.
+
+Уточнённые требования:
+
+- Registry доступен только через documented public export `@iam3xtr/ui`; в нём
+  только существующие custom SVG, без дублирования MDI и runtime Vue/Buefy.
+- Build/pack публикует registry и assets с корректными paths вне workspace.
+
+План реализации:
+
+1. Сгенерировать/поддержать public registry на основе documentated icon set.
+2. Добавить exports, pack/contract tests и README import example.
+3. Проверить tarball consumer без Vite SVG loader и без deep import в `src`.
+
+Область:
+
+- `packages/ui/src/assets/**`, public exports/build, `packages/ui/tests/**`, README
+- `packages/consumers/**`
+
+Критерии приёмки:
+
+- Registry получает package SVG по имени в packed consumer без app aliases.
+- MDI не дублируется, а tokens-only entrypoint не получает Vue/Buefy runtime.
+- Export/pack tests проходят.
+
+### [P1] Issue #8.2. Расширить Icon: slot, SVG precedence и Buefy fallback
+
+Статус: done
+
+Источник: ui.3xtr.im #8; depends on #7 для global `<icon>` и #8.1 для package registry.
+
+Описание: Сделать named `Icon` независимым SVG adapter с optional Buefy/MDI
+fallback, а plugin-режим — удобным без изменения поведения `<b-icon>`.
+
+Уточнённые требования:
+
+- Precedence: non-empty default slot → consumer registry → ui registry →
+  registered BIcon → placeholder; conflicts `slot`/`name`/`icon` дают dev warning.
+- `name` legacy и Buefy-compatible `icon` поддерживаются; SVG выигрывает при
+  совпадении. Direct import работает без trVue, Buefy и static BIcon import.
+- Wrapper сохраняет `.icon`, size/class/style/title/role/aria attrs; unknown
+  name остаётся safe placeholder. `provideIconRegistry` только overrides/adds.
+
+План реализации:
+
+1. Разделить registry resolution, slot rendering и optional runtime Buefy lookup.
+2. Прокинуть Buefy-compatible props только в fallback и зарегистрировать `icon`
+   в trVue после #7.
+3. Добавить direct/plugin tests, consumer smoke, SSR/a11y/preference table docs.
+
+Область:
+
+- `packages/vue/src/components/Icon.vue`, icon registry/plugin/index, tests, README
+- `packages/consumers/**`, `docs/design-system.md`, `docs/agent-migration-guide.md`
+
+Критерии приёмки:
+
+- SVG работает локально без Buefy; plugin `<icon>` выбирает ui/consumer SVG прежде MDI.
+- Buefy fallback работает только при доступном BIcon; `<b-icon>` не меняется.
+- Slot priority, conflicts, attrs/a11y, size и unknown placeholder покрыты тестами.
+
+### Navigation card
+
+### [P1] Issue #11.1. Сделать tariff card доступной ссылкой на тарифы
+
+Статус: done
+
+Источник: ui.3xtr.im #11.
+
+Описание: Подключить уже публичный navigation contract `TariffSummaryCard.to`
+к sidebar route `workspace-plans`, чтобы вся summary-card была понятной целью навигации.
+
+Уточнённые требования:
+
+- Card имеет один link semantic и accessible name; click, Enter/Space и
+  focus-visible ведут к тарифам без nested interactive controls.
+- Limits/progress/unlimited/exhausted и sidebar layout остаются неизменными.
+
+План реализации:
+
+1. Передать target в sidebar и при необходимости уточнить public component API.
+2. Проверить RouterLink, keyboard activation и focus in component/sidebar tests.
+3. Обновить navigation docs и kit smoke example.
+
+Область:
+
+- `src/components/Sidebar.vue`, `packages/vue/src/components/navigation/TariffSummaryCard.vue`
+- relevant package/root tests and documentation
+
+Критерии приёмки:
+
+- Click/keyboard ведут к `workspace-plans`; нет nested links или двойной навигации.
+- Tariff display и sidebar scroll не регрессируют; route/a11y smoke проходит.
+
+## UI Kit
+
+### Authentication surface
+
+### [P1] Issue #9.1. Сделать login, signup и forgot плоскими
+
+Статус: done
+
+Источник: ui.3xtr.im #9.
+
+Описание: Убрать card/panel-анатомию только у form routes auth, сохранив
+центрированную адаптивную колонку и все текущие interaction states.
+
+Уточнённые требования:
+
+- Login/Signup/Forgot не имеют background, border, radius, shadow или
+  заменяющей декоративной обёртки; Invite/Verify сохраняют текущий layout.
+- Поля, errors, password reveal, Google sign-in, legal text и loading не меняют
+  router/store/Buefy contracts; mobile width не создаёт overflow.
+
+План реализации:
+
+1. Ввести узкий flat variant `AuthPage` только для указанных routes.
+2. Скорректировать theme contract и focused auth tests without shared package change.
+3. Зафиксировать visual/manual matrix light/dark 320/768/desktop и docs guidance.
+
+Область:
+
+- `src/components/auth/{AuthPage,LoginView,SignupView,ForgotView}.vue`
+- `packages/ui/src/styles/theme.scss`, auth tests, migration guide
+
+Критерии приёмки:
+
+- Три формы плоские, Invite/Verify не изменены.
+- Responsive, focus, password reveal and errors readable; tests/guards проходят.
+
+### Sidebar layout
+
+### [P1] Issue #10.1. Стабилизировать ширину sidebar и labels меню
+
+Статус: done
+
+Источник: ui.3xtr.im #10.
+
+Описание: Исключить layout shift и перенос nav labels при появлении scrollbar
+у высокой tariff card, не затронув отдельный mobile drawer.
+
+Уточнённые требования:
+
+- Desktop width проверяется на длинных RU/EN/ES labels и увеличивается только
+  до canonical token value; scrollbar gutter стабилен до scroll.
+- Menu item остаётся одной строкой; недостаток ширины даёт accessible ellipsis/
+  tooltip fallback, не horizontal overflow и не потерю полного label для AT.
+
+План реализации:
+
+1. Измерить labels/card и обновить sidebar token/theme overflow rules.
+2. Добавить stable scrollbar strategy with browser-compatible fallback.
+3. Проверить long tariff, themes, scrollbar variants, mobile and style smoke.
+
+Область:
+
+- `packages/ui/src/styles/{_trickster-tokens,theme}.scss`, `src/components/Sidebar.vue`
+- style/component tests and design-system documentation
+
+Критерии приёмки:
+
+- Scrollbar appearance не меняет inline size/перенос menu; no horizontal overflow.
+- Полный label доступен keyboard/AT, mobile layout не регрессирует.
+
+### Administration tables
+
+### [P1] Issue #12.1. Добавить единые семантические markers в admin tables
+
+Статус: done
+
+Источник: ui.3xtr.im #12; depends on #8.2.
+
+Описание: Вернуть быстрый визуальный скан Users, Providers, Models, Tariffs и
+Requests через общий Icon mapping, сохранив текст как источник смысла.
+
+Уточнённые требования:
+
+- Каждая таблица использует public `Icon` contract, не local SVG registry или
+  duplicated MDI mapping; fixtures/data/sorting/filtering/pagination unchanged.
+- Tariff dots не являются единственным сигналом; role/type/status имеют text or
+  accessible label in desktop и mobile-card rendering.
+
+План реализации:
+
+1. Добавить documented domain-to-icon mapping рядом с shared presentation helper.
+2. Встроить markers в пять table views and preserve textual cells.
+3. Add focused table/a11y tests and visual smoke across themes/mobile.
+
+Область:
+
+- `src/components/administration/{Users,Providers,Models,Tariffs,Requests}.vue`
+- shared mapping/tests, `docs/design-system.md`, migration guide
+
+Критерии приёмки:
+
+- Пять таблиц показывают consistent markers without loss of text or interactions.
+- Mapping переиспользует #8 API и покрыт tests/visual smoke.
+
+### Dashboard attention queue
+
+### [P1] Issue #13.1. Заменить список attention на session-scoped очередь
+
+Статус: done
+
+Источник: ui.3xtr.im #13.
+
+Описание: Отображать максимум одну actionable attention-card и дать пользователю
+ручное управление/temporary dismiss, не меняя source derivation или реальную проблему.
+
+Уточнённые требования:
+
+- Нет заголовка секции; 0 items не рендерит block, many показывает position и
+  accessible previous/next с documented wrap либо disabled behavior.
+- Dismiss изолирован `workspace + browser session`, скрывает только active item,
+  после этого выбирается соседний; hidden items восстанавливаются без reload.
+- Stable key сохраняет правильный active item при source update; no autoplay,
+  polling, realtime or API mutation.
+
+План реализации:
+
+1. Вынести queue index/dismiss state в narrow dashboard composable/session adapter.
+2. Рендерить active card, controls, restore path and existing primary action route.
+3. Cover 0/1/many, navigation, source removal, dismiss/restore, workspace isolation and a11y.
+
+Область:
+
+- `src/components/Dashboard.vue`, focused composable/store adapter, dashboard tests
+- `packages/ui/src/styles/theme.scss`, `docs/design-system.md`
+
+Критерии приёмки:
+
+- Dashboard занимает не более одной attention-card; actions/routes/metrics unchanged.
+- Dismiss/restore и active selection корректны в session/workspace scope.
+- State, keyboard, live semantics and light/dark cases covered by tests/smoke.
+
+### Pages inspection
+
+### [P1] Issue #14.1. Включить Vue Devtools только для Pages build
+
+Статус: done
+
+Источник: ui.3xtr.im #14.
+
+Описание: Сделать публичный GitHub Pages demo inspectable через browser extension,
+не расширяя обычный production build или публикуемые package artifacts.
+
+Уточнённые требования:
+
+- Только clearly named Pages Vite mode sets `__VUE_PROD_DEVTOOLS__ = true`;
+  default production build explicitly remains false.
+- Pages workflow сохраняет base path; no in-DOM devtools UI, remote server,
+  open-editor endpoint, secret or local path.
+- Docs фиксируют extension requirement, scope/trade-off и ручную inspection check.
+
+План реализации:
+
+1. Add mode-aware Vite define and a dedicated Pages build command.
+2. Switch deploy-pages workflow to that command and test config/workflow branches.
+3. Run base-path/runtime smoke, compare artifact size and document manual Chrome/Firefox evidence.
+
+Область:
+
+- `vite.config.js`, `package.json`, `.github/workflows/deploy-pages.yml`
+- config tests, README or deployment documentation
+
+Критерии приёмки:
+
+- Pages artifact exposes Vue components, props/events and Pinia to extension.
+- Normal build and ui/vue package artifacts have prod devtools disabled.
+- Navigation/base path/runtime remain valid; docs and artifact-size evidence recorded.
+
+## Downstream handoff
+
+### [P1] Handoff.1. Создать подробный get.3xtr.im issue на обновление package-пары
+
+Статус: done
+
+Источник: запрос пользователя 2026-09-18; ui.3xtr.im #3–#14. Проверка открытых
+issues get.3xtr.im 2026-09-18: дубликат не найден.
+
+Прогон 2026-09-18: пользователь явно ограничил scope этого прогона —
+`Release.1` был только dry run релизных скриптов, реальная публикация
+`@iam3xtr/ui`/`@iam3xtr/vue` в npm registry НЕ произошла. Публикация issue в
+`iam3xtr/get.3xtr.im` через `gh`/REST API поэтому отложена до реального
+релиза и ручной registry-проверки из `docs/release-process.md`. Вместо
+публикации подготовлен полный черновик issue (заголовок + body: package
+names, versions-placeholder, compatible peers, release links, rollback pair,
+required/optional/non-goals, package-to-screen mapping, migration steps,
+acceptance matrix, явное исключение #9/#13/#14) —
+`docs/issue-drafts/get-3xtr-im-package-pair-handoff.md`. Из критериев
+приёмки ниже выполнимо без реальной публикации только содержание черновика;
+невыполнимо в этом прогоне (требует реально опубликованной пары): «создан
+non-duplicate issue с точными released versions», реальные release links на
+существующие теги/релизы `iam3xtr/ui`/`iam3xtr/vue`, и install/build часть
+acceptance-проверки против настоящего `npm.pkg.github.com`. Статус переведён
+в `review`, чтобы зафиксировать готовый черновик; фактическая публикация —
+последующий шаг после реального релиза.
+
+Описание: После выпуска создать одну внешнюю задачу для `get.3xtr.im`, которая
+обновляет exact `@iam3xtr/ui`/`@iam3xtr/vue` pair и переносит только применимые
+новые public contracts: FileDropTarget, FormDrawer, trVue plugin, Icon/SVG
+registry, toolbar/mobile fix, localized AsyncState loading label, tariff-card
+navigation, sidebar sizing и admin markers. Kit-only auth/dashboard/Pages-devtools
+изменения указать как reference evidence, не переносить как обязательный scope.
+
+Уточнённые требования:
+
+- Issue создаётся только после published immutable exact versions и содержит
+  package names, versions, compatible peers, release links and rollback pair.
+- Body разделяет required downstream work, optional adoption, non-goals and
+  package-to-screen mapping; no fixtures, demo state, Pages mode or API behavior.
+- Включает migration steps: one theme import, Router→Buefy→trVue order if chosen,
+  named-import alternative, ui SVG registry/preference rules, Buefy fallback,
+  component props/slots/events and removal of temporary workarounds for #5/#6.
+
+План реализации:
+
+1. Read final release notes, public exports and get main to map every applicable change.
+2. Create one detailed GitHub issue through REST, link ui #3–#14 and list excluded kit-only items.
+3. Add acceptance matrix for install/build, routes, keyboard/a11y, mobile/theme, icon fallback and rollback; link it from release handoff.
+
+Область:
+
+- `iam3xtr/get.3xtr.im` GitHub Issues only; no code change in this repository
+- release notes and exact package versions of `@iam3xtr/ui` / `@iam3xtr/vue`
+
+Критерии приёмки:
+
+- В get создан один non-duplicate issue с точными released versions, links to #3–#14,
+  scope/non-goals, ordered migration steps and owner-facing rollback instructions.
+- Acceptance criteria verify: one theme import; compatible peers; FileDropTarget/FormDrawer;
+  trVue or named imports; SVG precedence/Buefy fallback; mobile filters; loading labels;
+  tariff navigation/sidebar/menu; admin icon semantics; build/test/a11y/mobile/theme smoke.
+- Issue explicitly excludes kit-only #9, #13 and #14 behavior, API changes and fixtures.
+
+### [P1] Handoff.2. Собрать реалистичные примеры применения новых контрактов
+
+Статус: done
+
+Источник: запрос пользователя 2026-09-18; ui.3xtr.im #3–#14; Handoff.1.
+
+Прогон 2026-09-18 (второй): пользователь явно ограничил scope этого
+прогона — `Release.1` был только dry run, `@iam3xtr/ui`/`@iam3xtr/vue` не
+опубликованы реально; установленная зависимость
+(`node_modules/@iam3xtr/vue@0.1.1-alpha`) — более ранний снимок пакета без
+`trVue`-плагина (`@iam3xtr/vue/plugin` не входит в `package.json#exports`
+этой версии) и без расширенной `Icon`-цепочки резолюции (`icon`-алиас,
+default slot, default-реестр `@iam3xtr/ui/icons`, Buefy MDI fallback —
+Issue #8.2, реализовано только в `packages/vue/src/components/Icon.vue`).
+Поэтому «released public imports/exact pair» и живая демонстрация полного
+`Icon`-precedence были недостижимы в этом прогоне — сделано без выдачи
+dev-состояния за released:
+
+- Materials collection (upload/edit): уже реализовано ранее и не
+  дублировалось — `src/components/knowledge/Files.vue` (`/knowledge/:id`)
+  — одна demo-очередь для `FileDropTarget` и явного `b-upload`,
+  `ListAsyncState`/`Loader`, partial-banner. Задокументировано как
+  сценарий в `docs/design-system.md` («Сценарии новых контрактов»).
+- Редактирование в контексте страницы: добавлено новое связное
+  подключение — `src/components/kit/Tables.vue`, раздел «Редактирование в
+  контексте страницы» — построчное действие «Редактировать» открывает
+  `FormDrawer` (realistic fields, required-валидация, pending submit,
+  dirty-exit boundary через общий `common/DirtyExitModal.vue`). Прежний
+  изолированный showcase `FormDrawer` в `kit/DialogsOverlays.vue` оставлен
+  как prop-level справочник компонента (не сценарий) — design-system.md
+  теперь явно разделяет обе роли.
+- Application shell: добавлен новый маршрут `/kit/application-shell`
+  (`src/components/kit/ApplicationShell.vue`) — `trVue` install order
+  показан только как текст (`CopyPre`, не executed этим китом: сам
+  subpath `@iam3xtr/vue/plugin` не опубликован), sidebar с clickable
+  `TariffSummaryCard` — живой рабочий пример, `Icon` precedence — живьём
+  показан только текущий установленный контракт (`name`, без
+  fallback/slot), расширенная slot/registry/MDI-fallback цепочка (#8.2) —
+  только как код с явной пометкой «не опубликован».
+- Operator catalog (Users/Providers/Models/Tariffs/Requests) и Dashboard
+  attention (#9) — уже реализованы предыдущими issues (#12,
+  `administration/adminMarkers.js`; `useDashboardAttentionQueue.js`) и не
+  дублировались новым кодом; смаппированы в design-system.md.
+- Auth reference (#13) и Pages Devtools (#14) — уже завершены/
+  задокументированы отдельно (`AuthPage.vue`/auth-роуты,
+  `vite.config.js`+`deploy-pages.yml`); Pages Devtools остаётся
+  deploy-инструкцией, не UI-компонентом kit-роутов, как требует задача.
+
+Не выполнено/отложено до реального релиза (явно, а не выдано за
+завершённое):
+- «Examples use only released public package APIs» — установленная
+  `@iam3xtr/vue@0.1.1-alpha` старше исходников `packages/vue/**`; `trVue`
+  и расширенный `Icon` remain workspace-source only.
+- «Все публичные contracts из #3–#8 и #11/#12 видны в связных сценариях» —
+  #8 (расширенный `Icon`) закрыт лишь частично: живой пример ограничен
+  текущим установленным контрактом, полная цепочка — только код-образец.
+- Скриншоты/визуальная evidence light/dark и 320/768/desktop матрица не
+  снимались в этом прогоне (нет браузерной автоматизации в среде) —
+  сохраняется как задел, см. «Проверки и документация» в `CLAUDE.md`.
+
+Выполнено: focused unit-тесты
+(`tests/unit/components/kit/ApplicationShell.test.js`,
+`tests/unit/components/kit/Tables.test.js`, обновлённый
+`KitShell.test.js`), `npm run lint:style`, `npm run test:unit` (638/638),
+`npm run build` — все проходят. Статус переведён в `review`; фактическое
+закрытие release-gated пунктов — после реальной публикации `@iam3xtr/ui`/
+`@iam3xtr/vue` (см. Handoff.1).
+
+Описание: После готовности и публикации package-пары создать в разделе UI Kit
+репозитория `ui.3xtr.im` связные референсные сценарии, которые показывают
+применение всех новых компонентов и UX-контрактов в анатомии реальной страницы.
+Примеры не должны быть каталогом несвязанных controls, повторять одну и ту же
+разметку или выдавать fixture/demo логику за production API. Эта задача не
+создаёт и не меняет примеры, маршруты или код в `get.3xtr.im`.
+
+Уточнённые требования:
+
+- Материалы коллекции: page header, Toolbar/MobileFilters, search/filter,
+  table with row actions, `FileDropTarget`, explicit `b-upload` picker и
+  `AsyncState`/`Loader`; оба входа файлов используют одну demo queue.
+- Редактирование в контексте страницы: `FormDrawer` открывается действием
+  строки/страницы, показывает realistic fields, validation/error/pending,
+  long scrollable body, fixed footer и dirty-exit boundary без сетевого API.
+- Application shell: `trVue` setup показан отдельным executable `main.js`
+  fragment, а не в template; sidebar с clickable `TariffSummaryCard`, stable
+  navigation и custom/MDI/inline-slot `Icon` демонстрируются в одном маршруте.
+- Operator catalog: Users/Providers/Models/Tariffs/Requests показывают shared
+  semantic icon mapping вместе с text labels, sorting/filtering and mobile cards.
+- Dashboard and auth examples показывают только завершённые #9/#13 contracts;
+  Pages Devtools (#14) документируется рядом с deploy instructions, не как UI
+  component. Каждый пример имеет один пользовательский сценарий и один
+  primary action, а не коллекцию "всех props".
+- Отдельные API tables в README/design-system перечисляют props/events/slots,
+  precedence и accessibility, а scenario pages ссылаются на них вместо
+  копирования справочного текста в интерфейс.
+
+План реализации:
+
+1. Составить inventory #3–#14 и распределить его по 4–5 route-backed
+   scenarios: knowledge upload/edit, workspace shell/tariff, operator catalog,
+   dashboard attention и auth/deployment reference; удалить или переписать
+   устаревшие isolated showcase blocks, которые дублируют их без user flow.
+2. Подключить released public imports/exact pair, fixtures и local state так,
+   чтобы каждый route сохранял realistic loading/empty/error/ready behavior,
+   keyboard path and responsive layout without API/network calls.
+3. Обновить `/kit` navigation, docs and screenshots/manual evidence; добавить
+   focused route/component tests plus smoke matrix light/dark, 320/768/desktop,
+   keyboard, screen reader labels and long-content cases.
+4. Зафиксировать маршруты UI Kit и их назначение в design-system/migration
+   guide; Handoff.1 может сослаться на опубликованный UI Kit как reference,
+   но не получает из этой задачи правки кода или примеров в `get.3xtr.im`.
+
+Область:
+
+- `src/components/kit/**`, `src/components/knowledge/**`, `src/components/{Sidebar,Dashboard}.vue`
+- `src/components/administration/**`, `src/components/auth/**`, router and focused unit tests
+- `docs/design-system.md`, `docs/agent-migration-guide.md`, README/deployment docs
+
+Критерии приёмки:
+
+- Все публичные contracts из #3–#8 и #11/#12 видны в связных сценариях с
+  realistic surrounding UI; #5/#6, #9/#10, #13/#14 имеют соответствующий
+  regression/reference example или deployment evidence.
+- Ни одна example page не является свалкой components: у неё есть понятная
+  роль, route, user journey, one primary action и документированные states;
+  props reference остаётся в документации.
+- Examples use only released public package APIs, one theme import and no
+  app aliases, duplicate SVG registry, local component styles or network code.
+- Focused tests, root guards/build, visual/manual matrix and docs review
+  проходят; все новые examples живут только в разделе UI Kit `ui.3xtr.im`.

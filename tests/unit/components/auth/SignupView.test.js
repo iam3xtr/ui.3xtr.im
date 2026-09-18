@@ -85,3 +85,17 @@ describe("SignupView.vue — редактируемое default workspace name (
     expect(payload.inviteToken).toBe("demo-token");
   });
 });
+
+// Issue #9.1 ("Сделать login, signup и forgot плоскими"): regression guard on
+// the actual view, not just `AuthPage.vue` in isolation — `SignupView.vue`
+// must keep passing `flat` to `AuthPage`, so `.tr-auth__card` never carries
+// `.tr-card` (background/border/radius/shadow) here.
+describe("SignupView.vue — flat variant (Issue #9.1)", () => {
+  it("не несёт card-анатомию (.tr-card)", async () => {
+    const { wrapper } = await mountSignupView();
+
+    const card = wrapper.find(".tr-auth__card");
+    expect(card.exists()).toBe(true);
+    expect(card.classes()).not.toContain("tr-card");
+  });
+});

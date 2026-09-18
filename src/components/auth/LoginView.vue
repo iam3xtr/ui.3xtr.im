@@ -1,5 +1,5 @@
 <template>
-  <AuthPage>
+  <AuthPage flat>
     <h1 class="tr-card__title">Вход</h1>
 
     <form class="tr-form" novalidate @submit.prevent="submit">

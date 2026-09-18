@@ -44,8 +44,8 @@ jobs:
       - name: Lint styles and guard against component styles
         run: npm run lint:style
 
-      - name: Build
-        run: npm run build -- --base="${{ steps.pages.outputs.base_path }}/"
+      - name: Build (Pages mode, Vue Devtools inspection enabled)
+        run: npm run build:pages -- --base="${{ steps.pages.outputs.base_path }}/"
 
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v4

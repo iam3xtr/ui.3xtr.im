@@ -129,7 +129,9 @@ describe("CollectionDetail.vue — route fallback vs demo-режим (Task A7.4)
     const { wrapper } = await mountCollection({ demoMode: "partial" });
 
     expect(wrapper.find(".message.is-warning").exists()).toBe(true);
-    expect(wrapper.find(".tr-knowledge-files__upload").exists()).toBe(true);
+    // The explicit picker (`b-upload`) stays available — no dedicated class
+    // any more (Issue #3.2 fix), so assert by its own visible label instead.
+    expect(wrapper.text()).toContain("Загрузить файлы");
   });
 
   it("partial на вкладке Статистика показывает баннер и оставляет числа", async () => {

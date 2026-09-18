@@ -55,7 +55,7 @@
               aria-label="Действия"
             />
           </template>
-          <b-dropdown-item aria-role="listitem">
+          <b-dropdown-item aria-role="listitem" @click="openEditDrawer(row)">
             Редактировать {{ row.name }}
           </b-dropdown-item>
           <b-dropdown-item aria-role="listitem">
@@ -104,29 +104,227 @@
       order="is-centered"
     />
   </section>
+
+  <!--
+    Редактирование в контексте страницы (Handoff.2, .todo строки 761-828):
+    `FormDrawer` открывается построчным действием таблицы выше — не отдельной
+    кнопкой-витриной, как раньше в `DialogsOverlays.vue`. Realistic fields,
+    required-валидация, pending submit и dirty-exit boundary воспроизводят
+    контракт `FormDrawer`/`useDirtyExitGuard`-стиля тем же способом, что
+    реальные экраны (`profile/Settings.vue`, `WorkspaceSettings.vue`) — без
+    сетевого API, только fixture-мутация локального массива `agents`.
+  -->
+  <FormDrawer
+    :model-value="isEditDrawerOpen"
+    title="Редактирование агента"
+    :busy="isSaving"
+    :disabled="!!nameError"
+    @update:model-value="handleDrawerVisibilityChange"
+    @submit="submitEditDrawer"
+  >
+    <div class="tr-stack">
+      <b-field
+        label="Название агента"
+        :type="nameError ? 'is-danger' : undefined"
+        :message="nameError"
+      >
+        <b-input v-model="editFields.name" maxlength="64" />
+      </b-field>
+
+      <b-field label="Статус">
+        <b-select v-model="editFields.status" expanded>
+          <option value="Активен">Активен</option>
+          <option value="Черновик">Черновик</option>
+          <option value="Отключён">Отключён</option>
+        </b-select>
+      </b-field>
+
+      <b-field label="Владелец">
+        <b-input v-model="editFields.owner" />
+      </b-field>
+
+      <b-field label="Системная инструкция">
+        <b-input
+          v-model="editFields.instructions"
+          type="textarea"
+          rows="16"
+          placeholder="Опишите роль, тон ответа и границы компетенции агента"
+        />
+      </b-field>
+
+      <b-field label="Внутренняя заметка">
+        <b-input v-model="editFields.note" type="textarea" rows="6" />
+      </b-field>
+    </div>
+
+    <template #footer="{ busy, disabled }">
+      <b-button class="mr-2" :disabled="busy" @click="requestCloseEditDrawer">
+        Отмена
+      </b-button>
+      <b-button
+        type="is-primary"
+        native-type="submit"
+        :loading="busy"
+        :disabled="disabled"
+      >
+        Сохранить
+      </b-button>
+    </template>
+  </FormDrawer>
+
+  <DirtyExitModal
+    :active="isDirtyExitModalActive"
+    @save="confirmDirtyExitSave"
+    @discard="confirmDirtyExitDiscard"
+    @stay="stayInEditDrawer"
+  />
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { computed, onUnmounted, reactive, ref } from "vue";
 
 import { PageHeader } from "@iam3xtr/vue/navigation";
+import { FormDrawer } from "@iam3xtr/vue";
+import DirtyExitModal from "../common/DirtyExitModal.vue";
+import { useToasterStore } from "../../stores/toaster";
 
 const paginationPage = ref(1);
+const toaster = useToasterStore();
 
-const agents = [
+const agents = reactive([
   {
     name: "Консультант",
     status: "Активен",
     owner: "Иван Петров",
     updated: "2 часа назад",
+    instructions:
+      "Консультирует клиентов по тарифам и настройке рабочего пространства. " +
+      "Тон — деловой и краткий, без эмодзи. При вопросах вне компетенции " +
+      "предлагает передать диалог оператору.",
+    note: "",
   },
   {
     name: "Sales Assistant",
     status: "Черновик",
     owner: "Анна Смирнова",
     updated: "Вчера",
+    instructions: "Черновик сценария продаж — не публиковать без ревью.",
+    note: "Ожидает согласования формулировок с маркетингом.",
   },
-];
+]);
+
+// Edit-in-context FormDrawer (Handoff.2, требование "FormDrawer открывается
+// действием строки/страницы"): один открытый экземпляр на страницу,
+// переиспользуемый для любой строки — `editingRow` хранит ссылку на
+// оригинал, `editFields`/`editSnapshot` — рабочую и исходную копию для
+// dirty-diff. `isDirtyExitModalActive` управляет тем же `DirtyExitModal`,
+// который используют реальные formы (`profile/Settings.vue`).
+const isEditDrawerOpen = ref(false);
+const isSaving = ref(false);
+const isDirtyExitModalActive = ref(false);
+let editingRow = null;
+
+const editFields = reactive({
+  name: "",
+  status: "Активен",
+  owner: "",
+  instructions: "",
+  note: "",
+});
+let editSnapshot = null;
+
+const nameError = computed(() =>
+  editFields.name.trim() === "" ? "Название не может быть пустым" : null,
+);
+
+const isEditDirty = computed(
+  () => editSnapshot != null && JSON.stringify(editFields) !== editSnapshot,
+);
+
+function openEditDrawer(row) {
+  editingRow = row;
+  Object.assign(editFields, {
+    name: row.name,
+    status: row.status,
+    owner: row.owner,
+    instructions: row.instructions ?? "",
+    note: row.note ?? "",
+  });
+  editSnapshot = JSON.stringify(editFields);
+  isEditDrawerOpen.value = true;
+}
+
+function closeEditDrawer() {
+  isEditDrawerOpen.value = false;
+  editingRow = null;
+  editSnapshot = null;
+}
+
+// `b-sidebar`/`FormDrawer` reports every close attempt (header button,
+// Escape, outside click) through `update:model-value`; a dirty draft must
+// intercept it instead of letting `v-model` close the drawer directly — the
+// same three-way boundary («Сохранить / Выйти без сохранения / Остаться»)
+// as `useDirtyExitGuard`, but scoped to this drawer's own open state instead
+// of route navigation.
+function handleDrawerVisibilityChange(value) {
+  if (value) {
+    isEditDrawerOpen.value = true;
+    return;
+  }
+  requestCloseEditDrawer();
+}
+
+function requestCloseEditDrawer() {
+  if (isEditDirty.value) {
+    isDirtyExitModalActive.value = true;
+    return;
+  }
+  closeEditDrawer();
+}
+
+function stayInEditDrawer() {
+  isDirtyExitModalActive.value = false;
+}
+
+function confirmDirtyExitDiscard() {
+  isDirtyExitModalActive.value = false;
+  closeEditDrawer();
+}
+
+function confirmDirtyExitSave() {
+  isDirtyExitModalActive.value = false;
+  submitEditDrawer();
+}
+
+let saveTimerId = null;
+
+function submitEditDrawer() {
+  if (nameError.value || isSaving.value) {
+    return;
+  }
+
+  isSaving.value = true;
+  saveTimerId = setTimeout(() => {
+    saveTimerId = null;
+    if (editingRow) {
+      Object.assign(editingRow, {
+        name: editFields.name,
+        status: editFields.status,
+        owner: editFields.owner,
+        instructions: editFields.instructions,
+        note: editFields.note,
+        updated: "только что",
+      });
+    }
+    isSaving.value = false;
+    toaster.success("Изменения агента сохранены");
+    closeEditDrawer();
+  }, 500);
+}
+
+onUnmounted(() => {
+  if (saveTimerId) clearTimeout(saveTimerId);
+});
 
 const limitsBreakdown = [
   { label: "Месячный бюджет", caption: "38%" },

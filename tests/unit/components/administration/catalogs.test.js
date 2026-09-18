@@ -91,4 +91,22 @@ describe.each(catalogs)("$name — облегчённый каталог (Task A
     expect(wrapper.find(".message.is-warning").exists()).toBe(true);
     expect(wrapper.find("table").exists()).toBe(true);
   });
+
+  // Task #12.1: единый семантический marker (role/status/protocol) — каждая
+  // из пяти таблиц рендерит хотя бы одну decorative-иконку через `AdminMarker`
+  // (см. `AdminMarker.test.js` для резолюции самого mapping) и не теряет
+  // текстовое значение статуса/роли/протокола, которое уже проверял этот
+  // набор через фикстуры.
+  it("показывает семантические markers рядом с текстом, не теряя его", async () => {
+    const { wrapper } = await mountCatalog(component);
+
+    const table = wrapper.find("table");
+    expect(table.find(".tr-admin-marker").exists()).toBe(true);
+    expect(table.findAll(".tr-admin-marker .icon").length).toBeGreaterThan(0);
+
+    // Каждый marker сохраняет исходный текст рядом с иконкой.
+    table.findAll(".tr-admin-marker").forEach((marker) => {
+      expect(marker.text().trim().length).toBeGreaterThan(0);
+    });
+  });
 });

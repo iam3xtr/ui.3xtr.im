@@ -11,6 +11,7 @@ import Forms from "../../../../src/components/kit/Forms.vue";
 import Tables from "../../../../src/components/kit/Tables.vue";
 import NavigationStates from "../../../../src/components/kit/NavigationStates.vue";
 import DialogsOverlays from "../../../../src/components/kit/DialogsOverlays.vue";
+import ApplicationShell from "../../../../src/components/kit/ApplicationShell.vue";
 import { navbarMenuKey } from "@iam3xtr/vue";
 import { useDemoStore } from "../../../../src/stores/demo.js";
 
@@ -33,10 +34,21 @@ if (typeof window.matchMedia !== "function") {
 // `alias: ""` compatible entry at bare `/kit`) rather than a trimmed-down
 // stand-in, so a route wiring mistake in router.js would also break this
 // test.
+// `ApplicationShell.vue` links to a few real top-level route names
+// (`mainNavigationItems`, `workspace-plans`) the same way `Sidebar.vue`
+// does — a trivial stub component is enough for `RouterLink` resolution in
+// this route-tree test; their own screens have their own tests.
+const RouteStub = { template: "<div />" };
+
 function buildRouter() {
   return createRouter({
     history: createMemoryHistory(),
     routes: [
+      { path: "/conversations", name: "conversations", component: RouteStub },
+      { path: "/agents", name: "agents", component: RouteStub },
+      { path: "/knowledge", name: "knowledge", component: RouteStub },
+      { path: "/workspace", name: "workspace", component: RouteStub },
+      { path: "/workspace/plans", name: "workspace-plans", component: RouteStub },
       {
         path: "/kit",
         component: KitShell,
@@ -53,6 +65,11 @@ function buildRouter() {
             path: "dialogs-overlays",
             name: "kit-dialogs-overlays",
             component: DialogsOverlays,
+          },
+          {
+            path: "application-shell",
+            name: "kit-application-shell",
+            component: ApplicationShell,
           },
         ],
       },
@@ -116,6 +133,11 @@ describe("kit/KitShell.vue — маршруты и совместимый вхо
         name: "kit-dialogs-overlays",
         component: DialogsOverlays,
       },
+      {
+        path: "/kit/application-shell",
+        name: "kit-application-shell",
+        component: ApplicationShell,
+      },
     ];
 
     for (const { path, name, component } of cases) {
@@ -131,7 +153,7 @@ describe("kit/KitShell.vue — маршруты и совместимый вхо
     // NavbarTabs is teleported into the shared target — exactly one owner
     // per route, per Task A8.6's acceptance criteria.
     const links = target.querySelectorAll(".tr-navbar-tabs__link");
-    expect(links.length).toBe(5);
+    expect(links.length).toBe(6);
 
     const activeLinks = target.querySelectorAll(".tr-navbar-tabs__link.router-link-active");
     expect(activeLinks.length).toBe(1);

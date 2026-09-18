@@ -63,26 +63,26 @@ import { computed, ref } from "vue";
  * @type {string[]}
  */
 export const RESOURCE_LIMIT_KEYS = [
-  "workspace_members",
+  "members",
   "agents",
-  "knowledge_collections",
-  "knowledge_objects",
   "channels",
-  "knowledge_extracted_bytes",
-  "active_conversations_monthly",
+  "conversations",
+  "collections",
+  "objects",
+  "extracted",
 ];
 
 /**
  * @type {Record<string, { label: string, unit: "count" | "bytes", period: "monthly" | null }>}
  */
 const RESOURCE_LIMIT_META = {
-  workspace_members: { label: "Участники пространства", unit: "count", period: null },
+  members: { label: "Участники", unit: "count", period: null },
   agents: { label: "Агенты", unit: "count", period: null },
-  knowledge_collections: { label: "Коллекции знаний", unit: "count", period: null },
-  knowledge_objects: { label: "Материалы знаний", unit: "count", period: null },
   channels: { label: "Каналы", unit: "count", period: null },
-  knowledge_extracted_bytes: { label: "Извлечено из знаний", unit: "bytes", period: "monthly" },
-  active_conversations_monthly: { label: "Диалоги", unit: "count", period: "monthly" },
+  conversations: { label: "Диалоги", unit: "count", period: "monthly" },
+  collections: { label: "Коллекции", unit: "count", period: null },
+  objects: { label: "Объекты", unit: "count", period: null },
+  extracted: { label: "Знания", unit: "bytes", period: "monthly" },
 };
 
 const PERIOD_SUFFIX = {
@@ -261,9 +261,9 @@ const emptyTariff = {
 /**
  * Fixture tariffs per demo workspace (Task A10.6). Together the three
  * workspaces exercise all six limit states at least once — `ok`, `zero`
- * (Free's `channels`), `exhausted` (`demo`'s `knowledge_objects`),
+ * (Free's `channels`), `exhausted` (`demo`'s `objects`),
  * `unlimited` (`trickster`'s higher-tier keys), `unknown`
- * (`demo`'s `knowledge_extracted_bytes` — metering not computed yet) and
+ * (`demo`'s `extracted` — metering not computed yet) and
  * `error` (`empty`'s `channels` — a resource whose usage temporarily failed
  * to load, independent of the page-level demo mode in `stores/demo.js`).
  *
@@ -274,13 +274,13 @@ const tariffsByWorkspaceId = {
     displayName: "Free",
     priceLabel: "Бесплатно",
     limits: [
-      createLimit("workspace_members", { used: 2, limit: 3 }),
+      createLimit("members", { used: 2, limit: 3 }),
       createLimit("agents", { used: 4, limit: 5 }),
-      createLimit("knowledge_collections", { used: 3, limit: 5 }),
-      createLimit("knowledge_objects", { used: 200, limit: 200 }),
+      createLimit("collections", { used: 3, limit: 5 }),
+      createLimit("objects", { used: 200, limit: 200 }),
       createLimit("channels", { limit: 0 }),
-      createLimit("knowledge_extracted_bytes", { state: "unknown" }),
-      createLimit("active_conversations_monthly", { used: 620, limit: 1000 }),
+      createLimit("extracted", { state: "unknown" }),
+      createLimit("conversations", { used: 620, limit: 1000 }),
     ],
   },
   trickster: {
@@ -288,26 +288,26 @@ const tariffsByWorkspaceId = {
     priceLabel: "2 900 ₽ / мес",
     tagType: "is-primary",
     limits: [
-      createLimit("workspace_members", { used: 8, limit: 25 }),
+      createLimit("members", { used: 8, limit: 25 }),
       createLimit("agents", { limit: null }),
-      createLimit("knowledge_collections", { limit: null }),
-      createLimit("knowledge_objects", { used: 1500, limit: 5000 }),
+      createLimit("collections", { limit: null }),
+      createLimit("objects", { used: 1500, limit: 5000 }),
       createLimit("channels", { used: 3, limit: 10 }),
-      createLimit("knowledge_extracted_bytes", { used: 734_003_200, limit: 5_368_709_120 }),
-      createLimit("active_conversations_monthly", { limit: null }),
+      createLimit("extracted", { used: 734_003_200, limit: 5_368_709_120 }),
+      createLimit("conversations", { limit: null }),
     ],
   },
   empty: {
     displayName: "Free",
     priceLabel: "Бесплатно",
     limits: [
-      createLimit("workspace_members", { used: 1, limit: 3 }),
-      createLimit("agents", { used: 0, limit: 5 }),
-      createLimit("knowledge_collections", { used: 0, limit: 5 }),
-      createLimit("knowledge_objects", { used: 0, limit: 200 }),
+      createLimit("members", { used: 1, limit: 1 }),
+      createLimit("agents", { used: 0, limit: 3 }),
+      createLimit("collections", { used: 0, limit: 5 }),
+      createLimit("objects", { used: 0, limit: 200 }),
       createLimit("channels", { state: "error" }),
-      createLimit("knowledge_extracted_bytes", { used: 0, limit: 50_000_000 }),
-      createLimit("active_conversations_monthly", { used: 0, limit: 1000 }),
+      createLimit("extracted", { used: 0, limit: 100 * 1024 ** 2 }),
+      createLimit("conversations", { used: 0, limit: 1000 }),
     ],
   },
 };

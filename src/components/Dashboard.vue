@@ -40,46 +40,79 @@
 
       <!--
         S2 "Требует внимания" (Task A10.4, `.plan` "Ежедневный dashboard и
-        диагностика агента"): incomplete setup, knowledge, channel, handoff
-        and limit reasons, each a real fixture derivation (see
-        `attentionItems` below) with its own concrete route/action — a
-        failing channel never hides the rest of the section, and an empty
-        list here simply omits the section instead of rendering an empty
-        card.
+        диагностика агента"), turned into a session-scoped queue by Issue
+        #13.1 (`.todo` "Dashboard attention queue"): incomplete setup,
+        knowledge, channel, handoff and limit reasons are still each a real
+        fixture derivation (see `attentionItems` below) with its own
+        concrete route/action — only the presentation changed, to at most
+        one active card at a time via `useDashboardAttentionQueue`. No
+        section title (aria-label carries the same name for assistive
+        tech); an empty derivation renders nothing at all, same as before.
       -->
       <section
         v-if="attentionItems.length > 0"
         class="tr-dashboard-attention mb-5"
         aria-label="Требует внимания"
       >
-        <h2 class="tr-card__title">Требует внимания</h2>
+        <template v-if="attentionActiveItem">
+          <div v-if="attentionTotal > 1" class="tr-dashboard-attention__nav">
+            <b-button
+              icon-left="chevron-left"
+              size="is-small"
+              :disabled="!attentionHasPrevious"
+              aria-label="Предыдущее уведомление"
+              @click="goToPreviousAttentionItem"
+            />
+            <span class="tr-muted" aria-live="polite">
+              {{ attentionPosition }} из {{ attentionTotal }}
+            </span>
+            <b-button
+              icon-left="chevron-right"
+              size="is-small"
+              :disabled="!attentionHasNext"
+              aria-label="Следующее уведомление"
+              @click="goToNextAttentionItem"
+            />
+          </div>
 
-        <ul class="tr-dashboard-attention__list">
-          <li
-            v-for="item in attentionItems"
-            :key="item.key"
-            class="tr-card tr-dashboard-attention__item"
-          >
+          <div class="tr-card tr-dashboard-attention__item">
             <span class="tr-icon-tile tr-icon-tile--plain tr-dashboard-attention__icon">
-              <b-icon :icon="item.icon" size="is-medium" />
+              <b-icon :icon="attentionActiveItem.icon" size="is-medium" />
             </span>
 
             <div class="tr-dashboard-attention__body">
-              <strong>{{ item.title }}</strong>
-              <span class="tr-muted">{{ item.message }}</span>
+              <strong>{{ attentionActiveItem.title }}</strong>
+              <span class="tr-muted">{{ attentionActiveItem.message }}</span>
             </div>
 
-            <b-button
-              tag="router-link"
-              :to="item.to"
-              type="is-primary"
-              size="is-small"
-              class="tr-dashboard-attention__action"
-            >
-              {{ item.actionLabel }}
-            </b-button>
-          </li>
-        </ul>
+            <div class="tr-dashboard-attention__controls">
+              <b-button
+                tag="router-link"
+                :to="attentionActiveItem.to"
+                type="is-primary"
+                size="is-small"
+                class="tr-dashboard-attention__action"
+              >
+                {{ attentionActiveItem.actionLabel }}
+              </b-button>
+
+              <b-button
+                size="is-small"
+                aria-label="Скрыть до конца сессии"
+                @click="dismissActiveAttentionItem"
+              >
+                Скрыть
+              </b-button>
+            </div>
+          </div>
+        </template>
+
+        <p v-else class="tr-muted tr-dashboard-attention__restore">
+          Скрыто уведомлений в этой сессии: {{ attentionHiddenCount }}.
+          <b-button type="is-text" size="is-small" @click="restoreHiddenAttentionItems">
+            Показать
+          </b-button>
+        </p>
       </section>
 
       <section class="tr-grid tr-grid--3 tr-dashboard-grid mb-5">
@@ -221,6 +254,7 @@ import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
 import { RouterLink } from "vue-router";
 
+import { useDashboardAttentionQueue } from "../composables/useDashboardAttentionQueue";
 import { useSimulatedLoading } from "../composables/useSimulatedLoading";
 import { getAgentStatusProjection, useAgentsStore } from "../stores/agents";
 import { getChannelsNeedingAttention, useChannelsStore } from "../stores/channels";
@@ -375,6 +409,25 @@ const attentionItems = computed(() => {
 
   return items;
 });
+
+// Issue #13.1 (`.todo` "Dashboard attention queue"): the derivation above
+// stays a plain array of reasons; this composable owns only the
+// presentation — one active card, manual previous/next and a dismiss
+// scoped to `workspace + browser session` — see
+// `composables/useDashboardAttentionQueue.js` for the session-storage
+// isolation and the key-stable active-item rule.
+const {
+  activeItem: attentionActiveItem,
+  position: attentionPosition,
+  total: attentionTotal,
+  hasPrevious: attentionHasPrevious,
+  hasNext: attentionHasNext,
+  hiddenCount: attentionHiddenCount,
+  goPrevious: goToPreviousAttentionItem,
+  goNext: goToNextAttentionItem,
+  dismissActive: dismissActiveAttentionItem,
+  restoreHidden: restoreHiddenAttentionItems,
+} = useDashboardAttentionQueue(attentionItems, activeWorkspaceId);
 
 // Tile set and order mirror get.3xtr.im's Dashboard.vue tiles (Task A5.3):
 // conversations, agents, knowledge, workspace settings/plan, then the

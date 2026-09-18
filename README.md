@@ -17,10 +17,13 @@ persistence остаются в get.3xtr.im.
 - `docs/agent-migration-guide.md` — правила переноса контракта в кабинет.
 - `docs/release-process.md` — выпуск библиотек и требования к доступам.
 
-Kit и внешние приложения подключают только опубликованную exact-пару из
-GitHub Packages. Сабмодули `packages/ui` и `packages/vue` нужны для
-разработки библиотек и release-скриптов; production-сборка kit не использует
-их как file-зависимости.
+`npm run dev` резолвит `@iam3xtr/ui` и `@iam3xtr/vue` в исходники локальных
+сабмодулей `packages/ui` и `packages/vue`; SVG registry читается из
+`packages/ui/src/assets/icons`. Vite
+dedupe'ит Vue, Vue Router и Buefy, поэтому локальные компоненты используют
+тот же runtime, что и kit. Это только development-режим: `npm run build`, `npm run
+build:pages` и внешние приложения подключают опубликованную exact-пару из
+GitHub Packages, без `file:packages/*` в runtime-зависимостях.
 
 ## Установка и запуск
 
@@ -99,6 +102,29 @@ cross-repository secret ему не нужны. Порядок выпуска п
 Роутер использует history mode, поэтому адреса на Pages не содержат `#`.
 `404.html` сохраняет прямой deep link и возвращает его приложению; это
 клиентский fallback статического GitHub Pages, а не server-side rewrite.
+
+Сборка Pages использует отдельную команду `npm run build:pages` (Vite mode
+`pages`), которая — и только она — устанавливает `__VUE_PROD_DEVTOOLS__ =
+true`. Обычный `npm run build` (production mode) и публикуемые артефакты
+`packages/ui`/`packages/vue` этот флаг явно не трогают и остаются с prod
+devtools выключенными. Флаг только позволяет [Vue Devtools browser
+extension](https://devtools.vuejs.org/) (Chrome/Firefox) подключиться к уже
+задеплоенной публичной странице get.3xtr.im demo и увидеть дерево
+компонентов, props/events и Pinia stores — сама сборка не добавляет никакого
+in-DOM devtools UI, remote/inspector server, open-editor endpoint или secret,
+это чистая demo/inspection trade-off публичного reference-стенда, а не
+production-функциональность. Ручная проверка: открыть Pages URL с
+установленным расширением, убедиться, что вкладка Vue появляется и показывает
+компоненты/stores; повторить то же на URL, собранном обычным `npm run build`,
+и убедиться, что вкладка Vue их не показывает.
+
+Cтоимость флага в размере артефакта (`main-*.js`, замерено на этом коммите):
+обычный `npm run build` — 866.08 kB (gzip 241.94 kB); `npm run build:pages` —
+1008.03 kB (gzip 282.53 kB) — на ~142 kB / ~16% больше за счёт кода devtools
+hook'а, который прячется под `__VUE_PROD_DEVTOOLS__`. Точные числа сдвигаются
+с каждым релевантным изменением зависимостей — при пересмотре сравнивайте
+`dist/assets/main-*.js` обеих сборок заново, а не переносите эти цифры как
+константу.
 
 ## Лицензия
 

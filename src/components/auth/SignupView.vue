@@ -1,5 +1,5 @@
 <template>
-  <AuthPage>
+  <AuthPage flat>
     <h1 class="tr-card__title">Регистрация</h1>
 
     <b-notification v-if="isWorkspaceInvite" type="is-info is-light" :closable="false">

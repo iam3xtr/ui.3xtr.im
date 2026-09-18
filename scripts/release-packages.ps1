@@ -22,7 +22,11 @@ param(
 
     [switch]$Alpha,
 
+    [switch]$Beta,
+
     [switch]$ReleaseCurrent,
+
+    [switch]$Resume,
 
     [switch]$Execute
 )
@@ -60,47 +64,85 @@ function Get-NextVersion {
     param(
         [string]$Path,
         [string]$ReleaseBump,
-        [switch]$AlphaRelease
+        [string]$Prerelease
     )
 
-    Push-Location $Path
-    try {
-        $next = & npm version $ReleaseBump --no-git-tag-version --ignore-scripts --dry-run
-        if ($LASTEXITCODE -ne 0) {
-            throw "Cannot calculate the next version for $Path."
-        }
-        $version = ($next | Select-Object -Last 1).TrimStart("v")
-        if ($AlphaRelease) {
-            if ($version -notmatch "^\d+\.\d+\.\d+$") {
-                throw "Alpha release requires a stable patch base; calculated version was '$version'."
-            }
-            return "$version-alpha"
-        }
-        return $version
-    } finally {
-        Pop-Location
+    # Computed directly (semver's own `inc` arithmetic for the plain
+    # major/minor/patch release types), never by shelling out to
+    # `npm version ... --dry-run`: on this environment's npm (11.14.1) that
+    # command writes the bumped version into package.json/package-lock.json
+    # on disk despite `--dry-run`, which would leave the submodule dirty for
+    # every plain (non `-Execute`) `release:ui`/`release:vue`/`release:all`
+    # run and break the next `Assert-CleanMain`.
+    $current = Get-PackageVersion -Path $Path
+    if ($current -notmatch "^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$") {
+        throw "Cannot parse version '$current' in $Path."
     }
+    $major = [int]$Matches[1]
+    $minor = [int]$Matches[2]
+    $patch = [int]$Matches[3]
+    $hasPrerelease = [bool]$Matches[4]
+
+    switch ($ReleaseBump) {
+        "major" {
+            if ($patch -ne 0 -or $minor -ne 0 -or -not $hasPrerelease) { $major++ }
+            $minor = 0
+            $patch = 0
+        }
+        "minor" {
+            if ($patch -ne 0 -or -not $hasPrerelease) { $minor++ }
+            $patch = 0
+        }
+        "patch" {
+            if (-not $hasPrerelease) { $patch++ }
+        }
+        default {
+            throw "Unsupported release bump '$ReleaseBump'."
+        }
+    }
+
+    $version = "$major.$minor.$patch"
+    if ($Prerelease) {
+        return "$version-$Prerelease"
+    }
+    return $version
 }
 
 function Get-ReleaseVersion {
     param([string]$Path)
 
     $currentVersion = Get-PackageVersion -Path $Path
-    if ($Alpha -and $Bump -ne "patch") {
-        throw "-Alpha currently supports only the default patch bump."
+    if ($Alpha -and $Beta) {
+        throw "Choose either -Alpha or -Beta, not both."
+    }
+    if (($Alpha -or $Beta) -and $Bump -ne "patch") {
+        throw "-Alpha and -Beta currently support only the default patch bump."
     }
 
+    $prerelease = if ($Alpha) { "alpha" } elseif ($Beta) { "beta" } else { $null }
+
     if ($ReleaseCurrent) {
-        if ($Alpha) {
+        if ($prerelease) {
             if ($currentVersion -notmatch "^\d+\.\d+\.\d+$") {
-                throw "-Alpha -ReleaseCurrent requires a stable current version; found '$currentVersion'."
+                throw "-$prerelease -ReleaseCurrent requires a stable current version; found '$currentVersion'."
             }
-            return "$currentVersion-alpha"
+            return "$currentVersion-$prerelease"
         }
         return $currentVersion
     }
 
-    return Get-NextVersion -Path $Path -ReleaseBump $Bump -AlphaRelease:$Alpha
+    return Get-NextVersion -Path $Path -ReleaseBump $Bump -Prerelease $prerelease
+}
+
+function Get-RequestedReleaseVersion {
+    param([string]$Path)
+
+    # A resume must address the tag already created by the interrupted
+    # release, never calculate another version from that bumped manifest.
+    if ($Resume) {
+        return Get-PackageVersion -Path $Path
+    }
+    return Get-ReleaseVersion -Path $Path
 }
 
 function Assert-CleanMain {
@@ -139,6 +181,88 @@ function Assert-TagAvailable {
     if ($existing) {
         throw "Tag $Tag already exists in $Path. Choose a new version; published versions are immutable."
     }
+}
+
+function Get-RemoteTagCommit {
+    param(
+        [string]$Path,
+        [string]$Tag
+    )
+
+    # Release tags are annotated. The peeled ^{} reference is the commit the
+    # tag names, which is what must match HEAD during a safe resume.
+    $line = (& git -C $Path ls-remote origin "refs/tags/$Tag^{}").Trim()
+    if (-not $line) {
+        return $null
+    }
+    return ($line -split "\s+")[0]
+}
+
+function Assert-ResumeRelease {
+    param(
+        [string]$Path,
+        [string]$Label,
+        [string]$Tag
+    )
+
+    $branch = (& git -C $Path branch --show-current).Trim()
+    if ($branch -ne "main") {
+        throw "$Label resume must be on main; current branch is '$branch'."
+    }
+    $status = & git -C $Path status --porcelain
+    if ($status) {
+        throw "$Label has uncommitted changes. Resume requires the previously created release commit unchanged."
+    }
+
+    Invoke-External -File git -Arguments @("fetch", "origin", "+refs/heads/main:refs/remotes/origin/main", "--tags") -WorkingDirectory $Path
+    $head = (& git -C $Path rev-parse HEAD).Trim()
+    $tagCommit = (& git -C $Path rev-parse "$Tag^{commit}" 2>$null).Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $tagCommit -or $tagCommit -ne $head) {
+        throw "$Label resume requires local tag $Tag to point exactly to HEAD. Do not create a new bump or retag a different commit."
+    }
+
+    $aheadBehind = (& git -C $Path rev-list --left-right --count "main...refs/remotes/origin/main").Trim() -split "\s+"
+    if ($aheadBehind.Count -ne 2 -or $aheadBehind[1] -ne "0") {
+        throw "$Label origin/main contains commits not in the release commit. Reconcile main manually; resume will not overwrite remote history."
+    }
+
+    $remoteTagCommit = Get-RemoteTagCommit -Path $Path -Tag $Tag
+    if ($remoteTagCommit -and $remoteTagCommit -ne $head) {
+        throw "$Label remote tag $Tag points to a different commit. Published tags are immutable; choose a new version."
+    }
+}
+
+function Push-ReleaseRefs {
+    param(
+        [string]$Path,
+        [string]$Label,
+        [string]$Tag
+    )
+
+    $head = (& git -C $Path rev-parse HEAD).Trim()
+    $remoteMain = (& git -C $Path rev-parse "refs/remotes/origin/main" 2>$null).Trim()
+    $remoteTagCommit = Get-RemoteTagCommit -Path $Path -Tag $Tag
+
+    if ($remoteTagCommit -and $remoteTagCommit -ne $head) {
+        throw "$Label remote tag $Tag points to a different commit. Published tags are immutable; choose a new version."
+    }
+    if ($remoteMain -eq $head -and $remoteTagCommit -eq $head) {
+        Write-Host "$Label release commit and tag are already present on origin; continuing with workflow verification."
+        return
+    }
+
+    if ($remoteTagCommit) {
+        # An earlier non-atomic push may have sent the tag but not main. The
+        # resume guard already proved origin/main is not ahead, so only finish
+        # the missing branch ref; never force-push or recreate the tag.
+        Invoke-External -File git -Arguments @("push", "origin", "main") -WorkingDirectory $Path
+        return
+    }
+
+    # GitHub supports --atomic: main and the annotated release tag either
+    # arrive together or neither does, avoiding a remotely half-created
+    # release when a network/policy failure occurs during push.
+    Invoke-External -File git -Arguments @("push", "--atomic", "origin", "main", "refs/tags/$Tag") -WorkingDirectory $Path
 }
 
 function Commit-ReleaseChanges {
@@ -246,8 +370,16 @@ function Release-Ui {
     param([string]$Version)
 
     $tag = "v$Version"
-    Assert-TagAvailable -Path $uiPath -Tag $tag
     Write-Host "Planned UI release: @iam3xtr/ui@$Version."
+    if ($Resume) {
+        Assert-ResumeRelease -Path $uiPath -Label "@iam3xtr/ui" -Tag $tag
+        Push-ReleaseRefs -Path $uiPath -Label "@iam3xtr/ui" -Tag $tag
+        Write-Host "Waiting for the UI release workflow and its environment approval."
+        Wait-ForRelease -Repository "iam3xtr/ui" -Commit ((& git -C $uiPath rev-parse HEAD).Trim())
+        Assert-UiPublished -Version $Version
+        return
+    }
+    Assert-TagAvailable -Path $uiPath -Tag $tag
     if (-not $Execute) {
         return
     }
@@ -258,7 +390,7 @@ function Release-Ui {
     Commit-ReleaseChanges -Path $uiPath -Message "chore(release): $tag" -Files @("package.json", "package-lock.json") | Out-Null
     $uiSha = (& git -C $uiPath rev-parse HEAD).Trim()
     Invoke-External -File git -Arguments @("tag", "-a", $tag, "-m", "release: $tag") -WorkingDirectory $uiPath
-    Invoke-External -File git -Arguments @("push", "origin", "main", $tag) -WorkingDirectory $uiPath
+    Push-ReleaseRefs -Path $uiPath -Label "@iam3xtr/ui" -Tag $tag
     Write-Host "Waiting for the UI release workflow and its environment approval."
     Wait-ForRelease -Repository "iam3xtr/ui" -Commit $uiSha
     Assert-UiPublished -Version $Version
@@ -268,6 +400,14 @@ function Release-Vue {
     param([string]$Version)
 
     $tag = "v$Version"
+    if ($Resume) {
+        Assert-UiPublished -Version $Version
+        Assert-ResumeRelease -Path $vuePath -Label "@iam3xtr/vue" -Tag $tag
+        Push-ReleaseRefs -Path $vuePath -Label "@iam3xtr/vue" -Tag $tag
+        Write-Host "Waiting for the Vue release workflow and its environment approval."
+        Wait-ForRelease -Repository "iam3xtr/vue" -Commit ((& git -C $vuePath rev-parse HEAD).Trim())
+        return
+    }
     Assert-TagAvailable -Path $vuePath -Tag $tag
     if (-not $Execute) {
         if ($Package -eq "vue") {
@@ -287,7 +427,7 @@ function Release-Vue {
     Commit-ReleaseChanges -Path $vuePath -Message "chore(release): $tag" -Files @("package.json", "package-lock.json", ".ui-compat-ref") | Out-Null
     $vueSha = (& git -C $vuePath rev-parse HEAD).Trim()
     Invoke-External -File git -Arguments @("tag", "-a", $tag, "-m", "release: $tag") -WorkingDirectory $vuePath
-    Invoke-External -File git -Arguments @("push", "origin", "main", $tag) -WorkingDirectory $vuePath
+    Push-ReleaseRefs -Path $vuePath -Label "@iam3xtr/vue" -Tag $tag
     Write-Host "Waiting for the Vue release workflow and its environment approval."
     Wait-ForRelease -Repository "iam3xtr/vue" -Commit $vueSha
 }
@@ -299,21 +439,26 @@ foreach ($command in @("git", "npm", "gh")) {
 }
 
 try {
+    if ($Resume -and -not $Execute) {
+        throw "-Resume only performs the pending push/workflow verification; pass -Execute to confirm it."
+    }
     if ($Package -eq "ui") {
-        Assert-CleanMain -Path $uiPath -Label "@iam3xtr/ui"
-        Release-Ui -Version (Get-ReleaseVersion -Path $uiPath)
+        if (-not $Resume) { Assert-CleanMain -Path $uiPath -Label "@iam3xtr/ui" }
+        Release-Ui -Version (Get-RequestedReleaseVersion -Path $uiPath)
     } elseif ($Package -eq "vue") {
-        Assert-CleanMain -Path $vuePath -Label "@iam3xtr/vue"
-        Release-Vue -Version (Get-ReleaseVersion -Path $vuePath)
+        if (-not $Resume) { Assert-CleanMain -Path $vuePath -Label "@iam3xtr/vue" }
+        Release-Vue -Version (Get-RequestedReleaseVersion -Path $vuePath)
     } else {
-        Assert-CleanMain -Path $uiPath -Label "@iam3xtr/ui"
-        Assert-CleanMain -Path $vuePath -Label "@iam3xtr/vue"
+        if (-not $Resume) {
+            Assert-CleanMain -Path $uiPath -Label "@iam3xtr/ui"
+            Assert-CleanMain -Path $vuePath -Label "@iam3xtr/vue"
+        }
         $uiVersion = Get-PackageVersion -Path $uiPath
         $vueVersion = Get-PackageVersion -Path $vuePath
         if ($uiVersion -ne $vueVersion) {
             throw "Package versions differ ($uiVersion vs $vueVersion). Align them before releasing a paired version."
         }
-        $nextVersion = Get-ReleaseVersion -Path $uiPath
+        $nextVersion = Get-RequestedReleaseVersion -Path $uiPath
         Write-Host "Planned paired release: @iam3xtr/ui@$nextVersion, then @iam3xtr/vue@$nextVersion."
         Release-Ui -Version $nextVersion
         Release-Vue -Version $nextVersion

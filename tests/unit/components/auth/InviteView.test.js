@@ -94,4 +94,15 @@ describe("InviteView.vue — demo-состояния (Task A7.5)", () => {
     expect(wrapper.find(".message.is-warning").exists()).toBe(true);
     expect(wrapper.text()).toContain("Принять приглашение");
   });
+
+  // Issue #9.1 ("Сделать login, signup и forgot плоскими"): `InviteView.vue`
+  // is explicitly excluded from the flat variant — it must keep the default
+  // `.tr-card` anatomy, unlike Login/Signup/Forgot.
+  it("сохраняет card-анатомию (.tr-card), в отличие от Login/Signup/Forgot", async () => {
+    const { wrapper } = await mountInviteView();
+
+    const card = wrapper.find(".tr-auth__card");
+    expect(card.exists()).toBe(true);
+    expect(card.classes()).toContain("tr-card");
+  });
 });

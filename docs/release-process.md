@@ -31,6 +31,12 @@ npm run release:all -- -ReleaseCurrent -Alpha -Execute
 
 # Выпустить следующий patch prerelease: 0.1.1 → 0.1.2-alpha.
 npm run release:all -- -Alpha -Execute
+
+# Выпустить beta от текущей стабильной версии: 0.1.1 → 0.1.1-beta.
+npm run release:all -- -ReleaseCurrent -Beta -Execute
+
+# Выпустить следующий patch beta: 0.1.1 → 0.1.2-beta.
+npm run release:all -- -Beta -Execute
 ```
 
 Для отдельного UI-релиза используйте `npm run release:ui -- -Execute`.
@@ -87,9 +93,47 @@ Switch -Alpha поддерживается только вместе с patch и
 patch-версии prerelease suffix -alpha. Для alpha-релиза оба пакета получают
 одинаковую версию и теги вида vX.Y.Z-alpha.
 
+Switch `-Beta` работает симметрично `-Alpha`: с `-ReleaseCurrent` добавляет
+к текущей стабильной версии суффикс `-beta`, без него — к следующей patch
+версии. `-Alpha` и `-Beta` взаимоисключающие; оба поддерживаются только с
+patch bump.
+
 Prerelease публикуется с npm dist-tag из первого идентификатора суффикса:
 версии X.Y.Z-alpha и X.Y.Z-alpha.1 получают tag alpha. Стабильный релиз
 публикуется без явного dist-tag и сохраняет обычную registry-политику.
+
+### Чистый main, атомарный push и восстановление
+
+Требование «чистый и синхронный `main`» — это **только preflight** перед
+созданием release-коммита. Оно не противоречит version bump: после успешного
+preflight скрипт меняет `package.json`/lockfile, создаёт отдельный
+`chore(release): vX.Y.Z` commit и annotated tag. Это штатная короткая фаза,
+когда локальный `main` опережает `origin/main` до push.
+
+Для нового релиза скрипт отправляет `main` и tag через
+`git push --atomic`: GitHub либо принимает оба ref, либо не принимает ни
+один. Это исключает обычное удалённое состояние «release-коммит без тега».
+Пара пакетов всё равно не является атомарной между репозиториями: сначала
+публикуется UI, затем Vue.
+
+Если процесс прервался после локального release-коммита/tag или во время
+push, **не запускайте новый bump** и не удаляйте/recreate tag. После проверки
+ошибки сети, branch policy или environment approval используйте resume для
+того же пакета:
+
+```powershell
+npm run release:ui -- -Resume -Execute
+# либо, если Vue release-commit/tag уже были созданы:
+npm run release:vue -- -Resume -Execute
+```
+
+`-Resume` не вычисляет новую версию и не меняет файлы. Он требует: clean
+`main`, локальный annotated tag `v<package.json.version>` ровно на `HEAD`,
+отсутствие новых commits на `origin/main` и отсутствие одноимённого remote
+tag на другом commit. Затем он допушивает только недостающий ref и ждёт
+release workflow. Если UI уже опубликован, но Vue ещё даже не начал
+release-транзакцию, используйте обычную команду Vue с `-ReleaseCurrent
+-Execute`, а не `-Resume`.
 
 Нет атомарной multi-package registry-транзакции — каждый `npm publish`
 независим. Безопасный порядок:

@@ -1,7 +1,9 @@
 <script setup>
 // Exercises the same public exports a real downstream Vue SPA would use:
-// theme-aware Icon (via an injected registry, no kit-specific glob import),
-// Loader and a router-dependent navigation component in one tree.
+// theme-aware Icon (via an injected registry, no kit-specific glob import;
+// "cog" below is not a custom SVG, so it demonstrates Icon's Buefy/MDI
+// fallback instead), Loader and a router-dependent navigation component in
+// one tree.
 import { Icon, Loader, NavbarMenu } from "@iam3xtr/vue";
 import { PageHeader } from "@iam3xtr/vue/navigation";
 

@@ -14,6 +14,7 @@ import AgentPlayground from "./components/agents/AgentPlayground.vue";
 import AgentSettings from "./components/agents/AgentSettings.vue";
 import AgentWizard from "./components/agents/AgentWizard.vue";
 import Agents from "./components/Agents.vue";
+import ApplicationShell from "./components/kit/ApplicationShell.vue";
 import ForgotView from "./components/auth/ForgotView.vue";
 import InviteView from "./components/auth/InviteView.vue";
 import LoginView from "./components/auth/LoginView.vue";
@@ -422,6 +423,15 @@ const router = createRouter({
           path: "dialogs-overlays",
           name: "kit-dialogs-overlays",
           component: DialogsOverlays,
+        },
+        // Handoff.2 (.todo строки 761-828, требование 3): connected
+        // application-shell scenario — trVue install order, sidebar with a
+        // clickable TariffSummaryCard and Icon precedence in one route,
+        // instead of separate isolated showcase blocks.
+        {
+          path: "application-shell",
+          name: "kit-application-shell",
+          component: ApplicationShell,
         },
       ],
     },

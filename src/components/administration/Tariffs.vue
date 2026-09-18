@@ -63,7 +63,7 @@
 
           <b-table-column field="status" label="Статус" v-slot="{ row }">
             <b-tag :type="row.status === 'Активен' ? 'is-primary' : undefined" size="is-small">
-              {{ row.status }}
+              <AdminMarker domain="status" :value="row.status" />
             </b-tag>
           </b-table-column>
 
@@ -88,6 +88,7 @@ import { useSimulatedLoading } from "../../composables/useSimulatedLoading";
 import { useAdministrationStore } from "../../stores/administration";
 import { useDemoStore } from "../../stores/demo";
 import { AsyncState, ListAsyncState, Loader, Toolbar, ToolbarDropdown } from "@iam3xtr/vue";
+import AdminMarker from "./AdminMarker.vue";
 
 // Облегчённый каталог тарифных планов платформы (Task A8.3) — см.
 // `Users.vue` для общего контракта demo-режима/каталога. Не связан с

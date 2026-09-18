@@ -9,6 +9,7 @@
           :to="{ name: item.routeName }"
           :icon="item.icon"
           :label="item.label"
+          :title="item.label"
           :model-value="isNavigationItemActive(item.routeName)"
         />
       </b-menu-list>
@@ -21,12 +22,16 @@
           :to="{ name: item.routeName }"
           :icon="item.icon"
           :label="item.label"
+          :title="item.label"
           :model-value="isAdministrationItemActive(item.routeName)"
         />
       </b-menu-list>
     </b-menu>
 
-    <TariffSummaryCard :tariff="activeWorkspaceTariff" />
+    <TariffSummaryCard
+      :tariff="activeWorkspaceTariff"
+      :to="{ name: 'workspace-plans' }"
+    />
   </aside>
 </template>
 

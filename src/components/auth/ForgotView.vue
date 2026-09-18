@@ -1,5 +1,5 @@
 <template>
-  <AuthPage>
+  <AuthPage flat>
     <h1 class="tr-card__title">Восстановление пароля</h1>
 
     <p class="tr-muted mb-2">Самостоятельное восстановление пароля недоступно в демо-режиме.</p>

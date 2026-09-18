@@ -63,7 +63,7 @@
 
           <b-table-column field="status" label="Статус" v-slot="{ row }">
             <b-tag :type="row.status === 'Успех' ? 'is-primary' : 'is-danger'" size="is-small">
-              {{ row.status }}
+              <AdminMarker domain="status" :value="row.status" />
             </b-tag>
           </b-table-column>
 
@@ -92,6 +92,7 @@ import { useSimulatedLoading } from "../../composables/useSimulatedLoading";
 import { useAdministrationStore } from "../../stores/administration";
 import { useDemoStore } from "../../stores/demo";
 import { AsyncState, ListAsyncState, Loader, Toolbar, ToolbarDropdown } from "@iam3xtr/vue";
+import AdminMarker from "./AdminMarker.vue";
 
 // Облегчённый лог запросов к моделям (Task A8.3) — см. `Users.vue` для
 // общего контракта demo-режима/каталога. Не имеет маршрута-аналога верхнего

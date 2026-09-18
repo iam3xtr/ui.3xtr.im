@@ -70,6 +70,11 @@
 
   <section class="tr-card mb-5">
     <h2 class="tr-card__title">Боковая панель</h2>
+    <p class="tr-muted mb-4">
+      Прямой <code>b-sidebar</code> — для неформовых панелей (свойства,
+      details), а не для редактирования. Форма в правой панели — раздел
+      «Форма в правой панели» ниже.
+    </p>
     <b-button @click="modalStore.open('uikit-sidebar')">
       Открыть панель
     </b-button>
@@ -94,10 +99,70 @@
   </section>
 
   <section class="tr-card mb-5">
+    <h2 class="tr-card__title">Форма в правой панели</h2>
+    <p class="tr-muted mb-4">
+      <code>FormDrawer</code> из <code>@iam3xtr/vue</code> — эталон для
+      редактирования в правой панели: длинный form body, фиксированные
+      footer-действия и busy submit. Presentation-only — поля и сохранение
+      здесь fixture state, не API. Короткая форма без длинного body — обычно
+      <code>b-modal</code> (раздел «Модальное окно» ниже); подтверждение
+      действия — <code>b-dialog</code> (раздел «Диалог подтверждения» выше).
+    </p>
+    <b-button type="is-primary" @click="isFormDrawerOpen = true">
+      Открыть форму в панели
+    </b-button>
+
+    <FormDrawer
+      v-model="isFormDrawerOpen"
+      title="Правило уведомления"
+      :busy="isFormDrawerBusy"
+      @submit="handleFormDrawerSubmit"
+    >
+      <div class="tr-stack">
+        <b-field label="Название правила">
+          <b-input v-model="formDrawerFields.name" />
+        </b-field>
+        <b-field label="Канал">
+          <b-select v-model="formDrawerFields.channel" expanded>
+            <option value="email">Email</option>
+            <option value="telegram">Telegram</option>
+            <option value="webhook">Webhook</option>
+          </b-select>
+        </b-field>
+        <b-field label="Условие срабатывания">
+          <b-input v-model="formDrawerFields.condition" />
+        </b-field>
+        <b-field label="Описание">
+          <b-input
+            v-model="formDrawerFields.description"
+            type="textarea"
+            rows="12"
+          />
+        </b-field>
+      </div>
+
+      <template #footer="{ busy, disabled }">
+        <b-button class="mr-2" :disabled="busy || disabled" @click="isFormDrawerOpen = false">
+          Отмена
+        </b-button>
+        <b-button
+          type="is-primary"
+          native-type="submit"
+          :loading="busy"
+          :disabled="disabled || busy"
+        >
+          Сохранить
+        </b-button>
+      </template>
+    </FormDrawer>
+  </section>
+
+  <section class="tr-card mb-5">
     <h2 class="tr-card__title">Модальное окно</h2>
     <p class="tr-muted mb-4">
       Штатный <code>b-modal</code>, открытый через тот же
-      <code>useModalStore()</code>.
+      <code>useModalStore()</code> — короткая форма без длинного body и без
+      фиксированного footer, в отличие от <code>FormDrawer</code> выше.
     </p>
     <b-button type="is-primary" @click="modalStore.open('uikit-create-agent')">
       Открыть модальное окно
@@ -143,11 +208,12 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { onUnmounted, ref } from "vue";
 
 import { useModalStore } from "../../stores/modal";
 import { useToasterStore } from "../../stores/toaster";
 import { PageHeader } from "@iam3xtr/vue/navigation";
+import { FormDrawer } from "@iam3xtr/vue";
 
 const modalStore = useModalStore();
 const toaster = useToasterStore();
@@ -170,4 +236,34 @@ function confirmDeleteAgent() {
 function showSavedToast() {
   toaster.success("Изменения сохранены");
 }
+
+// FormDrawer showcase (Issue #4.3): presentation-only fixture state — no
+// store/API. `handleFormDrawerSubmit` simulates a save the same way other
+// kit demo forms do (see `kit/Forms.vue`), so the busy state is real enough
+// to demonstrate the footer's `:loading`/`:disabled` binding.
+const isFormDrawerOpen = ref(false);
+const isFormDrawerBusy = ref(false);
+const formDrawerFields = ref({
+  name: "Молчание в нерабочие часы",
+  channel: "telegram",
+  condition: "severity >= warning",
+  description:
+    "Правило подавляет повторные уведомления по одному инциденту, пока " +
+    "статус не изменится. Действует для всех агентов рабочего пространства " +
+    "и учитывает локальное время получателя канала.",
+});
+let formDrawerTimerId = null;
+
+function handleFormDrawerSubmit() {
+  isFormDrawerBusy.value = true;
+  formDrawerTimerId = setTimeout(() => {
+    isFormDrawerBusy.value = false;
+    isFormDrawerOpen.value = false;
+    toaster.success("Правило сохранено");
+  }, 600);
+}
+
+onUnmounted(() => {
+  if (formDrawerTimerId) clearTimeout(formDrawerTimerId);
+});
 </script>
