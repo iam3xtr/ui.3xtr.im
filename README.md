@@ -104,6 +104,11 @@ Workflow устанавливает точные опубликованные п
 cross-repository secret ему не нужны. Порядок выпуска пакетов, разграничение
 токенов и registry gate описаны в docs/release-process.md.
 
+Favicon лежит в `public/favicon.svg`: Vite копирует его в корень `dist`, а
+`%BASE_URL%` в `index.html` подставляет base path GitHub Pages. Поэтому и при
+публикации в подпапке репозитория браузер запрашивает существующий файл, а не
+несуществующий исходный ассет.
+
 Роутер использует history mode, поэтому адреса на Pages не содержат `#`.
 `404.html` сохраняет прямой deep link и возвращает его приложению; это
 клиентский fallback статического GitHub Pages, а не server-side rewrite.

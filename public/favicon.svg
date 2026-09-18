@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Static Pages copy of the @iam3xtr/ui brand mark. It intentionally lives in
+  public/: GitHub Pages builds install published packages but do not check out
+  the UI submodule. Keep its geometry and palette in sync with
+  packages/ui/src/assets/logo.svg.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 68 32">
+  <g>
+    <g>
+      <path fill="#895CCC" d="M0 0h8v32H0zM12 0h8v32h-8zM24 0h8v32h-8z"/>
+      <path fill="#9A73D3" d="M1 1h7v31H1zM13 1h7v31h-7zM25 1h7v31h-7z"/>
+      <path fill="#AB8BDA" d="M2 2h6v30H2zM14 2h6v30h-6zM26 2h6v30h-6z"/>
+    </g>
+    <g>
+      <path fill="#A583D8" d="M36 0h32v8H36zM36 12h32v8H36zM36 24h32v8H36z"/>
+      <path fill="#BBA2E2" d="M37 1h31v7H37zM37 13h31v7H37zM37 25h31v7H37z"/>
+      <path fill="#D2C1EB" d="M38 2h30v6H38zM38 14h30v6H38zM38 26h30v6H38z"/>
+    </g>
+  </g>
+</svg>
