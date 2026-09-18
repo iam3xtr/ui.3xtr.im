@@ -83,4 +83,25 @@ describe("Sidebar.vue — стабильная ширина и labels меню (
 
     expect(wrapper.find(".tr-sidebar").attributes("style")).toBeUndefined();
   });
+
+  it("показывает provenance ui/vue и не выдаёт локальные исходники за опубликованную пару", async () => {
+    const { wrapper } = await mountSidebar();
+
+    const versions = wrapper.find(".tr-sidebar__versions");
+    expect(versions.exists()).toBe(true);
+    expect(versions.attributes("aria-label")).toBe("Версии библиотек");
+    expect(versions.text()).toContain("ui");
+    expect(versions.text()).toContain("vue");
+    // Assert Buefy's public `type` props rather than its generated DOM
+    // classes: those classes vary across Buefy's render modes, while these
+    // props are the semantic colour contract consumed by the component.
+    const tagTypes = wrapper.findAllComponents({ name: "BTag" }).map((tag) => tag.props("type"));
+    expect(tagTypes).toEqual(expect.arrayContaining(["is-dark", "is-info", "is-success"]));
+
+    // Local Vite sources are a development/provenance warning, not a third
+    // package version and not a claim that a new registry release exists.
+    if (versions.text().includes("+")) {
+      expect(tagTypes).toContain("is-warning");
+    }
+  });
 });

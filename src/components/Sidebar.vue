@@ -1,5 +1,6 @@
 <template>
   <aside class="tr-sidebar">
+
     <b-menu class="tr-sidebar__nav">
       <b-menu-list>
         <b-menu-item
@@ -28,10 +29,31 @@
       </b-menu-list>
     </b-menu>
 
+    <section aria-label="Версии библиотек" >
+      <b-field grouped group-multiline position="is-right">
+        <div class="control">
+          <b-taglist attached :title="`@iam3xtr/ui ${uiVersion}`">
+            <b-tag type="is-dark">ui</b-tag>
+            <b-tag v-if="usesWorkspaceSources" type="is-danger">dev</b-tag>
+            <b-tag v-else type="is-info">{{ uiVersion }}</b-tag>
+          </b-taglist>
+        </div>
+        <div class="control">
+          <b-taglist attached :title="`@iam3xtr/vue ${vueVersion}`">
+            <b-tag type="is-dark">vue</b-tag>
+            <b-tag v-if="usesWorkspaceSources" type="is-danger">dev</b-tag>
+            <b-tag v-else type="is-success">{{ vueVersion }}</b-tag>
+          </b-taglist>
+        </div>
+      </b-field>
+    </section>
+
+
     <TariffSummaryCard
       :tariff="activeWorkspaceTariff"
       :to="{ name: 'workspace-plans' }"
     />
+
   </aside>
 </template>
 
@@ -49,6 +71,17 @@ import { TariffSummaryCard } from "@iam3xtr/vue/navigation";
 const route = useRoute();
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceTariff } = storeToRefs(workspaceStore);
+
+// Defined by vite.config.js from root package.json. In `npm run dev` Vite
+// aliases the packages to their submodule sources, so the visible marker
+// must not imply that these exact published pins are currently executing.
+const uiVersion =
+  typeof __TRICKSTER_UI_VERSION__ === "string" ? __TRICKSTER_UI_VERSION__ : "development";
+const vueVersion =
+  typeof __TRICKSTER_VUE_VERSION__ === "string" ? __TRICKSTER_VUE_VERSION__ : "development";
+const usesWorkspaceSources =
+  typeof __TRICKSTER_LOCAL_PACKAGE_SOURCES__ !== "undefined" &&
+  __TRICKSTER_LOCAL_PACKAGE_SOURCES__;
 
 /**
  * Prefix-aware match: every main navigation item is the root of a route

@@ -47,6 +47,10 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
   tr-async-state, настройки — tr-settings-panel.
 - Для таблиц, полей, загрузки, pagination, tabs, modal, dialog, toast,
   loading и skeleton используйте Buefy.
+- Для Buefy `b-tag` kit не задаёт собственных color/background overrides:
+  обычные и semantic `type` (`is-primary`, `is-success`, `is-warning`,
+  `is-danger`, `is-dark` и другие Bulma types) выглядят ровно как в примерах
+  Buefy.
 - Общие компоненты импортируются из @iam3xtr/vue; route-aware PageHeader,
   NavbarTabs и TariffSummaryCard — из @iam3xtr/vue/navigation.
 - Drop-поверхность над интерактивным содержимым (таблица, список) — только
@@ -78,7 +82,12 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
   копию через `.tr-page-toolbar__filters .tr-page-toolbar__filter`, а не
   безусловный `.tr-page-toolbar__filter`; последнее также спрятало бы копию
   внутри `.tr-mobile-filters__content` и оставило бы mobile-панель пустой.
-- В src/**/*.vue не допускаются style blocks. Правила добавляются в
+- В src/**/*.vue по умолчанию не допускаются style blocks. Kit-only override
+  допустим, если он не является public contract `@iam3xtr/ui`, использует
+  ровно один `<style scoped>` и перед ним документирует причину через
+  `<!-- kit-style-exception: причина -->`; guard проверяет это правило.
+  Например, `.tr-sidebar__versions` в `Sidebar.vue` — provenance marker
+  конкретного приложения. Все reusable rules добавляются в
   packages/ui/src/styles/theme.scss.
 - AuthPage (auth/) — узкий `flat` prop (Issue #9.1): по умолчанию контейнер —
   `.tr-auth__card.tr-card` (background/border/radius/padding/shadow из
@@ -100,6 +109,13 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
   Блок лимитов `TariffSummaryCard` сохраняет utility-класс `tr-stack` для
   column layout, но `.tr-stack.tr-sidebar-tariff__limits` задаёт `gap: 0`
   с большей специфичностью, чтобы generic stack-gap его не переопределял.
+
+- Внизу Sidebar после `TariffSummaryCard` находится компактный read-only
+  provenance `ui <version>` / `vue <version>`. Production и Pages показывают
+  exact pins из корневого `package.json`; `npm run dev` дополнительно выводит
+  `workspace source`, потому что Vite исполняет исходники `packages/*/src`, а
+  не опубликованные пакеты. Индикатор не является навигацией, контролом
+  обновления или заявлением о registry-публикации.
 
 ## Состояния и доступность
 

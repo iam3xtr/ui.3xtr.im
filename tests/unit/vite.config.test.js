@@ -40,12 +40,16 @@ describe("vite.config.js — локальные исходники пакето�
     expect(vueAlias.replacement.replaceAll("\\", "/")).toContain("packages/vue/src/index.js");
     expect(assetsAlias.replacement.replaceAll("\\", "/")).toContain("packages/ui/src/assets");
     expect(config.resolve.dedupe).toEqual(expect.arrayContaining(["vue", "vue-router", "buefy"]));
+    expect(config.define.__TRICKSTER_LOCAL_PACKAGE_SOURCES__).toBe(true);
+    expect(config.define.__TRICKSTER_UI_VERSION__).toMatch(/^"\d+\.\d+\.\d+/);
+    expect(config.define.__TRICKSTER_VUE_VERSION__).toMatch(/^"\d+\.\d+\.\d+/);
   });
 
   it("не подменяет published packages в production и Pages builds", () => {
     for (const mode of ["production", "pages"]) {
       const config = viteConfig({ mode, command: "build" });
       expect(config.resolve.alias.some(({ find }) => find instanceof RegExp && find.test("@iam3xtr/vue"))).toBe(false);
+      expect(config.define.__TRICKSTER_LOCAL_PACKAGE_SOURCES__).toBe(false);
     }
   });
 });

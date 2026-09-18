@@ -1,7 +1,12 @@
 import { fileURLToPath, URL } from "url";
+import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import svgLoader from "vite-svg-loader";
+
+const packageManifest = JSON.parse(
+  readFileSync(fileURLToPath(new URL("./package.json", import.meta.url)), "utf8"),
+);
 
 export default defineConfig(({ mode }) => {
   // Issue #14.1: только явный, отдельно называемый Pages-режим включает Vue
@@ -63,6 +68,12 @@ export default defineConfig(({ mode }) => {
 
     define: {
       __VUE_PROD_DEVTOOLS__: enableProdDevtools,
+      // Visible build provenance in Sidebar: production/Pages uses the
+      // exact registry pins from this manifest, while dev explicitly says
+      // that Vite resolves both packages from editable workspace sources.
+      __TRICKSTER_UI_VERSION__: JSON.stringify(packageManifest.dependencies["@iam3xtr/ui"]),
+      __TRICKSTER_VUE_VERSION__: JSON.stringify(packageManifest.dependencies["@iam3xtr/vue"]),
+      __TRICKSTER_LOCAL_PACKAGE_SOURCES__: usePackageSources,
     },
 
     build: {

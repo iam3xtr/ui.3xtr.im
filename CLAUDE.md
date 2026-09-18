@@ -53,7 +53,10 @@ gitlink SHA и создаёт отдельный `chore(deps)` commit; `-Resume 
 
 ## Стили, иконки и компоненты
 
-- В src/**/*.vue запрещены style blocks; проверка — npm run lint:style.
+- В src/**/*.vue по умолчанию запрещены style blocks. Kit-only override
+  допустим, только если он действительно не относится к public contract
+  библиотек, использует ровно один `<style scoped>` и перед ним есть
+  `<!-- kit-style-exception: причина -->`. Проверка — npm run lint:style.
 - Единственный источник токенов и темы —
   @iam3xtr/ui/styles/tokens и @iam3xtr/ui/styles/theme. Не создавайте
   локальную копию темы.
