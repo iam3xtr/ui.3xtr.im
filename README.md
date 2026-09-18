@@ -68,6 +68,11 @@ run с patch bump. Для релиза передайте -Execute; для minor
 -ReleaseCurrent -Execute.
 Сочетание -ReleaseCurrent -Alpha выпускает текущую стабильную версию как
 prerelease: 0.1.1 станет 0.1.1-alpha.
+Switch -Beta работает симметрично для beta-версий. После успешного релиза
+скрипт обновляет точный dependency pin и lockfile UI Kit, фиксирует gitlink
+SHA и пушит отдельный `chore(deps)` commit; восстановление прерванного push
+выполняется через `-Resume -Execute`. Полный порядок и ограничения — в
+docs/release-process.md.
 
 ## Действующие правила
 

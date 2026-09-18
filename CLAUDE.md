@@ -27,8 +27,13 @@ submodules; release:all ожидает успешный UI release перед Vu
 проверяет, что точная версия UI уже опубликована в npm registry. minor и major
 задаются через -Bump. Switch -Alpha выпускает следующую patch-версию с
 суффиксом -alpha.
+Switch -Beta работает так же с суффиксом -beta; вместе они не используются.
 Switch -ReleaseCurrent выпускает уже указанную в manifests версию без bump.
 Вместе с -Alpha он добавляет суффикс -alpha к текущей стабильной версии.
+После успешной публикации скрипт обновляет exact pins/lockfile UI Kit,
+gitlink SHA и создаёт отдельный `chore(deps)` commit; `-Resume -Execute`
+без нового bump продолжает прерванный push/workflow. Подробности и recovery
+описаны в docs/release-process.md.
 
 ## Репозиторий и границы
 

@@ -284,6 +284,71 @@ function Commit-ReleaseChanges {
     return $true
 }
 
+function Assert-UiKitMainAtOrigin {
+    param([string[]]$AllowedSubmodules)
+    # The package release may wait for an environment approval. Do not commit
+    # a dependency pin on top of kit commits made by somebody else while that
+    # approval was pending; leave the published package immutable and ask the
+    # operator to reconcile the kit branch before retrying/resuming.
+    Invoke-External -File git -Arguments @("fetch", "origin", "+refs/heads/main:refs/remotes/origin/main") -WorkingDirectory $root
+    $aheadBehind = (& git -C $root rev-list --left-right --count "main...refs/remotes/origin/main").Trim() -split "\s+"
+    if ($aheadBehind.Count -ne 2 -or $aheadBehind[0] -ne "0" -or $aheadBehind[1] -ne "0") {
+        throw "UI Kit main changed while the package release was pending. Reconcile the kit branch, then update its exact package pins manually or rerun the matching -Resume command."
+    }
+
+    $unexpectedChanges = @(
+        (& git -C $root status --porcelain --untracked-files=all) |
+            Where-Object {
+                $path = $_.Substring(3)
+                $AllowedSubmodules -notcontains $path
+            }
+    )
+    if ($unexpectedChanges.Count -gt 0) {
+        throw "UI Kit has changes unrelated to the released submodule pointers. Do not mix them into the dependency-pin commit."
+    }
+}
+
+function Sync-UiKitDependencies {
+    param(
+        [string]$UiVersion,
+        [string]$VueVersion
+    )
+
+    if (-not $UiVersion -and -not $VueVersion) {
+        return
+    }
+
+    $files = @("package.json", "package-lock.json")
+    $allowedSubmodules = @()
+    if ($UiVersion) {
+        $allowedSubmodules += "packages/ui"
+        $files += "packages/ui"
+    }
+    if ($VueVersion) {
+        $allowedSubmodules += "packages/vue"
+        $files += "packages/vue"
+    }
+    Assert-UiKitMainAtOrigin -AllowedSubmodules $allowedSubmodules
+    $packagePath = Join-Path $root "package.json"
+    $package = Get-Content $packagePath -Raw | ConvertFrom-Json
+    if ($UiVersion) {
+        $package.dependencies.'@iam3xtr/ui' = $UiVersion
+    }
+    if ($VueVersion) {
+        $package.dependencies.'@iam3xtr/vue' = $VueVersion
+    }
+    $json = $package | ConvertTo-Json -Depth 100
+    [System.IO.File]::WriteAllText($packagePath, $json + [Environment]::NewLine, [System.Text.UTF8Encoding]::new($false))
+    Invoke-External -File npm -Arguments @("install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund") -WorkingDirectory $root
+
+    $labels = @()
+    if ($UiVersion) { $labels += "@iam3xtr/ui@$UiVersion" }
+    if ($VueVersion) { $labels += "@iam3xtr/vue@$VueVersion" }
+    Commit-ReleaseChanges -Path $root -Message "chore(deps): update $($labels -join ' and ')" -Files $files | Out-Null
+    Invoke-External -File git -Arguments @("push", "origin", "main") -WorkingDirectory $root
+    Write-Host "Updated UI Kit exact dependency pin(s): $($labels -join ', ')."
+}
+
 function Set-VueCompatibility {
     param(
         [string]$UiVersion,
@@ -443,13 +508,24 @@ try {
         throw "-Resume only performs the pending push/workflow verification; pass -Execute to confirm it."
     }
     if ($Package -eq "ui") {
-        if (-not $Resume) { Assert-CleanMain -Path $uiPath -Label "@iam3xtr/ui" }
-        Release-Ui -Version (Get-RequestedReleaseVersion -Path $uiPath)
+        if (-not $Resume) {
+            Assert-CleanMain -Path $root -Label "UI Kit"
+            Assert-CleanMain -Path $uiPath -Label "@iam3xtr/ui"
+        }
+        $uiReleaseVersion = Get-RequestedReleaseVersion -Path $uiPath
+        Release-Ui -Version $uiReleaseVersion
+        if ($Execute) { Sync-UiKitDependencies -UiVersion $uiReleaseVersion }
     } elseif ($Package -eq "vue") {
-        if (-not $Resume) { Assert-CleanMain -Path $vuePath -Label "@iam3xtr/vue" }
-        Release-Vue -Version (Get-RequestedReleaseVersion -Path $vuePath)
+        if (-not $Resume) {
+            Assert-CleanMain -Path $root -Label "UI Kit"
+            Assert-CleanMain -Path $vuePath -Label "@iam3xtr/vue"
+        }
+        $vueReleaseVersion = Get-RequestedReleaseVersion -Path $vuePath
+        Release-Vue -Version $vueReleaseVersion
+        if ($Execute) { Sync-UiKitDependencies -VueVersion $vueReleaseVersion }
     } else {
         if (-not $Resume) {
+            Assert-CleanMain -Path $root -Label "UI Kit"
             Assert-CleanMain -Path $uiPath -Label "@iam3xtr/ui"
             Assert-CleanMain -Path $vuePath -Label "@iam3xtr/vue"
         }
@@ -463,6 +539,7 @@ try {
         Release-Ui -Version $nextVersion
         Release-Vue -Version $nextVersion
         if ($Execute) {
+            Sync-UiKitDependencies -UiVersion $nextVersion -VueVersion $nextVersion
             Write-Host "Published pair v$nextVersion. Run the documented exact-version registry gate before declaring it recommended for consumers."
         }
     }

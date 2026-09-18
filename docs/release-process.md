@@ -52,6 +52,32 @@ registry вернул другой номер, Vue-релиз прекращае
 npm run release:vue -- -ReleaseCurrent -Alpha -Execute
 ```
 
+### Автоматическое обновление UI Kit после публикации
+
+Успешная команда с `-Execute` обновляет UI Kit автоматически: выставляет
+опубликованную точную версию соответствующего пакета в корневом
+`package.json`, пересобирает `package-lock.json`, фиксирует новые gitlink SHA
+`packages/ui`/`packages/vue` и создаёт/push'ит отдельный commit вида
+`chore(deps): update @iam3xtr/ui@X.Y.Z and @iam3xtr/vue@X.Y.Z`.
+
+Для `release:all` это один kit commit после успешной публикации обеих
+библиотек. Для отдельного `release:ui` или `release:vue` обновляется только
+соответствующий exact pin. Поэтому до release preflight должны быть чистыми и
+синхронными с `origin/main` **три** рабочие директории: UI Kit и оба
+submodule. Обычный порядок работы:
+
+1. Закоммитить и запушить функциональные изменения в `packages/ui`.
+2. Закоммитить и запушить функциональные изменения в `packages/vue`.
+3. В корне UI Kit зафиксировать обновлённые gitlink SHA и интеграционную
+   разметку/документацию, затем запушить этот commit.
+4. Запустить release-команду. Она создаст только release commits в
+   библиотеках и dependency-pin commit в UI Kit.
+
+Если approval workflow затянулся и за это время `origin/main` UI Kit получил
+новые commits, скрипт не будет автоматически смешивать их с dependency-pin
+commit. Сначала вручную reconcile UI Kit, затем обновите pins вручную или
+повторите соответствующую команду с `-Resume -Execute`.
+
 ### Доступ CLI к GitHub Packages
 
 Проверка Vue-релиза читает UI-пакет из npm registry. Один раз создайте
