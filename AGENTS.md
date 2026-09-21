@@ -1,118 +1,373 @@
-# AGENTS.md
+Shared instructions for AI assistants working on the **3xtr.im** platform.
 
-Shared context for AI coding assistants working on the **3xtr.im** platform.
+Read this file first. Then, if the current repository contains [`REPO.md`](REPO.md),
+read it completely before making changes. `REPO.md` contains repository-specific
+commands, architecture, contracts, constraints, and pointers to detailed documentation.
 
-If the current repository has `CLAUDE.md`, read it after this file. `AGENTS.md` is
-platform-wide; `CLAUDE.md` is repo-specific.
+`CLAUDE.md` is a compatibility/bootstrap entry point for assistants that discover Claude
+instructions automatically. Repository-specific instructions belong in `REPO.md`, not
+in `CLAUDE.md`.
 
 ## Platform
 
-3xtr.im is a multi-tenant AI agent platform split across four product repositories,
-plus this design-system repository:
+| Repository      | Responsibility                                                                                     |
+| --------------- | -------------------------------------------------------------------------------------------------- |
+| `api.3xtr.im`   | Go REST API: authentication, RBAC, workspaces, agents, conversations, knowledge, LLM orchestration |
+| `get.3xtr.im`   | Vue 3 SPA for workspace owners and operators                                                       |
+| `chat.3xtr.im`  | Go gateway + Nuxt 3: public chat, widget, and webhook integrations                                 |
+| `actor.3xtr.im` | Python service for RAG text and metadata extraction                                                |
+| `ui.3xtr.im`    | Design-system demo and sources for `@iam3xtr/ui` and `@iam3xtr/vue`                                |
 
-| Repo | Role |
-|---|---|
-| `api.3xtr.im` | Go REST API: auth, RBAC, workspaces, agents, conversations, knowledge, LLM orchestration |
-| `get.3xtr.im` | Vue 3 admin SPA for workspace owners and operators |
-| `chat.3xtr.im` | Go gateway + Nuxt 3 public chat, widget, webhook integrations |
-| `actor.3xtr.im` | Python extraction service for RAG document ingestion |
-| `trickster-ui-kit` | Vue 3 + Buefy design-system kit — a backend-less working copy of `get.3xtr.im`'s UI/UX contract (this repository) |
+## Work Boundaries
 
-## Boundaries
+* Work only inside the invoked repository. Do not edit sibling repositories.
+* Keep changes within the requested scope. Do not add unrelated features, refactors, or abstractions.
+* Before changing an endpoint, field, payload, error, permission, shared UI contract, or other cross-repository behaviour, identify and verify affected consumers.
+* Do not copy demo fixtures, mock data, or demo-only behaviour from `ui.3xtr.im` into production applications.
+* `actor.3xtr.im` remains an isolated extraction service and must not import code from sibling services.
+* Applications consume published `ui.3xtr.im` packages; do not copy their source or styles into consumers.
+* When cross-repository impact is uncertain, do not invent a contract. Continue only with work that is safe without that assumption and surface the unresolved dependency when it blocks the task.
 
-- Work only inside the invoked repository. Do not edit sibling repositories.
-- This repository (`trickster-ui-kit`) has **no backend and no API dependency**. It is
-  the reference implementation of `get.3xtr.im`'s UI/UX contract: same routes, same
-  markup anatomy, same class names, same icon set, without live data. Design edits are
-  made here first, verified across every screen in one pass, and only then ported to
-  `get.3xtr.im` via that repo's `npm run ui-kit:update`.
-- Do not port demo routes, fixtures, or demo-only actions from this kit into
-  `get.3xtr.im`; only the design contract (tokens, markup anatomy, class names) is meant
-  to travel. `get.3xtr.im` owns real data, permissions, and API calls.
-- `trickster-ui-kit`'s two managed stylesheets — `src/styles/_trickster-tokens.scss` and
-  `src/styles/trickster-buefy.scss` — are consumed verbatim by `get.3xtr.im` through its
-  `ui-kit.lock.json`/`ui-kit.allowlist.json` sync tooling. A change here is a change to
-  what ships downstream; keep it visually intentional and covered by
-  `docs/design-system.md`.
-- Before changing any endpoint, field, payload, error shape, or cross-repo behaviour,
-  verify affected consumers and coordinate breaking changes. (This repo has no API
-  surface of its own, but its stylesheet and markup contract is consumed by
-  `get.3xtr.im`, so the same coordination rule applies to contract changes.)
+Important platform boundaries:
 
-## Encoding
+* `get.3xtr.im` uses the HttpOnly authentication cookie issued by the API.
+* `chat.3xtr.im` consumes stable API contracts using service credentials.
+* Public contracts are owned by the repository that implements them; verify claims against that repository before changing consumers.
 
-- Read and write repository text files as UTF-8.
-- Preserve existing line endings and BOM state.
-- On Windows PowerShell 5.1, never write files with `>`, `>>`, `Out-File` without
-  `-Encoding UTF8`, `Set-Content` without `-Encoding UTF8`, or Python `open(..., "w")`
-  without `encoding="utf-8"`.
-- After editing files with Cyrillic or accented text, read them back and check that the
-  text is not corrupted.
+## Architecture Status
 
-## Documentation
+Distinguish implemented behaviour from plans, proposals, and debt.
 
-After every meaningful component, style, or contract change:
+Use these statuses when needed:
 
-- Update `docs/design-system.md` — the single source of truth for the visual and
-  component contract. It documents the **current** contract, not the target one; any
-  declared-but-unimplemented rule must be marked explicitly in its
-  "Расхождения контракта и реализации" section.
-- Update `docs/agent-migration-guide.md` when custom icon names, content patterns, or
-  the "kit name → MDI name" mapping change.
-- Update `README.md` when the composition of the kit, target versions, or the
-  install/connection instructions change.
-- This repository has no `CHANGELOG.md`; history of contract changes is tracked through
-  `.plan`/`.todo` and Git history, and consumed downstream via `get.3xtr.im`'s own
-  `CHANGELOG.md` when the sync lands there.
+* `Implemented`
+* `Partially implemented`
+* `Accepted debt`
+* `Planned`
+* `Under consideration`
+* `Rejected`
+
+Do not describe `Planned`, `Partially implemented`, or `Accepted debt` work as a current guarantee.
+
+Reviews, ADRs, roadmaps, `.plan`, `.todo`, Issues, and risk registers are not evidence
+that a runtime contract exists. Verify current behaviour against implementation,
+configuration, schema, and canonical documentation.
+
+## Documentation and Context
+
+Do not read the entire `docs/` tree up front.
+
+After `REPO.md`, read only documentation relevant to the task. `REPO.md` should point
+to the canonical documents for major areas.
+
+Current documentation describes the supported state. Keep history in `CHANGELOG.md`
+and Git history rather than accumulating historical implementation notes in current docs.
+
+Keep future work in Issues, ADRs, `.plan`, or repository-specific future documentation.
+
+Documentation is normally written in Russian. Preserve code identifiers, API names,
+configuration keys, function names, protocol terms, and other technical identifiers in
+their original English form.
+
+## Language
+
+Use English for:
+
+* `AGENTS.md`, `REPO.md`, and assistant bootstrap files;
+* source code and identifiers;
+* code comments and godoc/docstrings;
+* API identifiers and machine-readable errors;
+* Git commit subjects and bodies.
+
+Project documentation under `docs/`, plans, and task descriptions may be written in
+Russian unless a repository-specific rule says otherwise.
+
+Do not translate established code or API identifiers inside Russian documentation.
+
+## REPO.md
+
+`REPO.md` is the compact operational context for one repository.
+
+It should let an assistant quickly determine:
+
+* repository purpose and boundaries;
+* stack and required toolchain versions;
+* important entry points and high-level data flow;
+* development, build, test, migration, and generation commands;
+* commands or environments that require explicit user approval;
+* repository-wide conventions;
+* critical cross-cutting invariants;
+* locations of canonical domain and engineering documentation.
+
+### What Belongs in REPO.md
+
+Add information when it is:
+
+* relevant to many tasks in the repository;
+* useful before code changes begin;
+* needed to select the correct entry point, command, or existing abstraction;
+* important for preventing a recurring or high-impact mistake;
+* a stable description of the current repository.
+
+Prefer a short invariant plus a documentation link over duplicating a detailed contract.
+
+Example:
+
+```text
+Runtime model selection must use the shared policy resolver.
+See docs/engineering/llm-runtime.md.
+```
+
+### What Does Not Belong in REPO.md
+
+Do not use `REPO.md` as a:
+
+* changelog;
+* roadmap or backlog;
+* ADR;
+* risk register;
+* task journal;
+* stage-by-stage implementation history;
+* review findings archive;
+* catalogue of every endpoint, handler, function, table, or migration;
+* duplicate of detailed `docs/` content.
+
+If information matters only for one domain, keep it in that domain's canonical
+documentation and link to it from `REPO.md` when useful.
+
+### Maintaining REPO.md
+
+Update `REPO.md` when a change affects repository-wide context, including:
+
+* stack or required toolchain;
+* major entry points;
+* module or process architecture;
+* build, run, test, migration, or generation workflow;
+* required or forbidden commands;
+* generated-artifact workflow;
+* repository boundaries;
+* shared infrastructure;
+* cross-cutting runtime invariants;
+* process/service topology;
+* canonical documentation locations.
+
+Do not update `REPO.md` for every implementation change.
+
+A new handler, helper, endpoint, migration, or internal workflow does not by itself
+justify a `REPO.md` change unless it changes how assistants should work with the
+repository as a whole.
+
+Keep `REPO.md` current:
+
+* describe confirmed current behaviour only;
+* mark partial or future behaviour explicitly;
+* remove obsolete rules when the supported mechanism changes;
+* do not preserve historical versions of a rule beside the current one;
+* verify commands before documenting them;
+* keep documentation links valid after moves;
+* keep the file compact enough to read completely before every task.
+
+If a section starts describing one domain in implementation-level detail, move that
+detail to `docs/` and keep only the invariant and link in `REPO.md`.
+
+## Encoding and Files
+
+* Read and write text as UTF-8.
+* Preserve existing line endings and BOM state.
+* After editing files containing non-ASCII text, read them back and verify that the content is intact.
+* In Python, always specify `encoding="utf-8"` when writing text.
+* On Windows PowerShell 5.1, do not write files using `>`, `>>`, implicit `Out-File`, or `Set-Content` without explicit UTF-8 handling.
+* Do not manually edit generated artifacts unless `REPO.md` explicitly permits it.
+
+## Change Documentation
+
+After a meaningful change to code, behaviour, configuration, or a public contract:
+
+1. Update the current `## YYYY-MM-DD` block in `CHANGELOG.md`.
+2. Keep one changelog block per date.
+3. Use short user-visible entries; avoid internal implementation details.
+4. Update relevant current documentation.
+5. Update `REPO.md` only when the change affects repository-wide context as defined above.
+
+Do not add internal function names, private field names, or low-level implementation
+details to the changelog unless they are part of a user/operator-visible contract.
 
 ## Planning
 
-- `.plan` holds the active epic/workstream; keep completed stages for regression review.
-- `.todo` holds decomposed tasks for the current stage only.
-- Long-term or cross-repo backlog belongs in GitHub Issues, not local planning files.
-- Before adding tasks, check `.plan`, `.todo`, and open Issues to avoid duplicates.
-- Development workflow may use locally configured Codex and Claude Code skills such as
-  `plan-create`, `plan-review`, `stage-decompose`, `stage-run`, `stage-review`,
-  `fix-it`, `fix-review`, and `stage-close`; those skills are not part of this repo.
-- For GitHub CLI work, use REST through `gh api`; avoid GraphQL-dependent commands.
+`.plan` represents an active workstream or epic.
 
-## Planning File Shape
+`.todo` contains atomic tasks for one or more plan stages and may also be based directly
+on one or more GitHub Issues when a separate plan is unnecessary.
 
-Use these fields consistently so local skills and agents can resume work safely.
+Long-term, deferred, and cross-repository work belongs in GitHub Issues.
 
-`.plan` structure:
+Before creating or updating planning artifacts:
 
-- `# PLAN: <workstream name>`
-- `Дата актуализации: YYYY-MM-DD`
-- `Источники: <files, docs, issues, user request>`
-- `Ограничения:` repo boundaries, contract constraints, verification requirements.
-- Group stages by `## <module>` and optional `### <functional area>`.
-- Stage heading: `### [P0/P1/P2] Stage <N>. <short title>`.
-- Required fields per stage: `Статус`, `Источник`, `Контекст`, `Что сделать`,
-  `Область`, `Зависимости`, `Критерии приёмки`.
-- Valid stage statuses: `active`, `blocked`, `deferred`, `done`, `issue #N`.
+* check existing `.plan`, `.todo`, and open Issues for duplicates;
+* preserve unfinished work instead of silently dropping it;
+* keep planning artifacts aligned with their source Issues and current implementation status.
 
-`.todo` structure:
+Use the dedicated skills for file creation and structure:
 
-- `# TODO: <current plan stage>`
-- `Дата актуализации: YYYY-MM-DD`
-- `Статус: <relationship to current .plan stage>`
-- `## Назначение` explains which stage is decomposed and what is out of scope.
-- Group tasks by `## <module>` and `### <functional area>`.
-- Task heading: `### [P0/P1/P2] <short task title>`.
-- Required fields per task: `Статус`, `Источник`, optional `Покрытие Issues`,
-  `Описание`, `Область`, `Критерии приёмки`.
-- Valid task statuses: `todo`, `active`, `blocked`, `review`, `done`.
-- Remove tasks only after `Статус: done`; never delete unfinished tasks.
+* use `plan-create` when creating a new `.plan`; it defines the required `.plan` format and rules;
+* use `stage-decompose` when decomposing one or more plan stages into `.todo`; it defines the required `.todo` format and decomposition rules.
 
-## Coding Rules
+Do not infer the canonical `.plan` or `.todo` format from existing files when the
+corresponding skill is available.
 
-- Match the existing style and local helper APIs.
-- Keep changes scoped to the request; avoid unrelated refactors and new abstractions.
-- Do not manually edit generated artifacts unless repo instructions explicitly allow it.
-- If the user asks to review, audit, compare, or update docs, stay read-only unless they
-  explicitly ask for implementation.
-- Run the narrowest relevant formatter, linter, and guard before reporting
-  implementation work complete.
-- When uncertain about cross-repo impact (especially on the `get.3xtr.im` sync
-  contract), stop and ask instead of guessing.
+### GitHub Issues
+
+GitHub Issues are the source of product scope and the shared unit of work tracking.
+
+When creating or updating an Issue:
+
+1. Check open Issues for duplicates.
+2. Retrieve available Issue Types and assign the appropriate real `Type`.
+3. Retrieve organization Issue Fields applicable to that Type.
+4. Set all applicable fields; at minimum set `Priority` and `Effort` when known.
+5. Do not encode `Type`, `Priority`, `Effort`, or equivalent fields in labels, title prefixes, or body text instead of setting the actual fields.
+6. Do not invent `Horizon`, start date, or target date; set them only when explicitly decided.
+7. Set fields through the Issue Field Values REST API and verify the resulting values.
+8. Use the body for context, scope, acceptance criteria, risks, dependencies, and out-of-scope notes. Use labels only for orthogonal categorization.
+
+Use GitHub REST through `gh api` for GitHub operations.
+
+### `.plan`, `.todo`, and Issues
+
+* A `.todo` derived from `.plan` must retain the relationship to its source stage and covered Issues.
+* A `.todo` derived directly from Issues must retain the relationship to all source Issues.
+* One `.todo` task may cover only part of an Issue.
+* Do not consider an Issue complete until all related tasks are complete and verified.
+* Do not mark a plan stage complete until all corresponding `.todo` work is complete and verified.
+* When `.todo` is Issue-driven, close completed Issues before marking the related plan or stage complete.
+* Never delete unfinished work from `.todo`; carry it forward or keep it explicitly blocked.
+
+
+## Implementation and Verification
+
+* Follow existing repository style and local helper APIs.
+* Prefer an existing abstraction or pattern over creating a parallel mechanism.
+* Keep changes narrow and task-focused.
+* Update tests and documentation together with behaviour changes.
+* Before finishing, run the narrowest relevant formatter, linter, type checker, and tests.
+* Follow additional restrictions in `REPO.md`, especially around integration tests, Docker, migrations, production-like operations, secrets, release procedures, and generated files.
+* Do not claim successful completion when a required verification was not run. State what was not verified, why, and the remaining risk.
+
+## Git Commits
+
+Commit subjects and bodies must be in English.
+
+Use Conventional Commits:
+
+```text
+<type>(<optional scope>): <description>
+```
+
+Common types:
+
+* `feat`
+* `fix`
+* `docs`
+* `refactor`
+* `test`
+* `build`
+* `ci`
+* `chore`
+* `perf`
+* `style`
+
+Write the subject as a concise imperative statement without a trailing period.
+
+Add a body when motivation, migration impact, risk, constraints, or non-obvious behaviour
+would otherwise be unclear.
+
+For incompatible changes, use `!` after type/scope and include:
+
+```text
+BREAKING CHANGE: <description>
+```
+
+## Implementation branches and commits
+
+Implementation work must not be committed directly to the repository default branch.
+
+A `.todo` implementation cycle uses one dedicated work branch.
+
+Before starting automated implementation:
+
+1. resolve the repository default branch;
+2. ensure the working tree is clean;
+3. switch to or create a dedicated work branch for the selected `.todo`.
+
+If the current branch is the default branch and the working tree is clean, an
+orchestrating implementation skill may create a work branch using the repository naming
+convention. If no repository convention exists, use `todo/<short-slug>`.
+
+If the working tree contains unrelated changes, do not automatically switch branches or
+create commits.
+
+## Local planning artifacts
+
+`.plan` and `.todo` are local orchestration artifacts.
+
+They are intentionally ignored by Git and MUST NOT be tracked or committed.
+
+Rules:
+
+- never stage or commit `.plan` or `.todo`;
+- never use `git add -f` for these files;
+- status/progress changes in `.todo` remain local;
+- progress changes in `.plan` remain local;
+- implementation, fix, documentation and lifecycle commits MUST exclude `.plan` and `.todo`;
+- do not create commits whose only purpose is recording planning/task state;
+- before every automated commit, inspect staged files and ensure `.plan` and `.todo` are absent.
+
+Skills may freely read and update these files locally when required by the workflow.
+
+### Task commits
+
+Each successfully implemented `.todo` task should produce its own atomic commit.
+
+The commit includes all changes required for that task as one coherent deliverable:
+
+* implementation;
+* tests;
+* required migrations or generated artifacts;
+* task-specific documentation;
+* the task status transition to `review`.
+
+Do not combine multiple independent `.todo` tasks into one commit.
+
+A task that remains `active` or `blocked` must not be committed as completed work by the
+automated implementation flow.
+
+Use Conventional Commits and keep the subject focused on the implemented behavior.
+
+When useful for traceability, reference the exact `.todo` task and source Issue in the
+commit body.
+
+### Review fixes
+
+Review fixes remain on the same work branch.
+
+Prefer one focused fix commit per affected task and review cycle rather than one large
+commit containing unrelated fixes.
+
+Multiple findings with the same root cause or belonging to the same task may be fixed in
+one commit.
+
+Standalone `fix-it` does not need to create a commit itself. `fix-all` or the surrounding
+workflow may group completed fixes by task and commit them atomically.
+
+### Closing
+
+`todo-close` creates a final metadata-only commit for lifecycle state changes.
+
+It must not squash or rewrite implementation commits.
+
+### Merge boundary
+
+Agents must not automatically merge the work branch into the default branch.
+
+Merge, squash/rebase policy, push approval, and branch deletion remain operator actions
+unless explicitly requested otherwise.

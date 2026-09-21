@@ -28,7 +28,7 @@ GitHub Packages, без `file:packages/*` в runtime-зависимостях.
 ## Установка и запуск
 
     git clone https://github.com/iam3xtr/ui.3xtr.im.git
-    cd trickster-ui-kit
+    cd ui.3xtr.im
     npm install
     npm run dev
 
