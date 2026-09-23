@@ -157,19 +157,45 @@
           <ModelSelect v-model="draft.model" input-id="model" />
         </b-field>
 
-        <b-field
-          v-else
-          label="Модель (OpenRouter, собственный ключ)"
-          :type="fieldErrors.model ? 'is-danger' : undefined"
-          :message="fieldErrors.model || undefined"
-        >
+        <!--
+          Этап 2.1 (active `.plan` "Улучшение выбора модели и настройки
+          собственного ключа"): допустимое обратимое очищение BYOK-модели в
+          draft. Label и «Очистить» — соседние элементы на отдельной строке,
+          а не вложенный в `<label>` слот `b-field` (Buefy рендерит `#label`
+          внутри `<label>`, что сломало бы и `for=input`, и keyboard
+          reachability кнопки). Сам `<label>` остаётся нативным и связан с
+          input через `for="model"` — `ModelSelect.vue#applyInputId` уже
+          ставит этот id на реальный `<input>` для `FormErrorSummary`'s
+          focus jump.
+        -->
+        <div v-else class="tr-agent-settings__byok-field">
+          <div class="tr-agent-settings__byok-field-header">
+            <label for="model" class="label">
+              Модель (OpenRouter, собственный ключ)
+            </label>
+            <button
+              v-if="canClearByokModel"
+              type="button"
+              class="tr-agent-settings__byok-clear"
+              :disabled="!canClearByokModel"
+              @click="clearByokModel"
+            >
+              Очистить
+            </button>
+          </div>
           <ModelSelect
             v-model="draft.byokModel"
             v-model:provider-model-id="draft.providerModelId"
             :use-own-api-key="true"
             input-id="model"
           />
-        </b-field>
+          <p
+            v-if="fieldErrors.model"
+            class="help is-danger tr-agent-settings__byok-error"
+          >
+            {{ fieldErrors.model }}
+          </p>
+        </div>
 
         <!--
           Stage A6 fix (post-review): ключ больше не вводится текстом на
@@ -489,6 +515,25 @@ const {
 const byokToggled = computed(
   () => Boolean(agent.value) && draft.value.useOwnApiKey !== agent.value.use_own_api_key,
 );
+
+// Этап 2.1: «Очистить» появляется только при выбранной BYOK-модели в draft
+// (catalog `byokModel` или свободный `providerModelId`). Никакая другая
+// часть формы — обычная `model`, `useOwnApiKey`, `apiKeyId`, key reference,
+// сохранённый агент — не должна меняться этим действием. Это draft-only
+// обратимое действие: после очистки `validateModelDraft` уже блокирует
+// сохранение с включённым BYOK без новой модели.
+const canClearByokModel = computed(
+  () => Boolean(draft.value.byokModel) || draft.value.providerModelId !== null,
+);
+
+function clearByokModel() {
+  if (!canClearByokModel.value) {
+    return;
+  }
+
+  draft.value.byokModel = "";
+  draft.value.providerModelId = null;
+}
 
 const byokWarningMessage = computed(() => (draft.value.useOwnApiKey
   ? "Для собственного ключа используется отдельный выбор модели OpenRouter "

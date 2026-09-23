@@ -93,6 +93,103 @@ describe("AgentSettings.vue — модель и BYOK", () => {
     vi.restoreAllMocks();
   });
 
+  function findByokClearButton(wrapper) {
+    return wrapper.findAll("button")
+      .find((button) => button.text().trim() === "Очистить"
+        && button.classes().includes("tr-agent-settings__byok-clear"));
+  }
+
+  it("«Очистить» показывается только при выбранной BYOK-модели в draft", async () => {
+    const { wrapper } = await mountSettings({ workspaceId: "demo", agentId: "1" });
+
+    await wrapper.find("input[type='checkbox']").setValue(true);
+    // BYOK включён, но модель ещё не выбрана — кнопки быть не должно.
+    expect(findByokClearButton(wrapper)).toBeUndefined();
+
+    await selectRecommendedByokModel(wrapper);
+    expect(findByokClearButton(wrapper)).toBeDefined();
+  });
+
+  it("«Очистить» очищает только byokModel/providerModelId в draft и блокирует сохранение", async () => {
+    const { wrapper, pinia } = await mountSettings({ workspaceId: "demo", agentId: "1" });
+    const agentsStore = useAgentsStore(pinia);
+
+    const originalAgent = agentsStore.getAgent("demo", "1");
+    const originalModel = originalAgent.model;
+
+    await wrapper.find("input[type='checkbox']").setValue(true);
+    await selectRecommendedByokModel(wrapper);
+    await addKeyViaModal(wrapper, { label: "Тестовый ключ", secret: "sk-or-v1-clear-test" });
+
+    const clearButton = findByokClearButton(wrapper);
+    expect(clearButton).toBeDefined();
+    await clearButton.trigger("click");
+
+    // Кнопка «Очистить» пропадает — BYOK-модели в draft больше нет.
+    expect(findByokClearButton(wrapper)).toBeUndefined();
+
+    // Save остаётся заблокированным, появляется ошибка валидации.
+    expect(findSaveButton(wrapper).attributes("disabled")).toBeDefined();
+    expect(wrapper.text()).toContain("Выберите модель OpenRouter или укажите свободный идентификатор.");
+
+    // Сохранённый агент в сторе не изменился.
+    const stillAgent = agentsStore.getAgent("demo", "1");
+    expect(stillAgent.use_own_api_key).toBe(originalAgent.use_own_api_key);
+    expect(stillAgent.has_api_key).toBe(originalAgent.has_api_key);
+    expect(stillAgent.byok_model).toBe(originalAgent.byok_model);
+    expect(stillAgent.model).toBe(originalModel);
+  });
+
+  it("«Очистить» доступен с клавиатуры и имеет собственный accessible name", async () => {
+    const { wrapper } = await mountSettings({ workspaceId: "demo", agentId: "1" });
+
+    await wrapper.find("input[type='checkbox']").setValue(true);
+    await selectRecommendedByokModel(wrapper);
+
+    const clearButton = findByokClearButton(wrapper);
+    expect(clearButton.element.tagName).toBe("BUTTON");
+    // Текст сам по себе даёт accessible name — отдельный aria-label не нужен.
+    expect(clearButton.text().trim()).toBe("Очистить");
+    // Native <button> уже keyboard-reachable (Tab/Space/Enter).
+    expect(clearButton.attributes("tabindex")).toBeUndefined();
+  });
+
+  it("«Очистить» не вложен в <label> (Buefy slot trap)", async () => {
+    const { wrapper } = await mountSettings({ workspaceId: "demo", agentId: "1" });
+
+    await wrapper.find("input[type='checkbox']").setValue(true);
+    await selectRecommendedByokModel(wrapper);
+
+    const clearButton = findByokClearButton(wrapper);
+    // Поднимаемся по DOM: кнопка не должна оказаться внутри <label>.
+    let parent = clearButton.element.parentElement;
+    while (parent && !parent.classList.contains("tr-agent-settings__byok-field")) {
+      expect(parent.tagName).not.toBe("LABEL");
+      parent = parent.parentElement;
+    }
+    expect(parent).not.toBeNull();
+  });
+
+  it("«Очистить» для free-form BYOK id", async () => {
+    const { wrapper } = await mountSettings({ workspaceId: "demo", agentId: "1" });
+
+    await wrapper.find("input[type='checkbox']").setValue(true);
+    // Ввести свободный id через `ModelSelect` (input имеет класс
+    // .tr-model-select, BYOK-режим уже включён).
+    const input = wrapper.find(".tr-model-select input");
+    await input.setValue("vendor/my-model");
+    await wrapper.find(".tr-model-select__freeform-action").trigger("mousedown");
+
+    const clearButton = findByokClearButton(wrapper);
+    expect(clearButton).toBeDefined();
+
+    await clearButton.trigger("click");
+
+    expect(findByokClearButton(wrapper)).toBeUndefined();
+    expect(findSaveButton(wrapper).attributes("disabled")).toBeDefined();
+    expect(wrapper.text()).toContain("Выберите модель OpenRouter или укажите свободный идентификатор.");
+  });
+
   it("без ключа: контрол выбора ключа не показывается, кнопки сохранения выключены", async () => {
     const { wrapper } = await mountSettings({ workspaceId: "demo", agentId: "1" });
 

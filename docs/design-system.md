@@ -158,6 +158,30 @@ Theme rules для marker и option layout живут в `packages/ui/src/styles
 theme.scss` и публикуются вместе с `@iam3xtr/ui`. Component-local
 `<style>` блоки запрещены (`npm run guard:no-component-styles`).
 
+### AgentSettings — обратимое очищение BYOK-модели (этап 2.1)
+
+В форме модели/BYOK-черновика доступно действие «Очистить» рядом с label
+BYOK-поля. Оно появляется только при выбранной BYOK-модели в draft —
+catalog `byokModel` или свободный `providerModelId` — и снимает только эти
+два значения. Обычная `model`, `useOwnApiKey`, `apiKeyId`, сохранённый
+агент и key reference не меняются. После очистки `validateModelDraft`
+показывает существующую ошибку и блокирует «Сохранить модель и ключ»,
+пока BYOK снова не получит модель или пользователь не выключит BYOK.
+
+`Очистить` — отдельный keyboard-reachable `<button>` с собственным
+accessible name (текст сам по себе), реализованный как соседний label/action
+элемент, а не внутри `b-field`'s `#label` slot. Buefy рендерит содержимое
+этого slot внутри `<label>`, что сломало бы связь `for=input` и сделало бы
+button частью label-обёртки. Label остаётся нативным `<label for="model">`,
+а `ModelSelect` уже выставляет `id="model"` на реальном input (тот же
+imperative `applyInputId`, который нужен `FormErrorSummary`'s focus
+jump).
+
+Theme rules для новой BYOK-field структуры (`.tr-agent-settings__byok-field`
+/ `__byok-field-header` / `__byok-clear` / `__byok-error`) живут в
+`packages/ui/src/styles/theme.scss` и публикуются вместе с
+`@iam3xtr/ui`. Component-local `<style>` блоки запрещены.
+
 ## Состояния и доступность
 
 Списки и секции различают ready, loading, empty, error, permission-denied и
