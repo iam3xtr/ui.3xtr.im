@@ -117,6 +117,47 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
   не опубликованные пакеты. Индикатор не является навигацией, контролом
   обновления или заявлением о registry-публикации.
 
+### ModelSelect — жизненный цикл выбора (этап 1.1)
+
+`ModelSelect.vue` строится на Buefy `b-autocomplete` (focus/blur/active,
+keyboard navigation, `open-on-focus`). Контракт разделяет два состояния:
+
+- **canonical selected display** — read-only проекция выбора
+  (`modelValue` → `modelsStore.getModel(id).name`, либо
+  `providerModelId.value` для BYOK). Используется для закрытого контрола и
+  для restore при close-without-select. Не участвует в `b-autocomplete`
+  v-model и не фильтрует каталог.
+- **transient search query** — текст, который пользователь вводит в поле;
+  v-model `b-autocomplete`. Существует только во время открытого
+  autocomplete.
+
+Поведение открытия и закрытия:
+
+- `focus` / `active=true` при существующем canonical selection очищает
+  search query; focus остаётся на реальном input; пустой query показывает
+  scoped `listRecommended`. Каталожные v-models не меняются.
+- Непустой query использует только `modelsStore.search` в текущем scope;
+  его результаты не смешиваются с recommended group.
+- `blur` / `active=false` без select восстанавливает canonical display в
+  input, если он отличается от текущего значения.
+- `@select` обновляет `modelValue`, очищает `providerModelId`, и
+  устанавливает `searchQuery` в имя выбранной модели — закрытие не
+  проходит через restore-ветку.
+
+Выбранный пункт в открытом списке помечается классом
+`tr-model-select__option--selected` и `aria-current="true"` (через
+`.tr-model-select__option-marker` — текстовый «✓», не только цвет).
+Marker определяется по canonical `model.id`, а не по display name: имя
+BYOK-источника (`provider_model_id`) не устойчиво как ключ, два источника
+(`byok_model`/`provider_model_id`) делают выбор mutually exclusive.
+Free-form id никогда не получает marker — это не catalog choice.
+Buefy-овский dropdown chrome, keyboard navigation, hover, scroll и
+`is-hovered` состояние остаются.
+
+Theme rules для marker и option layout живут в `packages/ui/src/styles/
+theme.scss` и публикуются вместе с `@iam3xtr/ui`. Component-local
+`<style>` блоки запрещены (`npm run guard:no-component-styles`).
+
 ## Состояния и доступность
 
 Списки и секции различают ready, loading, empty, error, permission-denied и

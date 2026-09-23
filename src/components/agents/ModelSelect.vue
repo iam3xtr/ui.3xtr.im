@@ -2,7 +2,7 @@
   <div class="tr-model-select">
     <b-autocomplete
       ref="autocompleteRef"
-      v-model="query"
+      v-model="searchQuery"
       :data="options"
       field="name"
       group-field="group"
@@ -10,9 +10,22 @@
       :placeholder="placeholder"
       :aria-label="ariaLabel"
       @select="onSelect"
+      @focus="onFocusOpen"
+      @blur="onBlurClose"
+      @active="onActiveChange"
     >
       <template #default="{ option }">
-        <span class="tr-model-select__option">
+        <span
+          class="tr-model-select__option"
+          :class="{ 'tr-model-select__option--selected': isCatalogSelection(option) }"
+        >
+          <span
+            v-if="isCatalogSelection(option)"
+            class="tr-model-select__option-marker"
+            aria-hidden="true"
+          >
+            ✓
+          </span>
           <icon
             :name="option.provider?.icon || option.provider?.protocol || option.provider?.id || 'brain'"
             aria-hidden="true"
@@ -65,6 +78,20 @@ import { useModelsStore } from "../../stores/models.js";
 // Free-form BYOK identifier (`vendor/model`, ≤255 chars, no whitespace) is
 // implemented ahead of the server contract as a specification for
 // api.3xtr.im#112 — see Stage A6 `.plan` "Блокер серверного контракта".
+//
+// Этап 1.1 (active `.plan` "Улучшение выбора модели и настройки собственного
+// ключа"): lifecycle явно разделяет canonical selected display и transient
+// search query. Buefy's `b-autocomplete` уже умеет focus/blur/active,
+// keyboard navigation и openOnFocus — эти примитивы остаются основой
+// контрола; отдельный dropdown, overlay или локальный набор control styles
+// не создаётся. На каждом focus/active=true search query очищается (если
+// было canonical selection), focus остаётся на реальном input и
+// рекомендованный список показывается без фильтрации. На blur/active=false
+// без select canonical display восстанавливается, чтобы повторное открытие
+// никогда не выглядело как "текст = имени выбранной модели". Catalog
+// choice всегда обновляет `modelValue` и очищает `providerModelId`;
+// free-form остаётся валидным только при пустых filtered results и
+// продолжает соблюдать whitespace/≤255 правила.
 
 const props = defineProps({
   useOwnApiKey: {
@@ -98,8 +125,18 @@ const modelValue = defineModel({ type: String, default: null });
 const providerModelId = defineModel("providerModelId", { type: String, default: null });
 
 const modelsStore = useModelsStore();
-const query = ref("");
+const searchQuery = ref("");
 const autocompleteRef = ref(null);
+// Track whether the dropdown is currently open so the focus/active handlers
+// can decide whether to clear `searchQuery` on open and whether to restore
+// the canonical display on close. Buefy's `isActive` is private state on the
+// autocomplete component, but its `@active` event exposes the same flag.
+const isOpen = ref(false);
+// Marker the close handler reads to skip the "restore" pass when the user
+// actually picked something (Buefy's `@select` fires after `@active` flips to
+// false, so without this the canonical label would clobber the freshly
+// selected model name on the way out).
+let suppressRestore = false;
 
 function applyInputId() {
   const inputEl = autocompleteRef.value?.$el?.querySelector("input");
@@ -117,7 +154,25 @@ onMounted(applyInputId);
 watch(() => props.inputId, applyInputId);
 
 const scopeProviderId = computed(() => (props.useOwnApiKey ? "openrouter" : undefined));
-const trimmedQuery = computed(() => query.value.trim());
+const trimmedQuery = computed(() => searchQuery.value.trim());
+
+// Canonical display value: read-only projection of the selected catalog
+// model or free-form BYOK identifier. Used to keep the closed control
+// legible and to restore the input on close-without-select. Not used as a
+// `b-autocomplete` v-model — that slot is the transient search query.
+const canonicalDisplay = computed(() => {
+  if (providerModelId.value) {
+    return providerModelId.value;
+  }
+  if (!modelValue.value) {
+    return "";
+  }
+  return modelsStore.getModel(modelValue.value)?.name ?? "";
+});
+
+const hasCanonicalSelection = computed(
+  () => Boolean(providerModelId.value) || Boolean(modelValue.value),
+);
 
 const options = computed(() => {
   if (!trimmedQuery.value) {
@@ -150,22 +205,77 @@ const freeformError = computed(() => {
 
 const freeformValid = computed(() => freeformCandidateVisible.value && !freeformError.value);
 
-// Reflects the canonical selection (catalog model or free-form id) into the
-// input text whenever it changes from the outside — e.g. the parent form
-// loads a different agent, or BYOK is switched off (watcher below). Typing
-// itself never touches `modelValue`/`providerModelId`, so this does not
-// fight the user mid-search.
-watch(
-  () => [modelValue.value, providerModelId.value],
-  ([nextModelId, nextProviderModelId]) => {
-    if (nextProviderModelId) {
-      query.value = nextProviderModelId;
-      return;
-    }
-    query.value = modelsStore.getModel(nextModelId)?.name ?? "";
-  },
-  { immediate: true },
-);
+// Selected-marker anchor (Этап 1.1): canonical catalog `id`, not display
+// name — два BYOK-источника (`modelValue`/`providerModelId`) задают
+// mutually exclusive selection, а имя модели не устойчиво как ключ.
+function isCatalogSelection(option) {
+  return Boolean(modelValue.value) && option?.id === modelValue.value;
+}
+
+function onFocusOpen() {
+  isOpen.value = true;
+  // Если уже есть canonical selection, открытие должно начинаться с пустого
+  // search query — иначе Buefy выдаст "filtered по прошлому имени" вместо
+  // рекомендованного списка. Empty `searchQuery` показывает scoped
+  // `listRecommended`; никакой v-model выше не меняется.
+  if (hasCanonicalSelection.value && searchQuery.value !== "") {
+    searchQuery.value = "";
+  }
+}
+
+function onBlurClose() {
+  isOpen.value = false;
+  // Если пользователь не выбрал ничего нового (catalog или free-form),
+  // возвращаем canonical display в input, чтобы повторное открытие
+  // показывало ровно выбор, а не случайный ввод.
+  if (suppressRestore) {
+    suppressRestore = false;
+    return;
+  }
+  if (hasCanonicalSelection.value && searchQuery.value !== canonicalDisplay.value) {
+    searchQuery.value = canonicalDisplay.value;
+  }
+}
+
+function onActiveChange(active) {
+  // Buefy отдаёт `isActive` через `@active` с задержкой в один tick.
+  // Используем тот же флаг, что и focus/blur, чтобы поведение было
+  // одинаковым вне зависимости от того, открыт ли dropdown программно или
+  // пользователем.
+  isOpen.value = active;
+  if (active) {
+    onFocusOpen();
+  } else {
+    onBlurClose();
+  }
+}
+
+function onSelect(option) {
+  if (!option) {
+    return;
+  }
+
+  suppressRestore = true;
+  modelValue.value = option.id;
+  if (providerModelId.value !== null) {
+    providerModelId.value = null;
+  }
+  // Сразу обновляем input, чтобы закрытие не прошло через restore-ветку
+  // и пользователь увидел имя выбранной модели без мерцания.
+  searchQuery.value = option.name ?? "";
+}
+
+function selectFreeform() {
+  if (!freeformValid.value) {
+    return;
+  }
+
+  suppressRestore = true;
+  providerModelId.value = trimmedQuery.value;
+  // Free-form id — это и есть его отображение; закрываем и оставляем то,
+  // что пользователь ввёл, в input.
+  searchQuery.value = trimmedQuery.value;
+}
 
 // BYOK решение 3 (Stage A6 `.plan`): свободный идентификатор действителен
 // только вместе с включённым ключом.
@@ -178,22 +288,20 @@ watch(
   },
 );
 
-function onSelect(option) {
-  if (!option) {
-    return;
-  }
+// Этап 1.1: реагируем на внешние изменения canonical selection, обновляя
+// только transient search query, если dropdown сейчас НЕ открыт. Когда
+// dropdown открыт, `onFocusOpen` уже отвечает за актуальное состояние
+// search query, и внешнее изменение не должно молча сбрасывать ввод
+// пользователя посреди поиска.
+watch(
+  () => [modelValue.value, providerModelId.value],
+  ([nextModelId, nextProviderModelId]) => {
+    const nextDisplay = nextProviderModelId
+      || (nextModelId ? (modelsStore.getModel(nextModelId)?.name ?? "") : "");
 
-  modelValue.value = option.id;
-  if (providerModelId.value !== null) {
-    providerModelId.value = null;
-  }
-}
-
-function selectFreeform() {
-  if (!freeformValid.value) {
-    return;
-  }
-
-  providerModelId.value = trimmedQuery.value;
-}
+    if (!isOpen.value) {
+      searchQuery.value = nextDisplay;
+    }
+  },
+);
 </script>
