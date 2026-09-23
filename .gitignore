@@ -1,39 +1,58 @@
-# Dependencies
-node_modules/
+# dependencies
+/node_modules
+/.pnpm-store
 
-# Production builds
-dist/
+# production
+/dist
+/build
 
-# TypeScript incremental build data
-*.tsbuildinfo
-
-# Local environment files
+# local env files
+.env.local
+.env.*.local
 .env
-.env.*
-!.env.example
-*.local
 
-# Package manager logs
+# editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.bak
+
+# macOS
+.DS_Store
+
+# others
+/temp
+/tmp
+*.log
+
+
+# Logs
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
 
-# Editors and IDEs
-.idea/
+# Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+.idea
+.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+.claude
+.todo
+.plan
 
-# OS metadata
-.DS_Store
-Thumbs.db
-Desktop.ini
-
-# Local agent state
-.agents/
-.codex/
+# vibe-code
+codebase.md
+tasks.md
+update_codebase.sh
