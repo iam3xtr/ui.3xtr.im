@@ -46,12 +46,14 @@ async function settle() {
 // Drives one ModelSelect instance end to end from the packed tarball:
 // open (ArrowDown on the trigger), focus lands on the search input, a
 // click on a rendered recommendation selects it, the popup closes and
-// focus returns to the trigger, which then shows the canonical name.
-async function exerciseModelSelect(wrapper, rootSelector, { portal }) {
+// focus returns to the trigger, which then shows the canonical name and
+// the parent's `v-model:model-id` binding holds the selected id.
+async function exerciseModelSelect(wrapper, rootSelector, { portal, bound }) {
   const root = wrapper.find(rootSelector);
   expect(root.exists()).toBe(true);
   const trigger = root.find("button.tr-model-select__trigger");
   expect(trigger.text()).toBe("GPT");
+  expect(wrapper.vm[bound]).toBe("gpt");
   expect(trigger.attributes("aria-expanded")).toBe("false");
 
   await trigger.trigger("keydown", { key: "ArrowDown" });
@@ -90,6 +92,7 @@ async function exerciseModelSelect(wrapper, rootSelector, { portal }) {
   expect(root.classes()).not.toContain("tr-model-select--open");
   expect(trigger.attributes("aria-expanded")).toBe("false");
   expect(trigger.text()).toBe("Claude");
+  expect(wrapper.vm[bound]).toBe("claude");
   expect(document.activeElement).toBe(trigger.element);
 }
 
@@ -126,13 +129,13 @@ describe("consumer SPA fixture", () => {
   // run-matrix.mjs against each supported Buefy version.
   it("ModelSelect opens, focuses search, selects and closes inline", async () => {
     const wrapper = await mountApp();
-    await exerciseModelSelect(wrapper, ".tr-consumer-flow__model-inline", { portal: false });
+    await exerciseModelSelect(wrapper, ".tr-consumer-flow__model-inline", { portal: false, bound: "inlineModelId" });
     wrapper.unmount();
   });
 
   it("ModelSelect opens, focuses search, selects and closes in a body portal", async () => {
     const wrapper = await mountApp();
-    await exerciseModelSelect(wrapper, ".tr-consumer-flow__model-portal", { portal: true });
+    await exerciseModelSelect(wrapper, ".tr-consumer-flow__model-portal", { portal: true, bound: "portalModelId" });
     wrapper.unmount();
     // The Buefy portal wrapper is removed together with the component.
     expect(document.querySelector(".tr-dropdown-overlay-portal")).toBeNull();

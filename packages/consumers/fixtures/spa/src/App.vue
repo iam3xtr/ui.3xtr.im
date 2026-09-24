@@ -29,6 +29,8 @@ const models = [
 const recommendedModels = ["gpt", "claude"];
 const inlineModelId = ref("gpt");
 const portalModelId = ref("gpt");
+// Exposed so the smoke test can assert the bound `v-model:model-id` value.
+defineExpose({ inlineModelId, portalModelId });
 const modelSelectCopy = {
   triggerPlaceholder: "Choose a model",
   searchPlaceholder: "Search models",
@@ -63,7 +65,7 @@ const modelSelectCopy = {
       <p>Filters slot content</p>
     </MobileFilters>
     <ModelSelect
-      v-model="inlineModelId"
+      v-model:model-id="inlineModelId"
       class="tr-consumer-flow__model-inline"
       :models="models"
       :recommended-models="recommendedModels"
@@ -76,7 +78,7 @@ const modelSelectCopy = {
       style="overflow: hidden"
     >
       <ModelSelect
-        v-model="portalModelId"
+        v-model:model-id="portalModelId"
         class="tr-consumer-flow__model-portal"
         :models="models"
         :recommended-models="recommendedModels"
