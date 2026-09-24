@@ -174,10 +174,11 @@
           draft. Label и «Очистить» — соседние элементы на отдельной строке,
           а не вложенный в `<label>` слот `b-field` (Buefy рендерит `#label`
           внутри `<label>`, что сломало бы и `for=input`, и keyboard
-          reachability кнопки). Сам `<label>` остаётся нативным и связан с
-          input через `for="model"` — `ModelSelect.vue#applyInputId` уже
-          ставит этот id на реальный `<input>` для `FormErrorSummary`'s
-          focus jump. Review fix: `ModelSelect` остаётся обёрнут в
+          reachability кнопки). Сам `<label>` остаётся нативным и связан
+          через `for="model"` с focusable trigger `ModelSelect` —
+          `input-id` ставится как `id` на закрытый trigger, поэтому
+          `FormErrorSummary` фокусирует именно его, а открытие picker
+          переносит focus в строку поиска. Review fix: `ModelSelect` остаётся обёрнут в
           `b-field` без `label`-prop — нужен исключительно для
           provide/inject `newType`, чтобы Buefy пропагировал `is-danger`
           внутрь `b-autocomplete`'s input так же, как и в обычной модели
