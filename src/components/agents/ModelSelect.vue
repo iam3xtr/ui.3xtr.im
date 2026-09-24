@@ -3,7 +3,9 @@
     <b-button
       ref="triggerRef"
       class="tr-model-select__trigger"
+      :class="{ 'is-danger': invalid }"
       icon-right="chevron-down"
+      :aria-invalid="invalid ? 'true' : undefined"
       :id="inputId || undefined"
       :aria-label="ariaLabel ? `${ariaLabel}: ${canonicalDisplay || placeholder}` : undefined"
       :aria-expanded="isOpen"
@@ -111,6 +113,12 @@ const props = defineProps({
   inputId: {
     type: String,
     default: null,
+  },
+  // The popup search input is hidden while closed, so the visible trigger
+  // carries the field's validation state (is-danger + aria-invalid).
+  invalid: {
+    type: Boolean,
+    default: false,
   },
 });
 

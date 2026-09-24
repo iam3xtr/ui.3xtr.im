@@ -121,12 +121,21 @@ describe("AgentSettings.vue — модель и BYOK", () => {
     await selectRecommendedByokModel(wrapper);
     await addKeyViaModal(wrapper, { label: "Тестовый ключ", secret: "sk-or-v1-clear-test" });
 
+    const triggerSelector = ".tr-agent-settings__byok-bfield .tr-model-select__trigger";
+    expect(wrapper.find(triggerSelector).classes()).not.toContain("is-danger");
+    expect(wrapper.find(triggerSelector).attributes("aria-invalid")).toBeUndefined();
+
     const clearButton = findByokClearButton(wrapper);
     expect(clearButton).toBeDefined();
     await clearButton.trigger("click");
 
     // Кнопка «Очистить» пропадает — BYOK-модели в draft больше нет.
     expect(findByokClearButton(wrapper)).toBeUndefined();
+
+    // Видимый закрытый trigger получает danger-state поля.
+    const byokTrigger = wrapper.find(triggerSelector);
+    expect(byokTrigger.classes()).toContain("is-danger");
+    expect(byokTrigger.attributes("aria-invalid")).toBe("true");
 
     // Save остаётся заблокированным, появляется ошибка валидации.
     expect(findSaveButton(wrapper).attributes("disabled")).toBeDefined();
@@ -190,7 +199,7 @@ describe("AgentSettings.vue — модель и BYOK", () => {
     expect(wrapper.text()).toContain("Выберите модель OpenRouter или укажите свободный идентификатор.");
   });
 
-  it("BYOK model error состояние пропагируется в input через b-field (review fix)", async () => {
+  it("BYOK model error состояние видно на закрытом trigger (review fix)", async () => {
     const { wrapper } = await mountSettings({ workspaceId: "demo", agentId: "1" });
 
     await wrapper.find("input[type='checkbox']").setValue(true);
@@ -210,9 +219,12 @@ describe("AgentSettings.vue — модель и BYOK", () => {
     // стандартном help-render `b-field` (`<p class="help is-danger">`).
     expect(byokField.classes()).toContain("field");
 
-    const byokInput = byokField.find("input");
-    expect(byokInput.exists()).toBe(true);
-    expect(byokInput.classes()).toContain("is-danger");
+    // Search input живёт в закрытом (скрытом) popup, поэтому видимый
+    // error-state несёт сам trigger: `is-danger` + `aria-invalid="true"`.
+    const byokTrigger = byokField.find(".tr-model-select__trigger");
+    expect(byokTrigger.exists()).toBe(true);
+    expect(byokTrigger.classes()).toContain("is-danger");
+    expect(byokTrigger.attributes("aria-invalid")).toBe("true");
 
     // Текст ошибки остаётся в DOM — `wrapper.text()` его содержит.
     expect(wrapper.text()).toContain("Выберите модель OpenRouter или укажите свободный идентификатор.");

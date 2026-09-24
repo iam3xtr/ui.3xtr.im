@@ -210,6 +210,7 @@
               v-model:provider-model-id="draft.providerModelId"
               :use-own-api-key="true"
               input-id="model"
+              :invalid="Boolean(fieldErrors.model)"
             />
           </b-field>
         </div>

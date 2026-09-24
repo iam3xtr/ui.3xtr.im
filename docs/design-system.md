@@ -194,6 +194,13 @@ accessible name (текст сам по себе), реализованный к
 `b-field` — сам `b-field` остаётся, чтобы не потерять error-state
 propagation.
 
+Строка поиска `b-autocomplete` скрыта, пока список закрыт, поэтому видимый
+danger-state несёт сам trigger: `AgentSettings` передаёт в `ModelSelect`
+`invalid` (`Boolean(fieldErrors.model)`), и trigger получает `is-danger` и
+`aria-invalid="true"`. Theme rule `.tr-model-select__trigger.button.is-danger`
+в `@iam3xtr/ui` оставляет нейтральную поверхность кнопки и меняет только
+рамку на `--tr-danger`.
+
 Theme rules для новой BYOK-field структуры (`.tr-agent-settings__byok-field`
 / `__byok-field-header` / `__byok-clear` / `__byok-bfield`) живут в
 `packages/ui/src/styles/theme.scss` и публикуются вместе с
