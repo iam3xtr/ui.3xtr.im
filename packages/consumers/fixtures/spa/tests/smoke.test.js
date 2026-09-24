@@ -17,6 +17,7 @@ describe("consumer SPA fixture", () => {
       routes: [{ path: "/", component: { template: "<div />" } }],
     });
     const wrapper = mount(App, {
+      attachTo: document.body,
       global: {
         plugins: [
           Buefy,
@@ -41,13 +42,18 @@ describe("consumer SPA fixture", () => {
     expect(wrapper.find(".tr-icon--placeholder").exists()).toBe(false);
     expect(wrapper.find(".mdi-cog").exists()).toBe(true);
 
-    // Этап 1 `.plan` «Плавающие dropdown»: ToolbarDropdown и
-    // MobileFilters приходят из packed `@iam3xtr/vue` (без source
-    // aliases) и монтируются в нижне-viewport scenario. CSS-маркеры
-    // portal/inline ставятся только при открытом меню, поэтому здесь
-    // мы проверяем лишь, что компоненты доступны как публичные export-ы
-    // и не падают при mount в Buefy-окружении потребителя.
+    // Stage 1 `.plan` "Floating dropdowns": ToolbarDropdown (inline) and
+    // MobileFilters (body-portal) ship as public exports of `@iam3xtr/vue`
+    // and mount without source aliases. The fixture exercises them next to
+    // the viewport edge so a future browser smoke run can catch auto-flip
+    // regressions against the published tarball; the unit-level flip,
+    // marker and z-index behaviour is covered by focused tests inside
+    // `@iam3xtr/vue`.
     expect(wrapper.find(".tr-toolbar-dropdown").exists()).toBe(true);
     expect(wrapper.find(".tr-mobile-filters").exists()).toBe(true);
+    expect(wrapper.find(".tr-toolbar-dropdown__trigger").exists()).toBe(true);
+    expect(wrapper.find(".tr-mobile-filters__trigger").exists()).toBe(true);
+
+    wrapper.unmount();
   });
 });

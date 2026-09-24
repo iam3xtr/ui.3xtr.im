@@ -26,11 +26,11 @@ const statusOptions = [
   <Loader size="inline" label="Loading" />
   <NavbarMenu />
 
-  <!-- Нижняя часть viewport: ToolbarDropdown у нижней границы и
-       MobileFilters-portal там же, чтобы будущий browser-smoke мог
-       проверить auto-flip вверх. js DOM- smoke здесь проверяет только
-       наличие публичных классов/маркеров — реальный flip покрыт
-       focused-тестами на уровне `@iam3xtr/vue`. -->
+  <!-- Near the viewport edge: ToolbarDropdown (inline) and MobileFilters
+       (body-portal) sit there so a future browser smoke run can verify
+       auto-flip against the published tarball. The jsdom smoke here only
+       asserts public-class presence; the actual flip is covered by
+       focused tests inside `@iam3xtr/vue`. -->
   <div class="tr-consumer-flow__low">
     <ToolbarDropdown
       v-model="status"
