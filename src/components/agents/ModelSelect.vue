@@ -292,7 +292,12 @@ watch(
 // только transient search query, если dropdown сейчас НЕ открыт. Когда
 // dropdown открыт, `onFocusOpen` уже отвечает за актуальное состояние
 // search query, и внешнее изменение не должно молча сбрасывать ввод
-// пользователя посреди поиска.
+// пользователя посреди поиска. `{ immediate: true }` нужен для mount: иначе
+// закрытый контрол на старте с уже выбранной draft.model/draft.providerModelId
+// рендерит пустой input до первого open/close, нарушая явный acceptance
+// criterion "Closed control ясно показывает selected catalog model or free-form
+// BYOK id" (Этап 1.1). То же касается wizard consumer
+// `ExpertParameters.vue` (Task A9.5), который биндит тот же компонент.
 watch(
   () => [modelValue.value, providerModelId.value],
   ([nextModelId, nextProviderModelId]) => {
@@ -303,5 +308,6 @@ watch(
       searchQuery.value = nextDisplay;
     }
   },
+  { immediate: true },
 );
 </script>
