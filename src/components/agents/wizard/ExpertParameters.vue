@@ -67,7 +67,14 @@
 
       <div class="tr-form">
         <b-field v-if="capability.allowExpertCatalog" :label="t.catalog.title">
-          <ModelSelect v-model="modelId" />
+          <!--
+            Этап 2.1 review fix: `b-field` рендерит `<label>` без `for`
+            без явного `label-for`, поэтому связь с реальным input
+            ModelSelect — только через явный `aria-label`. В BYOK-варианте
+            ниже тот же контракт — отдельный `aria-label`, чтобы
+            accessible name совпадал с label.
+          -->
+          <ModelSelect v-model="modelId" :aria-label="t.catalog.title" />
         </b-field>
         <p v-else class="tr-muted">{{ t.catalog.unavailable }}</p>
       </div>
@@ -86,6 +93,7 @@
               v-model="byokModel"
               v-model:provider-model-id="providerModelId"
               :use-own-api-key="true"
+              :aria-label="t.byok.modelLabel"
             />
           </b-field>
           <b-field :label="t.byok.keyLabel">

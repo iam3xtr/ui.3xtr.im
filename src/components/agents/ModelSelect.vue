@@ -8,7 +8,8 @@
       group-field="group"
       open-on-focus
       :placeholder="placeholder"
-      :aria-label="ariaLabel"
+      :aria-label="ariaLabel || undefined"
+      @update:model-value="onSearchInput"
       @select="onSelect"
       @focus="onFocusOpen"
       @blur="onBlurClose"
@@ -41,7 +42,10 @@
             type="button"
             class="dropdown-item tr-model-select__freeform-action"
             :disabled="!freeformValid"
-            @mousedown.prevent="selectFreeform"
+            @mousedown.prevent.stop="selectFreeform"
+            @click.prevent="selectFreeform"
+            @keydown.enter.prevent="selectFreeform"
+            @keydown.space.prevent="selectFreeform"
           >
             Использовать «{{ trimmedQuery }}» как идентификатор модели
           </button>
@@ -86,13 +90,17 @@ import { useModelsStore } from "../../stores/models.js";
 // keyboard navigation и openOnFocus — эти примитивы остаются основой
 // контрола; отдельный dropdown, overlay или локальный набор control styles
 // не создаётся. На каждом focus/active=true search query очищается (если
-// было canonical selection), focus остаётся на реальном input и
-// рекомендованный список показывается без фильтрации. На blur/active=false
-// без select canonical display восстанавливается, чтобы повторное открытие
-// никогда не выглядело как "текст = имени выбранной модели". Catalog
-// choice всегда обновляет `modelValue` и очищает `providerModelId`;
-// free-form остаётся валидным только при пустых filtered results и
-// продолжает соблюдать whitespace/≤255 правила.
+// было canonical selection) и сбрасывается флаг `userTyped`, focus
+// остаётся на реальном input и рекомендованный список показывается без
+// фильтрации. На blur без select canonical display восстанавливается;
+// active=false (Escape / click-outside) НЕ запускает restore — Escape
+// закрывает dropdown, но input остаётся сфокусированным, и запись
+// canonical display в этот момент заставляла бы Buefy повторно открывать
+// список. Catalog choice всегда обновляет `modelValue` и очищает
+// `providerModelId`; free-form остаётся валидным только при пустых
+// filtered results, продолжает соблюдать whitespace/≤255 правила и тоже
+// очищает `modelValue`, чтобы два BYOK model источника оставались
+// взаимоисключающими.
 
 const props = defineProps({
   useOwnApiKey: {
@@ -103,9 +111,18 @@ const props = defineProps({
     type: String,
     default: "Выберите модель",
   },
+  // Этап 2.1 review fix: `aria-label` опционален. Если родитель передаёт
+  // собственный `<label for="…">` (BYOK-field `AgentSettings.vue` —
+  // нативный label соседствует с ModelSelect, чтобы `<label>` не оказался
+  // внутри Buefy `#label` slot), `aria-label` нужно опустить, иначе
+  // AT-предпочитаемый accessible name будет короче и потеряет контекст
+  // «OpenRouter, собственный ключ». Когда родитель использует `b-field
+  // label="…"`, родительский `<label>` не получает `for`-атрибут без
+  // явного `label-for`, и aria-label — единственный источник accessible
+  // name. По умолчанию `null`, потребитель решает сам.
   ariaLabel: {
     type: String,
-    default: "Модель",
+    default: null,
   },
   // Stage A10 review fix: `FormErrorSummary`'s "jump to field" is a plain
   // `document.getElementById(field)?.focus()` — but Buefy's `b-autocomplete`
@@ -126,7 +143,16 @@ const modelValue = defineModel({ type: String, default: null });
 const providerModelId = defineModel("providerModelId", { type: String, default: null });
 
 const modelsStore = useModelsStore();
+// `searchQuery` is the v-model bound to `b-autocomplete`. The same string
+// drives the input element AND would otherwise drive the dropdown filter —
+// so the closed-control display (canonical name / free-form id) and the
+// transient search must be expressed through different signals. `userTyped`
+// is the marker that separates them: it flips to true only on a real input
+// event from the autocomplete, and resets whenever the component itself
+// rewrites the query (focus on existing selection, select, free-form
+// commit, blur without select). See `onSearchInput` and `onSelect`.
 const searchQuery = ref("");
+const userTyped = ref(false);
 const autocompleteRef = ref(null);
 // Track whether the dropdown is currently open so the focus/active handlers
 // can decide whether to clear `searchQuery` on open and whether to restore
@@ -176,7 +202,12 @@ const hasCanonicalSelection = computed(
 );
 
 const options = computed(() => {
-  if (!trimmedQuery.value) {
+  // Only honour `searchQuery` as a filter when it came from real user
+  // typing (`userTyped === true`). The closed control's canonical display
+  // is set on `searchQuery` so the input shows the chosen label, but that
+  // text is not a user query — without `userTyped` we keep showing the
+  // scoped recommended list until the user actually types.
+  if (!userTyped.value || !trimmedQuery.value) {
     return modelsStore
       .listRecommended({ providerId: scopeProviderId.value })
       .map((model) => ({ ...model, group: "Рекомендуемые" }));
@@ -213,14 +244,31 @@ function isCatalogSelection(option) {
   return Boolean(modelValue.value) && option?.id === modelValue.value;
 }
 
+function onSearchInput(value) {
+  // Этап 1.1 review fix: a real input event from `b-autocomplete` (typing,
+  // paste, programmatic `setValue`) flips `userTyped` so the next
+  // `options()` pass uses `modelsStore.search` and not the canonical label
+  // written into `searchQuery` by the external watcher. Without this flag
+  // a closed control would already display the canonical name as its
+  // "search query" and never show the recommended list on first open.
+  userTyped.value = true;
+  // `v-model` already wrote the value into `searchQuery`; we just needed
+  // to mark the source. Defensive sync keeps the marker authoritative if
+  // a future Buefy version splits `@update:model-value` from internal state.
+  if (value !== undefined) {
+    searchQuery.value = value;
+  }
+}
+
 function onFocusOpen() {
   isOpen.value = true;
   // Если уже есть canonical selection, открытие должно начинаться с пустого
-  // search query — иначе Buefy выдаст "filtered по прошлому имени" вместо
-  // рекомендованного списка. Empty `searchQuery` показывает scoped
-  // `listRecommended`; никакой v-model выше не меняется.
-  if (hasCanonicalSelection.value && searchQuery.value !== "") {
+  // search query — иначе `options()` отфильтрует каталог по прошлому имени
+  // вместо рекомендованного. Также сбрасываем `userTyped`, чтобы текущий
+  // canonical text в input никогда не считался реальным поиском.
+  if (hasCanonicalSelection.value && (searchQuery.value !== "" || userTyped.value)) {
     searchQuery.value = "";
+    userTyped.value = false;
   }
 }
 
@@ -228,11 +276,16 @@ function onBlurClose() {
   isOpen.value = false;
   // Если пользователь не выбрал ничего нового (catalog или free-form),
   // возвращаем canonical display в input, чтобы повторное открытие
-  // показывало ровно выбор, а не случайный ввод.
+  // показывало ровно выбор, а не случайный ввод. Этот путь срабатывает
+  // ТОЛЬКО на реальной потере фокуса — Escape закрывает dropdown, но
+  // input остаётся сфокусированным, blur не приходит, и попытка
+  // восстановить canonical display спровоцировала бы Buefy на повторное
+  // открытие списка (review fix Этап 1.1).
   if (suppressRestore) {
     suppressRestore = false;
     return;
   }
+  userTyped.value = false;
   if (hasCanonicalSelection.value && searchQuery.value !== canonicalDisplay.value) {
     searchQuery.value = canonicalDisplay.value;
   }
@@ -242,12 +295,14 @@ function onActiveChange(active) {
   // Buefy отдаёт `isActive` через `@active` с задержкой в один tick.
   // Используем тот же флаг, что и focus/blur, чтобы поведение было
   // одинаковым вне зависимости от того, открыт ли dropdown программно или
-  // пользователем.
+  // пользователем. На закрытии (active=false) намеренно НЕ вызываем
+  // `onBlurClose`: Escape и click-outside закрывают dropdown, не снимая
+  // фокус с input, и любое восстановление canonical display в этот момент
+  // провоцирует Buefy заново открыть список. Реальный blur обрабатывается
+  // через `onBlurClose()` отдельно.
   isOpen.value = active;
   if (active) {
     onFocusOpen();
-  } else {
-    onBlurClose();
   }
 }
 
@@ -262,8 +317,10 @@ function onSelect(option) {
     providerModelId.value = null;
   }
   // Сразу обновляем input, чтобы закрытие не прошло через restore-ветку
-  // и пользователь увидел имя выбранной модели без мерцания.
+  // и пользователь увидел имя выбранной модели без мерцания. `userTyped`
+  // сбрасываем — выбранный каталожный текст это display, а не query.
   searchQuery.value = option.name ?? "";
+  userTyped.value = false;
 }
 
 function selectFreeform() {
@@ -272,10 +329,19 @@ function selectFreeform() {
   }
 
   suppressRestore = true;
+  // Этап 1.1 review fix: переход catalog → free-form должен очищать
+  // каталожное значение. Иначе в draft попадают оба (`modelValue` и
+  // `providerModelId`), и предыдущая каталожная модель остаётся
+  // помеченной как selected.
+  if (modelValue.value !== null) {
+    modelValue.value = null;
+  }
   providerModelId.value = trimmedQuery.value;
   // Free-form id — это и есть его отображение; закрываем и оставляем то,
-  // что пользователь ввёл, в input.
+  // что пользователь ввёл, в input. `userTyped` сбрасываем — введённый
+  // через free-form path текст теперь canonical display, а не query.
   searchQuery.value = trimmedQuery.value;
+  userTyped.value = false;
 }
 
 // BYOK решение 3 (Stage A6 `.plan`): свободный идентификатор действителен
@@ -299,6 +365,10 @@ watch(
 // criterion "Closed control ясно показывает selected catalog model or free-form
 // BYOK id" (Этап 1.1). То же касается wizard consumer
 // `ExpertParameters.vue` (Task A9.5), который биндит тот же компонент.
+// Этап 1.1 review fix: вместе с записью canonical display сбрасываем
+// `userTyped`, иначе закрытый контрол уже считает свой собственный label
+// пользовательским запросом и `options()` фильтрует каталог по имени
+// выбранной модели.
 watch(
   () => [modelValue.value, providerModelId.value],
   ([nextModelId, nextProviderModelId]) => {
@@ -307,6 +377,7 @@ watch(
 
     if (!isOpen.value) {
       searchQuery.value = nextDisplay;
+      userTyped.value = false;
     }
   },
   { immediate: true },
