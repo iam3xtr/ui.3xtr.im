@@ -64,9 +64,10 @@ Vite aliases из самого UI Kit не являются частью downstr
 причину, последствия и доступное действие, а не только цветной label.
 
 `ModelSelect.vue` разделяет canonical selected display (catalog id или
-free-form BYOK id) и transient search query. На focus при существующем
-выборе search query очищается, Buefy keyboard/hover/scroll/chrome
-остаются; на close-without-select canonical display восстанавливается.
+free-form BYOK id) на закрытом trigger и transient search query в первой
+строке раскрытого списка. При открытии query очищается и focus переходит
+на поиск; Buefy keyboard/hover/scroll/chrome остаются. Закрытие без
+выбора оставляет canonical display на trigger.
 Повторное открытие уже выбранной модели никогда не превращает её имя в
 filter query. Выбранный catalog option помечается через
 `.tr-model-select__option--selected` + текстовый marker «✓» (Buefy

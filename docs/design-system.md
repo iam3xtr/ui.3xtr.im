@@ -119,30 +119,29 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
 
 ### ModelSelect — жизненный цикл выбора (этап 1.1)
 
-`ModelSelect.vue` строится на Buefy `b-autocomplete` (focus/blur/active,
-keyboard navigation, `open-on-focus`). Контракт разделяет два состояния:
+`ModelSelect.vue` показывает закрытый button-trigger с выбранной моделью.
+Раскрытый список начинается с отдельной строки поиска на Buefy
+`b-autocomplete`; его результаты, keyboard navigation и selection остаются
+внутри Buefy. Контракт разделяет два состояния:
 
 - **canonical selected display** — read-only проекция выбора
   (`modelValue` → `modelsStore.getModel(id).name`, либо
   `providerModelId.value` для BYOK). Используется для закрытого контрола и
-  для restore при close-without-select. Не участвует в `b-autocomplete`
-  v-model и не фильтрует каталог.
+  на trigger. Не участвует в `b-autocomplete` v-model и не фильтрует каталог.
 - **transient search query** — текст, который пользователь вводит в поле;
-  v-model `b-autocomplete`. Существует только во время открытого
-  autocomplete.
+  v-model `b-autocomplete`. При закрытии сбрасывается.
 
 Поведение открытия и закрытия:
 
-- `focus` / `active=true` при существующем canonical selection очищает
-  search query; focus остаётся на реальном input; пустой query показывает
-  scoped `listRecommended`. Каталожные v-models не меняются.
+- Клик или ArrowDown на trigger открывает список, очищает search query и
+  переводит focus на строку поиска. Пустой query показывает scoped
+  `listRecommended`. Каталожные v-models не меняются.
 - Непустой query использует только `modelsStore.search` в текущем scope;
   его результаты не смешиваются с recommended group.
-- `blur` / `active=false` без select восстанавливает canonical display в
-  input, если он отличается от текущего значения.
-- `@select` обновляет `modelValue`, очищает `providerModelId`, и
-  устанавливает `searchQuery` в имя выбранной модели — закрытие не
-  проходит через restore-ветку.
+- `focusout` / `active=false` без select закрывает список; trigger всё
+  время показывает canonical display.
+- `@select` обновляет `modelValue`, очищает `providerModelId` и закрывает
+  список с возвратом focus на trigger.
 
 Выбранный пункт в открытом списке помечается классом
 `tr-model-select__option--selected` и `aria-current="true"` (через
@@ -173,9 +172,9 @@ accessible name (текст сам по себе), реализованный к
 элемент на header-row над полем, а не внутри `b-field`'s `#label` slot
 (Buefy рендерит содержимое этого slot внутри `<label>`, что сломало бы
 связь `for=input` и сделало бы button частью label-обёртки). Label
-остаётся нативным `<label for="model">`, а `ModelSelect` уже выставляет
-`id="model"` на реальном input (тот же imperative `applyInputId`, который
-нужен `FormErrorSummary`'s focus jump).
+остаётся нативным `<label for="model">`, а `ModelSelect` выставляет
+`id="model"` на focusable trigger. `FormErrorSummary` переводит focus на
+этот trigger; открытие списка затем переводит его на строку поиска.
 
 `ModelSelect` остаётся обёрнут в `<b-field>` (без `label`-prop) — нужен
 исключительно для provide/inject `newType`, чтобы Buefy пропагировал

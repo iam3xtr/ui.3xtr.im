@@ -28,10 +28,7 @@ function mountModelSelect(props = {}) {
   });
 }
 
-// The dropdown list is toggled with CSS (`v-show`), not `v-if`, so its
-// content is queryable in jsdom without simulating focus/open first — group
-// headers render as `div.dropdown-item`, options as `a.dropdown-item`
-// wrapping our own `#default` slot.
+// The dropdown list uses `v-show`, so its contents remain queryable in jsdom.
 function groupHeaders(wrapper) {
   return wrapper.findAll("div.dropdown-item").map((el) => el.text());
 }
@@ -41,7 +38,18 @@ function optionNames(wrapper) {
 }
 
 async function typeQuery(wrapper, text) {
+  if (wrapper.find(".tr-model-select__trigger").attributes("aria-expanded") === "false") {
+    await wrapper.find(".tr-model-select__trigger").trigger("click");
+  }
   await wrapper.find("input").setValue(text);
+}
+
+async function openPicker(wrapper) {
+  await wrapper.find(".tr-model-select__trigger").trigger("click");
+}
+
+function triggerValue(wrapper) {
+  return wrapper.find(".tr-model-select__trigger-value").text();
 }
 
 describe("ModelSelect.vue — без BYOK", () => {
@@ -147,16 +155,18 @@ describe("ModelSelect.vue — синхронизация modelValue/providerMode
     expect(wrapper.emitted("update:providerModelId")).toEqual([[null]]);
   });
 
-  it("отражает выбранную каталожную модель в поле поиска", () => {
+  it("отражает выбранную каталожную модель в закрытом контроле", () => {
     const wrapper = mountModelSelect({ modelValue: "claude-sonnet-4.5" });
 
-    expect(wrapper.find("input").element.value).toBe("Claude Sonnet 4.5");
+    expect(triggerValue(wrapper)).toBe("Claude Sonnet 4.5");
+    expect(wrapper.find("input").element.value).toBe("");
   });
 
-  it("отражает свободный идентификатор в поле поиска, если он задан", () => {
+  it("отражает свободный идентификатор в закрытом контроле, если он задан", () => {
     const wrapper = mountModelSelect({ providerModelId: "meta-llama/llama-3.1-405b-instruct" });
 
-    expect(wrapper.find("input").element.value).toBe("meta-llama/llama-3.1-405b-instruct");
+    expect(triggerValue(wrapper)).toBe("meta-llama/llama-3.1-405b-instruct");
+    expect(wrapper.find("input").element.value).toBe("");
   });
 });
 
@@ -165,10 +175,27 @@ describe("ModelSelect.vue — синхронизация modelValue/providerMode
 // Поведение закрытого контрола, открытия с уже выбранным значением,
 // restore-on-close и selected marker.
 describe("ModelSelect.vue — жизненный цикл canonical/поиск (этап 1.1)", () => {
+  it("открывает поиск первой строкой перед вариантами", async () => {
+    const wrapper = mountModelSelect({ modelValue: "claude-sonnet-4.5" });
+
+    await openPicker(wrapper);
+
+    const popup = wrapper.find(".tr-model-select__popup");
+    const input = popup.find("input");
+    const firstOption = popup.find("a.dropdown-item");
+    expect(popup.isVisible()).toBe(true);
+    expect(input.attributes("placeholder")).toBe("Поиск модели");
+    expect(input.element.value).toBe("");
+    expect(input.element.compareDocumentPosition(firstOption.element) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
+    expect(triggerValue(wrapper)).toBe("Claude Sonnet 4.5");
+  });
+
   it("закрытый контрол показывает canonical display для выбранной каталожной модели", () => {
     const wrapper = mountModelSelect({ modelValue: "claude-sonnet-4.5" });
 
-    expect(wrapper.find("input").element.value).toBe("Claude Sonnet 4.5");
+    expect(triggerValue(wrapper)).toBe("Claude Sonnet 4.5");
+    expect(wrapper.find(".tr-model-select__popup").isVisible()).toBe(false);
     // Рекомендованные варианты из всего каталога показаны сразу, без открытия
     // через клик — `b-autocomplete` рендерит dropdown-content через `v-show`,
     // а не `v-if`, поэтому он доступен в jsdom.
@@ -178,7 +205,7 @@ describe("ModelSelect.vue — жизненный цикл canonical/поиск (
   it("focus при существующем выборе очищает search query и не трогает v-model", async () => {
     const wrapper = mountModelSelect({ modelValue: "claude-sonnet-4.5" });
 
-    await wrapper.find("input").trigger("focus");
+    await openPicker(wrapper);
 
     expect(wrapper.find("input").element.value).toBe("");
     // v-model `update:modelValue` не должен эмититься — выбор только
@@ -193,16 +220,18 @@ describe("ModelSelect.vue — жизненный цикл canonical/поиск (
     expect(names).not.toContain("Claude Haiku 4.5");
   });
 
-  it("blur без select восстанавливает canonical display в input", async () => {
+  it("blur без select сохраняет canonical display и закрывает поиск", async () => {
     const wrapper = mountModelSelect({ modelValue: "claude-sonnet-4.5" });
 
-    await wrapper.find("input").trigger("focus");
+    await openPicker(wrapper);
     await typeQuery(wrapper, "поиск-без-выбора");
     expect(wrapper.find("input").element.value).toBe("поиск-без-выбора");
 
-    await wrapper.find("input").trigger("blur");
+    await wrapper.find("input").trigger("focusout");
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(wrapper.find("input").element.value).toBe("Claude Sonnet 4.5");
+    expect(triggerValue(wrapper)).toBe("Claude Sonnet 4.5");
+    expect(wrapper.find(".tr-model-select__popup").isVisible()).toBe(false);
     expect(wrapper.emitted("update:modelValue")).toBeUndefined();
   });
 
@@ -212,14 +241,13 @@ describe("ModelSelect.vue — жизненный цикл canonical/поиск (
     await typeQuery(wrapper, "GPT-4.1");
     await wrapper.find("a.dropdown-item").trigger("click");
 
-    // Сразу после выбора input должен показывать имя выбранной модели, а не
-    // оставшийся search query.
-    expect(wrapper.find("input").element.value).toBe("GPT-4.1 mini");
+    // The closed trigger displays the selection, not the transient query.
+    expect(triggerValue(wrapper)).toBe("GPT-4.1 mini");
     expect(wrapper.emitted("update:modelValue")).toEqual([["gpt-4.1-mini"]]);
 
     // Повторное открытие должно начинаться с пустого query и показывать
     // рекомендованный список, а не фильтрованный по "GPT-4.1".
-    await wrapper.find("input").trigger("focus");
+    await openPicker(wrapper);
     expect(wrapper.find("input").element.value).toBe("");
     expect(groupHeaders(wrapper)).toEqual(["Рекомендуемые"]);
   });
@@ -227,7 +255,7 @@ describe("ModelSelect.vue — жизненный цикл canonical/поиск (
   it("непустой search query показывает только results, без смешивания с recommended", async () => {
     const wrapper = mountModelSelect({ modelValue: "gpt-4.1" });
 
-    await wrapper.find("input").trigger("focus");
+    await openPicker(wrapper);
     // focus с уже существующим выбором очищает query — дальше имитируем
     // ввод через обычное typing.
     await typeQuery(wrapper, "haiku");
@@ -239,7 +267,7 @@ describe("ModelSelect.vue — жизненный цикл canonical/поиск (
   it("помечает выбранный каталожный option в открытом списке", async () => {
     const wrapper = mountModelSelect({ modelValue: "claude-sonnet-4.5" });
 
-    await wrapper.find("input").trigger("focus");
+    await openPicker(wrapper);
 
     const selectedOption = wrapper.findAll("a.dropdown-item")
       .find((item) => item.text().includes("Claude Sonnet 4.5"));
@@ -278,7 +306,7 @@ describe("ModelSelect.vue — жизненный цикл canonical/поиск (
     // OpenRouter-модели (одна рекомендованная).
     expect(optionNames(wrapper)).toEqual(["GPT-OSS 120B (OpenRouter)"]);
 
-    await wrapper.find("input").trigger("focus");
+    await openPicker(wrapper);
     expect(wrapper.find("input").element.value).toBe("");
 
     // Search внутри BYOK-scope ограничен OpenRouter.

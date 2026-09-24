@@ -40,6 +40,7 @@ export default {
   },
   catalog: {
     title: "Exact model (catalog)",
+    searchPlaceholder: "Search models",
     unavailable: "Picking an exact model is not available on your plan — "
       + "the recommended class is used instead.",
   },

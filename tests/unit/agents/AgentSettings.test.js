@@ -174,8 +174,8 @@ describe("AgentSettings.vue — модель и BYOK", () => {
     const { wrapper } = await mountSettings({ workspaceId: "demo", agentId: "1" });
 
     await wrapper.find("input[type='checkbox']").setValue(true);
-    // Ввести свободный id через `ModelSelect` (input имеет класс
-    // .tr-model-select, BYOK-режим уже включён).
+    // Open the picker, then enter a free-form id in its search row.
+    await wrapper.find(".tr-model-select__trigger").trigger("click");
     const input = wrapper.find(".tr-model-select input");
     await input.setValue("vendor/my-model");
     await wrapper.find(".tr-model-select__freeform-action").trigger("mousedown");
@@ -524,11 +524,8 @@ describe("AgentSettings.vue — dirty-exit «Сохранить» (Stage A10 rev
 
 // Stage A10 review fix: `FormErrorSummary`'s "jump to field" button must
 // actually move focus — `AgentSettings.vue` is the one savable form where
-// the fields are Buefy `b-autocomplete` (`ModelSelect.vue`) and a custom
-// `b-dropdown` trigger (`ApiKeySelect.vue`) rather than a plain `b-input`,
-// so a real `id` on the focusable element needed extra wiring (see
-// `ModelSelect.vue`'s `inputId` prop comment for why a bare `id` attribute
-// doesn't reach the actual `<input>` through Buefy's autocomplete).
+// the fields use picker triggers rather than plain `b-input` elements, so
+// each summary target must focus a real, visible control.
 describe("AgentSettings.vue — клавиатурный переход к ошибке (Stage A10 review fix)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -539,7 +536,7 @@ describe("AgentSettings.vue — клавиатурный переход к ош�
       .find((button) => button.text().includes(text));
   }
 
-  it("клик по ошибке модели переводит фокус на реальный input автокомплита", async () => {
+  it("клик по ошибке модели переводит фокус на триггер выбора", async () => {
     const { wrapper } = await mountSettings({ workspaceId: "demo", agentId: "1" });
 
     await wrapper.find("input[type='checkbox']").setValue(true);
@@ -549,7 +546,7 @@ describe("AgentSettings.vue — клавиатурный переход к ош�
     await link.trigger("click");
 
     expect(document.activeElement.id).toBe("model");
-    expect(document.activeElement.tagName).toBe("INPUT");
+    expect(document.activeElement.tagName).toBe("BUTTON");
   });
 
   it("клик по ошибке ключа переводит фокус на триггер выбора ключа", async () => {

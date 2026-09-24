@@ -41,6 +41,7 @@ export default {
   },
   catalog: {
     title: "Modelo exacto (catálogo)",
+    searchPlaceholder: "Buscar modelos",
     unavailable: "Elegir un modelo exacto no está disponible en tu plan — se "
       + "usa la clase recomendada.",
   },

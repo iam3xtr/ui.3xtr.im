@@ -74,7 +74,11 @@
             ниже тот же контракт — отдельный `aria-label`, чтобы
             accessible name совпадал с label.
           -->
-          <ModelSelect v-model="modelId" :aria-label="t.catalog.title" />
+          <ModelSelect
+            v-model="modelId"
+            :aria-label="t.catalog.title"
+            :search-placeholder="t.catalog.searchPlaceholder"
+          />
         </b-field>
         <p v-else class="tr-muted">{{ t.catalog.unavailable }}</p>
       </div>
@@ -94,6 +98,7 @@
               v-model:provider-model-id="providerModelId"
               :use-own-api-key="true"
               :aria-label="t.byok.modelLabel"
+              :search-placeholder="t.catalog.searchPlaceholder"
             />
           </b-field>
           <b-field :label="t.byok.keyLabel">
