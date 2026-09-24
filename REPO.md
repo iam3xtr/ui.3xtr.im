@@ -226,6 +226,14 @@ the package registry.
 A successful release also updates the root exact package pins, lockfile, submodule
 gitlinks, and repository dependency state through the established release workflow.
 
+For workstreams that introduce public package components or style contracts,
+plan the release as part of the deliverable. After publication, verify the demo's
+tests and production/Pages builds against the newly published exact versions,
+not development source aliases. Check affected consumer repositories for existing
+upgrade work, then create or update Issues there with the released versions,
+migration scope, and verification criteria. Consumer code changes remain in
+their own repositories.
+
 Do not manually reproduce or partially emulate the release procedure when the existing
 scripts support the operation.
 
