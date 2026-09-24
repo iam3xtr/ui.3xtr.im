@@ -29,8 +29,13 @@ function record(name, ok, detail) {
   console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? " — " + detail : ""}`);
 }
 
-function run(cmd, args, cwd) {
-  return spawnSync(cmd, args, { cwd, encoding: "utf8", shell: process.platform === "win32" });
+function run(cmd, args, cwd, env) {
+  return spawnSync(cmd, args, {
+    cwd,
+    encoding: "utf8",
+    shell: process.platform === "win32",
+    env: env ? { ...process.env, ...env } : process.env,
+  });
 }
 
 function toFileSpec(absTarballPath) {
@@ -180,26 +185,44 @@ runFixture("ssr-hydration", verifyCheckScript);
 // 3. Missing package / missing version / no access — proven against real
 //    registries without needing GitHub Packages credentials in this
 //    environment (see README.md "Scope notes"): the public npm registry
-//    404s a nonexistent version the same way GitHub Packages 404s a
-//    private/nonexistent package, which is itself the property under test
-//    — a safe, uninformative failure, not a partial or corrupting one.
+//    404s a nonexistent version, and GitHub Packages refuses an
+//    unauthenticated request (401 for an existing private package, 404 for
+//    a nonexistent one) — either way a clean failure that yields no package
+//    data, not a partial or corrupting one, which is the property under test.
 // ---------------------------------------------------------------------
-function checkNpmViewFails(name, args, expectCode) {
-  const res = run("npm", ["view", ...args], workRoot);
+function checkNpmViewFails(name, args, expectCodes, env) {
+  const res = run("npm", ["view", ...args], workRoot, env);
   if (res.status === 0) {
     record(name, false, "expected npm view to fail, it succeeded");
     return;
   }
   const combined = res.stdout + res.stderr;
-  if (!combined.includes(expectCode)) {
-    record(name, false, `expected ${expectCode} in output, got:\n${combined}`);
+  const matched = expectCodes.find((code) => combined.includes(code));
+  if (!matched) {
+    record(name, false, `expected one of ${expectCodes.join("/")} in output, got:\n${combined}`);
     return;
   }
-  record(name, true, `${expectCode} as expected`);
+  record(name, true, `${matched} as expected`);
 }
 
-checkNpmViewFails("missing version (existing public package)", ["vue@0.0.0-does-not-exist"], "404");
-checkNpmViewFails("missing/inaccessible private package", ["@iam3xtr/ui", "--registry", "https://npm.pkg.github.com"], "404");
+// The private-registry check must not depend on whether the developer's own
+// user/global .npmrc carries a GitHub Packages token: with one, the package
+// is readable and this negative check would falsely fail. Point npm at an
+// empty config so the request is always unauthenticated. npm refuses to load
+// one file as both user and global config, hence two separate files.
+const emptyUserNpmrc = path.join(workRoot, "empty-user.npmrc");
+const emptyGlobalNpmrc = path.join(workRoot, "empty-global.npmrc");
+writeFileSync(emptyUserNpmrc, "");
+writeFileSync(emptyGlobalNpmrc, "");
+const unauthenticatedNpm = { npm_config_userconfig: emptyUserNpmrc, npm_config_globalconfig: emptyGlobalNpmrc };
+
+checkNpmViewFails("missing version (existing public package)", ["vue@0.0.0-does-not-exist"], ["404"]);
+checkNpmViewFails(
+  "missing/inaccessible private package",
+  ["@iam3xtr/ui", "--registry", "https://npm.pkg.github.com", "--prefer-online"],
+  ["E401", "404"],
+  unauthenticatedNpm,
+);
 
 // ---------------------------------------------------------------------
 rmSync(workRoot, { recursive: true, force: true });
