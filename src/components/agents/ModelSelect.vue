@@ -18,6 +18,7 @@
         <span
           class="tr-model-select__option"
           :class="{ 'tr-model-select__option--selected': isCatalogSelection(option) }"
+          :aria-current="isCatalogSelection(option) ? 'true' : undefined"
         >
           <span
             v-if="isCatalogSelection(option)"

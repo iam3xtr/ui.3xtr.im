@@ -246,10 +246,15 @@ describe("ModelSelect.vue — жизненный цикл canonical/поиск (
     expect(selectedOption).toBeDefined();
     expect(selectedOption.find(".tr-model-select__option--selected").exists()).toBe(true);
     expect(selectedOption.find(".tr-model-select__option-marker").exists()).toBe(true);
+    // Этап 1.1 review fix: AT-visible статус — `aria-current` на option
+    // (markеr остаётся `aria-hidden` как decorative). docs/design-system.md
+    // задокументировал именно эту разметку.
+    expect(selectedOption.find("[aria-current='true']").exists()).toBe(true);
 
     const unselectedOption = wrapper.findAll("a.dropdown-item")
       .find((item) => item.text().includes("GPT-4.1"));
     expect(unselectedOption.find(".tr-model-select__option--selected").exists()).toBe(false);
+    expect(unselectedOption.attributes("aria-current")).toBeUndefined();
   });
 
   it("free-form id не помечается как catalog choice", () => {
