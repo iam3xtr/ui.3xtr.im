@@ -201,9 +201,18 @@ describe("AgentSettings.vue — модель и BYOK", () => {
     const byokField = wrapper.find(".tr-agent-settings__byok-bfield");
     expect(byokField.exists()).toBe(true);
 
-    // `.field` — класс корня `b-field`; `is-danger` приходит от `type`-prop.
+    // `.field` — это класс корня `b-field`; `is-danger` как класс корня
+    // Buefy не выставляет (`b-field.vue#rootClasses` управляет только
+    // is-expanded/is-horizontal/floating-label). Контракт
+    // `FormElementMixin#statusType` прокидывает `parentField.newType` в
+    // `b-input.inputClasses` (это `statusType`) — `is-danger` появляется
+    // на самом `<input>` внутри `b-autocomplete`, и параллельно на
+    // стандартном help-render `b-field` (`<p class="help is-danger">`).
     expect(byokField.classes()).toContain("field");
-    expect(byokField.classes()).toContain("is-danger");
+
+    const byokInput = byokField.find("input");
+    expect(byokInput.exists()).toBe(true);
+    expect(byokInput.classes()).toContain("is-danger");
 
     // Текст ошибки остаётся в DOM — `wrapper.text()` его содержит.
     expect(wrapper.text()).toContain("Выберите модель OpenRouter или укажите свободный идентификатор.");

@@ -154,7 +154,18 @@
           восстанавливается сама при выключении BYOK.
         -->
         <b-field v-if="!draft.useOwnApiKey" label="Модель">
-          <ModelSelect v-model="draft.model" input-id="model" />
+          <!--
+            Этап 2.1 review fix: `b-field` не получает `label-for` без
+            явного prop, поэтому `<label>` и `<input>` не связаны по
+            `for=` программно. Чтобы accessible name всё равно был,
+            `ModelSelect` принимает опциональный `aria-label` — для
+            обычной модели это короткое «Модель» (тот же текст, что и
+            `<label>`). BYOK-поле ниже НЕ передаёт `aria-label`, потому
+            что у него есть собственный нативный `<label for="model">` с
+            полным описанием «OpenRouter, собственный ключ», и aria-label
+            перебил бы этот контекст.
+          -->
+          <ModelSelect v-model="draft.model" aria-label="Модель" input-id="model" />
         </b-field>
 
         <!--
