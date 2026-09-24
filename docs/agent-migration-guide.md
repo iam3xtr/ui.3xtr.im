@@ -63,19 +63,19 @@ Vite aliases из самого UI Kit не являются частью downstr
 не как текст внутри агента. Статусы, квоты, delivery и handoff показывают
 причину, последствия и доступное действие, а не только цветной label.
 
-`ModelSelect.vue` разделяет canonical selected display (catalog id или
-free-form BYOK id) на закрытом trigger и transient search query в первой
-строке раскрытого списка. При открытии query очищается и focus переходит
-на поиск; Buefy keyboard/hover/scroll/chrome остаются. Закрытие без
-выбора оставляет canonical display на trigger.
-Повторное открытие уже выбранной модели никогда не превращает её имя в
-filter query. Выбранный catalog option помечается через
-`.tr-model-select__option--selected` + текстовый marker «✓» (Buefy
-`.is-hovered` остаётся). Free-form BYOK id никогда не получает marker —
-это не catalog choice. BYOK OpenRouter scope и whitespace/≤255-символов
-валидация сохраняются. Это UI Kit fixture/reference — production BYOK API
-ещё не подтверждён (Issue `api.3xtr.im#112`), переносите поведение, а не
-его трактовку как production API.
+Выбор модели из каталога переносите через публичный `ModelSelect` из
+`@iam3xtr/vue` (режим `model`), а не копированием demo
+`src/components/agents/ModelSelect.vue`. Contract режима (данные,
+`v-model:model-id`, `update:query`, loading/error/empty copy, a11y) и
+адаптация production-формы описаны в README пакета
+(`packages/vue/README.md`, раздел «`ModelSelect`: режим `model`»):
+`returnObject`, hidden `name` и auto-select компонент не выполняет — их
+при необходимости явно реализует consumer.
+
+Режимы `byok` и `both` в пакете ещё не реализованы (Planned, этап 2.2);
+demo selector остаётся UI Kit fixture/reference для BYOK и не является
+production API. Внедрение в `get.3xtr.im` — отдельная задача consumer
+`get.3xtr.im#19`, выполняемая после `api.3xtr.im#112`.
 
 Используйте MDI имя из существующего набора. Если MDI-эквивалента нет,
 добавьте SVG в @iam3xtr/ui/assets/icons/**, зарегистрируйте его в registry и
