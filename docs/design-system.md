@@ -117,7 +117,7 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
   не опубликованные пакеты. Индикатор не является навигацией, контролом
   обновления или заявлением о registry-публикации.
 
-### ModelSelect — жизненный цикл выбора (этап 1.1)
+### ModelSelect — жизненный цикл выбора
 
 `ModelSelect.vue` показывает закрытый button-trigger с выбранной моделью.
 Раскрытый список начинается с отдельной строки поиска на Buefy
@@ -166,7 +166,7 @@ Theme rules для marker и option layout живут в `packages/ui/src/styles
 theme.scss` и публикуются вместе с `@iam3xtr/ui`. Component-local
 `<style>` блоки запрещены (`npm run guard:no-component-styles`).
 
-### AgentSettings — обратимое очищение BYOK-модели (этап 2.1)
+### AgentSettings — обратимое очищение BYOK-модели
 
 В форме модели/BYOK-черновика доступно действие «Очистить» рядом с label
 BYOK-поля. Оно появляется только при выбранной BYOK-модели в draft —
