@@ -40,5 +40,14 @@ describe("consumer SPA fixture", () => {
     // packed install, not just from the package's own source-level tests.
     expect(wrapper.find(".tr-icon--placeholder").exists()).toBe(false);
     expect(wrapper.find(".mdi-cog").exists()).toBe(true);
+
+    // Этап 1 `.plan` «Плавающие dropdown»: ToolbarDropdown и
+    // MobileFilters приходят из packed `@iam3xtr/vue` (без source
+    // aliases) и монтируются в нижне-viewport scenario. CSS-маркеры
+    // portal/inline ставятся только при открытом меню, поэтому здесь
+    // мы проверяем лишь, что компоненты доступны как публичные export-ы
+    // и не падают при mount в Buefy-окружении потребителя.
+    expect(wrapper.find(".tr-toolbar-dropdown").exists()).toBe(true);
+    expect(wrapper.find(".tr-mobile-filters").exists()).toBe(true);
   });
 });
