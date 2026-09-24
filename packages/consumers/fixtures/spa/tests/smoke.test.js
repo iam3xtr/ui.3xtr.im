@@ -17,6 +17,7 @@ describe("consumer SPA fixture", () => {
       routes: [{ path: "/", component: { template: "<div />" } }],
     });
     const wrapper = mount(App, {
+      attachTo: document.body,
       global: {
         plugins: [
           Buefy,
@@ -40,5 +41,19 @@ describe("consumer SPA fixture", () => {
     // packed install, not just from the package's own source-level tests.
     expect(wrapper.find(".tr-icon--placeholder").exists()).toBe(false);
     expect(wrapper.find(".mdi-cog").exists()).toBe(true);
+
+    // Stage 1 `.plan` "Floating dropdowns": ToolbarDropdown and
+    // MobileFilters (inline unless clipped) ship as public exports of `@iam3xtr/vue`
+    // and mount without source aliases. The fixture exercises them next to
+    // the viewport edge so a future browser smoke run can catch auto-flip
+    // regressions against the published tarball; the unit-level flip,
+    // marker and z-index behaviour is covered by focused tests inside
+    // `@iam3xtr/vue`.
+    expect(wrapper.find(".tr-toolbar-dropdown").exists()).toBe(true);
+    expect(wrapper.find(".tr-mobile-filters").exists()).toBe(true);
+    expect(wrapper.find(".tr-toolbar-dropdown__trigger").exists()).toBe(true);
+    expect(wrapper.find(".tr-mobile-filters__trigger").exists()).toBe(true);
+
+    wrapper.unmount();
   });
 });

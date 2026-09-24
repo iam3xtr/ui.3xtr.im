@@ -47,6 +47,9 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
   tr-async-state, настройки — tr-settings-panel.
 - Для таблиц, полей, загрузки, pagination, tabs, modal, dialog, toast,
   loading и skeleton используйте Buefy.
+- В стандартной `.table` заголовочные ячейки `thead th` и `tfoot th`
+  используют один базовый стиль темы; правило мобильной
+  `.tr-table--stack tfoot th` сохраняет свою раскладку.
 - Для Buefy `b-tag` kit не задаёт собственных color/background overrides:
   обычные и semantic `type` (`is-primary`, `is-success`, `is-warning`,
   `is-danger`, `is-dark` и другие Bulma types) выглядят ровно как в примерах
@@ -82,6 +85,14 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
   копию через `.tr-page-toolbar__filters .tr-page-toolbar__filter`, а не
   безусловный `.tr-page-toolbar__filter`; последнее также спрятало бы копию
   внутри `.tr-mobile-filters__content` и оставило бы mobile-панель пустой.
+- `ToolbarDropdown` и `MobileFilters` используют общий Buefy overlay из
+  @iam3xtr/vue. Меню открывается поверх следующего контента, меняет
+  направление у края viewport и обновляет положение при scroll/resize.
+  В обрезающем контейнере вне modal/drawer работает body portal; внутри
+  modal/drawer меню остаётся в его DOM-контексте и при обрезании
+  закрепляется через `position: fixed`. Тема @iam3xtr/ui стилизует
+  portal wrapper через `.tr-dropdown-overlay-portal`, сохраняя прежние
+  ancestor selectors для inline меню и шкалу z-index ниже modal.
 - В src/**/*.vue по умолчанию не допускаются style blocks. Kit-only override
   допустим, если он не является public contract `@iam3xtr/ui`, использует
   ровно один `<style scoped>` и перед ним документирует причину через
