@@ -130,6 +130,10 @@ describe("RulesStep.vue — «Расширенные параметры» (Task 
     const panel = wrapper.find(".tr-wizard-expert__panel");
     expect(panel.find(".tr-model-select").exists()).toBe(true);
     expect(panel.text()).toContain("Использовать собственный ключ API");
+
+    await panel.find("input[type='checkbox']").setValue(true);
+    await flushPromises();
+    expect(panel.find(".tr-api-key-select .dropdown.is-top-right").exists()).toBe(true);
   });
 
   it("переключение locale внутри экспертной зоны не теряет введённые поля", async () => {

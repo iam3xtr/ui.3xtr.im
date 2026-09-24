@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import Buefy from "buefy";
 
@@ -15,7 +15,7 @@ import { useWorkspaceStore } from "../../../src/stores/workspace.js";
 // the end-to-end save flow, this file covers the component in isolation
 // (empty state, masked labels, add-new flow, emitted v-model).
 
-function mountApiKeySelect({ workspaceId = "trickster", modelValue = null } = {}) {
+function mountApiKeySelect({ workspaceId = "trickster", modelValue = null, openAbove = false } = {}) {
   const pinia = createPinia();
   setActivePinia(pinia);
 
@@ -23,7 +23,7 @@ function mountApiKeySelect({ workspaceId = "trickster", modelValue = null } = {}
   workspaceStore.activeWorkspaceId = workspaceId;
 
   return mount(ApiKeySelect, {
-    props: { modelValue },
+    props: { modelValue, openAbove },
     global: { plugins: [pinia, Buefy] },
   });
 }
@@ -37,6 +37,39 @@ async function submitNewKey(wrapper, { label, secret }) {
 }
 
 describe("ApiKeySelect.vue", () => {
+  it("в panel-режиме выносит раскрытый список поверх контейнера и открывает вверх", () => {
+    const wrapper = mountApiKeySelect({ openAbove: true });
+    const dropdown = wrapper.findComponent({ name: "BDropdown" });
+
+    expect(dropdown.props("appendToBody")).toBe(true);
+    expect(dropdown.props("position")).toBe("is-top-right");
+    expect(document.body.contains(dropdown.vm.$refs.dropdownMenu)).toBe(true);
+    wrapper.unmount();
+  });
+
+  it("закрывает вынесенное меню перед модальным окном добавления ключа", async () => {
+    const wrapper = mountApiKeySelect({ openAbove: true });
+    const dropdown = wrapper.findComponent({ name: "BDropdown" });
+
+    await wrapper.find(".tr-api-key-select__trigger").trigger("click");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(dropdown.vm.isActive).toBe(true);
+
+    dropdown.vm.$refs.dropdownMenu.querySelector(".tr-api-key-select__add").click();
+    await flushPromises();
+    expect(dropdown.vm.isActive).toBe(false);
+    expect(useModalStore().isOpen("agent-byok-key-create")).toBe(true);
+    wrapper.unmount();
+  });
+
+  it("вне панели сохраняет обычное раскрытие", () => {
+    const wrapper = mountApiKeySelect();
+    const dropdown = wrapper.findComponent({ name: "BDropdown" });
+
+    expect(dropdown.props("appendToBody")).toBe(false);
+    expect(dropdown.props("position")).toBeUndefined();
+  });
+
   it("без сохранённых ключей показывает пустое состояние в списке", () => {
     const wrapper = mountApiKeySelect({ workspaceId: "demo" });
 
@@ -100,6 +133,23 @@ describe("ApiKeySelect.vue — удаление ключа (Task A10.2)", () => 
   function findDeleteButton(wrapper) {
     return wrapper.find(".tr-api-key-select__item-delete");
   }
+
+  it("закрывает вынесенное меню перед подтверждением удаления", async () => {
+    const wrapper = mountApiKeySelect({ openAbove: true });
+    const dropdown = wrapper.findComponent({ name: "BDropdown" });
+    const modalStore = useModalStore();
+    vi.spyOn(modalStore, "confirm").mockImplementation(() => {});
+
+    await wrapper.find(".tr-api-key-select__trigger").trigger("click");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(dropdown.vm.isActive).toBe(true);
+
+    dropdown.vm.$refs.dropdownMenu.querySelector(".tr-api-key-select__item-delete").click();
+    await flushPromises();
+    expect(dropdown.vm.isActive).toBe(false);
+    expect(modalStore.confirm).toHaveBeenCalledOnce();
+    wrapper.unmount();
+  });
 
   it("клик по удалению не эмитит выбор ключа", async () => {
     const wrapper = mountApiKeySelect({ workspaceId: "trickster" });

@@ -184,6 +184,7 @@ describe("ModelSelect.vue — жизненный цикл canonical/поиск (
     const input = popup.find("input");
     const firstOption = popup.find("a.dropdown-item");
     expect(popup.isVisible()).toBe(true);
+    expect(popup.classes()).toContain("dropdown-content");
     expect(input.attributes("placeholder")).toBe("Поиск модели");
     expect(input.element.value).toBe("");
     expect(input.element.compareDocumentPosition(firstOption.element) & Node.DOCUMENT_POSITION_FOLLOWING)
@@ -274,6 +275,10 @@ describe("ModelSelect.vue — жизненный цикл canonical/поиск (
     expect(selectedOption).toBeDefined();
     expect(selectedOption.find(".tr-model-select__option--selected").exists()).toBe(true);
     expect(selectedOption.find(".tr-model-select__option-marker").exists()).toBe(true);
+    const optionParts = selectedOption.find(".tr-model-select__option").element.children;
+    expect(optionParts[0].classList.contains("tr-model-select__option-marker")).toBe(false);
+    expect(optionParts[optionParts.length - 1].classList.contains("tr-model-select__option-marker"))
+      .toBe(true);
     // Этап 1.1 review fix: AT-visible статус — `aria-current` на option
     // (markеr остаётся `aria-hidden` как decorative). docs/design-system.md
     // задокументировал именно эту разметку.

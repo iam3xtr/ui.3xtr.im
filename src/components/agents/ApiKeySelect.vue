@@ -1,6 +1,13 @@
 <template>
   <div class="tr-api-key-select">
-    <b-dropdown v-model="localValue" aria-role="list" expanded>
+    <b-dropdown
+      ref="dropdownRef"
+      v-model="localValue"
+      aria-role="list"
+      expanded
+      :position="openAbove ? 'is-top-right' : undefined"
+      :append-to-body="openAbove"
+    >
       <template #trigger>
         <button :id="inputId" type="button" class="button tr-api-key-select__trigger">
           <span class="tr-api-key-select__trigger-label">{{ selectedLabel }}</span>
@@ -121,6 +128,7 @@ const modalKey = "agent-byok-key-create";
 // doesn't need one (e.g. the wizard's `ExpertParameters.vue`).
 defineProps({
   inputId: { type: String, default: null },
+  openAbove: { type: Boolean, default: false },
 });
 
 const localValue = defineModel({ type: String, default: null });
@@ -133,6 +141,7 @@ const { activeWorkspaceId } = storeToRefs(workspaceStore);
 
 const newLabel = ref("");
 const newSecret = ref("");
+const dropdownRef = ref(null);
 
 const keys = computed(() => apiKeysStore.listByWorkspace(activeWorkspaceId.value));
 
@@ -142,9 +151,18 @@ const selectedLabel = computed(() => {
 });
 
 function openCreateModal() {
+  closeDropdown();
   newLabel.value = "";
   newSecret.value = "";
   modalStore.open(modalKey);
+}
+
+function closeDropdown() {
+  // Buefy does not close custom items; an active body-appended menu would
+  // otherwise remain above the modal opened by Add or Delete.
+  if (dropdownRef.value?.isActive) {
+    dropdownRef.value.isActive = false;
+  }
 }
 
 function submit() {
@@ -177,6 +195,7 @@ function submit() {
  * @param {import("../../stores/apiKeys.js").ApiKey} key
  */
 function confirmDeleteKey(key) {
+  closeDropdown();
   const affectedAgents = agentsStore.listAgentsUsingApiKey(activeWorkspaceId.value, key.id);
   const affectedNames = affectedAgents.map((agent) => agent.name);
 

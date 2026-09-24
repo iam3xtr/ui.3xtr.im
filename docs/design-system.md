@@ -123,8 +123,10 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
 Раскрытый список начинается с отдельной строки поиска на Buefy
 `b-autocomplete`; его результаты, keyboard navigation и selection остаются
 внутри Buefy. Список остаётся в потоке документа и увеличивает высоту
-панели, поэтому варианты не выходят за её границы. Он занимает всю ширину
-контрола и не имеет отдельной рамки. Контракт разделяет два состояния:
+панели, поэтому варианты не выходят за её границы. Внешний
+`.dropdown-content` охватывает поиск и варианты, сохраняя общую рамку и
+ограничение ширины dropdown; внутренний список заполняет всю ширину этой
+оболочки и не имеет собственной рамки. Контракт разделяет два состояния:
 
 - **canonical selected display** — read-only проекция выбора
   (`modelValue` → `modelsStore.getModel(id).name`, либо
@@ -147,13 +149,18 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
 
 Выбранный пункт в открытом списке помечается классом
 `tr-model-select__option--selected` и `aria-current="true"` (через
-`.tr-model-select__option-marker` — текстовый «✓», не только цвет).
+`.tr-model-select__option-marker` справа от названия — текстовый «✓», не
+только цвет). Иконки моделей остаются в одном левом столбце.
 Marker определяется по canonical `model.id`, а не по display name: имя
 BYOK-источника (`provider_model_id`) не устойчиво как ключ, два источника
 (`byok_model`/`provider_model_id`) делают выбор mutually exclusive.
 Free-form id никогда не получает marker — это не catalog choice.
 Buefy-овский dropdown chrome, keyboard navigation, hover, scroll и
 `is-hovered` состояние остаются.
+
+Выбор ключа внутри экспертной панели раскрывается над trigger и через
+Buefy `append-to-body` располагается поверх содержимого панели. Вне
+панели `ApiKeySelect` сохраняет обычное раскрытие вниз.
 
 Theme rules для marker и option layout живут в `packages/ui/src/styles/
 theme.scss` и публикуются вместе с `@iam3xtr/ui`. Component-local

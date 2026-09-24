@@ -17,7 +17,7 @@
       </span>
     </b-button>
 
-    <div v-show="isOpen" :id="popupId" class="tr-model-select__popup">
+    <div v-show="isOpen" :id="popupId" class="dropdown-content tr-model-select__popup">
       <b-autocomplete
         ref="autocompleteRef"
         v-model="searchQuery"
@@ -37,6 +37,11 @@
             :class="{ 'tr-model-select__option--selected': isCatalogSelection(option) }"
             :aria-current="isCatalogSelection(option) ? 'true' : undefined"
           >
+            <icon
+              :name="option.provider?.icon || option.provider?.protocol || option.provider?.id || 'brain'"
+              aria-hidden="true"
+            />
+            <span class="tr-model-select__option-name">{{ option.name }}</span>
             <span
               v-if="isCatalogSelection(option)"
               class="tr-model-select__option-marker"
@@ -44,11 +49,6 @@
             >
               ✓
             </span>
-            <icon
-              :name="option.provider?.icon || option.provider?.protocol || option.provider?.id || 'brain'"
-              aria-hidden="true"
-            />
-            <span class="tr-model-select__option-name">{{ option.name }}</span>
           </span>
         </template>
 

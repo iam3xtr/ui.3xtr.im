@@ -102,7 +102,7 @@
             />
           </b-field>
           <b-field :label="t.byok.keyLabel">
-            <ApiKeySelect v-model="apiKeyId" />
+            <ApiKeySelect v-model="apiKeyId" open-above />
           </b-field>
         </template>
       </div>
