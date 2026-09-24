@@ -170,15 +170,24 @@ catalog `byokModel` или свободный `providerModelId` — и сним�
 
 `Очистить` — отдельный keyboard-reachable `<button>` с собственным
 accessible name (текст сам по себе), реализованный как соседний label/action
-элемент, а не внутри `b-field`'s `#label` slot. Buefy рендерит содержимое
-этого slot внутри `<label>`, что сломало бы связь `for=input` и сделало бы
-button частью label-обёртки. Label остаётся нативным `<label for="model">`,
-а `ModelSelect` уже выставляет `id="model"` на реальном input (тот же
-imperative `applyInputId`, который нужен `FormErrorSummary`'s focus
-jump).
+элемент на header-row над полем, а не внутри `b-field`'s `#label` slot
+(Buefy рендерит содержимое этого slot внутри `<label>`, что сломало бы
+связь `for=input` и сделало бы button частью label-обёртки). Label
+остаётся нативным `<label for="model">`, а `ModelSelect` уже выставляет
+`id="model"` на реальном input (тот же imperative `applyInputId`, который
+нужен `FormErrorSummary`'s focus jump).
+
+`ModelSelect` остаётся обёрнут в `<b-field>` (без `label`-prop) — нужен
+исключительно для provide/inject `newType`, чтобы Buefy пропагировал
+`is-danger` внутрь `b-autocomplete`'s input так же, как в обычной модели
+выше; текст ошибки рендерится через `b-field`'s `:message` slot, поэтому
+используется стандартный buefy `.help.is-danger`, а не отдельный
+`<p class="help is-danger">`. Только label и clear action вынесены из
+`b-field` — сам `b-field` остаётся, чтобы не потерять error-state
+propagation.
 
 Theme rules для новой BYOK-field структуры (`.tr-agent-settings__byok-field`
-/ `__byok-field-header` / `__byok-clear` / `__byok-error`) живут в
+/ `__byok-field-header` / `__byok-clear` / `__byok-bfield`) живут в
 `packages/ui/src/styles/theme.scss` и публикуются вместе с
 `@iam3xtr/ui`. Component-local `<style>` блоки запрещены.
 

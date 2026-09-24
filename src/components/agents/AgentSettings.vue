@@ -166,7 +166,12 @@
           reachability кнопки). Сам `<label>` остаётся нативным и связан с
           input через `for="model"` — `ModelSelect.vue#applyInputId` уже
           ставит этот id на реальный `<input>` для `FormErrorSummary`'s
-          focus jump.
+          focus jump. Review fix: `ModelSelect` остаётся обёрнут в
+          `b-field` без `label`-prop — нужен исключительно для
+          provide/inject `newType`, чтобы Buefy пропагировал `is-danger`
+          внутрь `b-autocomplete`'s input так же, как и в обычной модели
+          выше; текст ошибки рендерится через `#message` slot, чтобы
+          использовать стандартный `b-field` help.
         -->
         <div v-else class="tr-agent-settings__byok-field">
           <div class="tr-agent-settings__byok-field-header">
@@ -183,18 +188,18 @@
               Очистить
             </button>
           </div>
-          <ModelSelect
-            v-model="draft.byokModel"
-            v-model:provider-model-id="draft.providerModelId"
-            :use-own-api-key="true"
-            input-id="model"
-          />
-          <p
-            v-if="fieldErrors.model"
-            class="help is-danger tr-agent-settings__byok-error"
+          <b-field
+            :type="fieldErrors.model ? 'is-danger' : undefined"
+            :message="fieldErrors.model || undefined"
+            class="tr-agent-settings__byok-bfield"
           >
-            {{ fieldErrors.model }}
-          </p>
+            <ModelSelect
+              v-model="draft.byokModel"
+              v-model:provider-model-id="draft.providerModelId"
+              :use-own-api-key="true"
+              input-id="model"
+            />
+          </b-field>
         </div>
 
         <!--

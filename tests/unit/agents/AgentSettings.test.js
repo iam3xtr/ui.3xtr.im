@@ -190,6 +190,29 @@ describe("AgentSettings.vue — модель и BYOK", () => {
     expect(wrapper.text()).toContain("Выберите модель OpenRouter или укажите свободный идентификатор.");
   });
 
+  it("BYOK model error состояние пропагируется в input через b-field (review fix)", async () => {
+    const { wrapper } = await mountSettings({ workspaceId: "demo", agentId: "1" });
+
+    await wrapper.find("input[type='checkbox']").setValue(true);
+
+    // Этап 2.1 review fix: BYOK-поле с ошибкой должно оставаться обёрнутым
+    // в `b-field` (без label) — иначе Buefy's `FormElementMixin` не
+    // пропагирует `newType="is-danger"` внутрь `b-autocomplete` input.
+    const byokField = wrapper.find(".tr-agent-settings__byok-bfield");
+    expect(byokField.exists()).toBe(true);
+
+    // `.field` — класс корня `b-field`; `is-danger` приходит от `type`-prop.
+    expect(byokField.classes()).toContain("field");
+    expect(byokField.classes()).toContain("is-danger");
+
+    // Текст ошибки остаётся в DOM — `wrapper.text()` его содержит.
+    expect(wrapper.text()).toContain("Выберите модель OpenRouter или укажите свободный идентификатор.");
+
+    // Сам help-render тоже стандартный buefy `.help.is-danger`.
+    const help = wrapper.find(".tr-agent-settings__byok-bfield .help.is-danger");
+    expect(help.exists()).toBe(true);
+  });
+
   it("без ключа: контрол выбора ключа не показывается, кнопки сохранения выключены", async () => {
     const { wrapper } = await mountSettings({ workspaceId: "demo", agentId: "1" });
 
