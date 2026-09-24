@@ -5,9 +5,11 @@
 // fallback instead), Loader, a router-dependent navigation component, and
 // the auto-flip overlay (`ToolbarDropdown`/`MobileFilters`) anchored near
 // the bottom of the viewport so a smoke test can catch obvious regressions
-// in the public drop-down positioning layer.
+// in the public drop-down positioning layer. Two `ModelSelect` instances
+// cover the stage 2.1 catalog picker from the packed tarball: one inline,
+// one under a clipping ancestor so it moves to a Buefy body portal.
 import { ref } from "vue";
-import { Icon, Loader, NavbarMenu, ToolbarDropdown, MobileFilters } from "@iam3xtr/vue";
+import { Icon, Loader, NavbarMenu, ToolbarDropdown, MobileFilters, ModelSelect } from "@iam3xtr/vue";
 import { PageHeader } from "@iam3xtr/vue/navigation";
 
 // `provideIconRegistry(app, registry)` takes the app instance, so it is
@@ -18,6 +20,24 @@ const statusOptions = [
   { value: "active", label: "Active" },
   { value: "archived", label: "Archived" },
 ];
+
+const models = [
+  { id: "gpt", name: "GPT", provider: { icon: "openai" } },
+  { id: "claude", name: "Claude", provider: { icon: "anthropic" } },
+  { id: "mistral", name: "Mistral", provider: { icon: "mistral" } },
+];
+const recommendedModels = ["gpt", "claude"];
+const inlineModelId = ref("gpt");
+const portalModelId = ref("gpt");
+const modelSelectCopy = {
+  triggerPlaceholder: "Choose a model",
+  searchPlaceholder: "Search models",
+  triggerAriaLabel: "Model",
+  searchAriaLabel: "Search models",
+  emptyLabel: "Nothing found",
+  loadingLabel: "Loading models",
+  errorLabel: "Could not load models",
+};
 </script>
 
 <template>
@@ -42,6 +62,27 @@ const statusOptions = [
     <MobileFilters active>
       <p>Filters slot content</p>
     </MobileFilters>
+    <ModelSelect
+      v-model="inlineModelId"
+      class="tr-consumer-flow__model-inline"
+      :models="models"
+      :recommended-models="recommendedModels"
+      v-bind="modelSelectCopy"
+    />
+    <!-- Inline style (not the <style> block) so jsdom's getComputedStyle
+         sees the clipping ancestor and ModelSelect picks a body portal. -->
+    <div
+      class="tr-consumer-flow__clip"
+      style="overflow: hidden"
+    >
+      <ModelSelect
+        v-model="portalModelId"
+        class="tr-consumer-flow__model-portal"
+        :models="models"
+        :recommended-models="recommendedModels"
+        v-bind="modelSelectCopy"
+      />
+    </div>
   </div>
 </template>
 

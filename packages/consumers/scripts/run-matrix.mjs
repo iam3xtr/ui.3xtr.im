@@ -84,15 +84,33 @@ record("pack @iam3xtr/vue", true, path.basename(vueTarball));
 // ---------------------------------------------------------------------
 const fixturesDir = path.join(consumersRoot, "fixtures");
 
-function prepareFixture(name) {
+// Buefy versions the `spa` fixture is installed against. The dropdown
+// overlay and ModelSelect integrate with Buefy's dropdown/autocomplete DOM,
+// which is version-sensitive, so each supported version gets its own
+// isolated install instead of whatever `^3.0.8` resolves to today.
+const BUEFY_VERSIONS = ["3.0.8", "3.0.11", "3.1.0"];
+
+function prepareFixture(name, { buefy, label = name } = {}) {
   const src = path.join(fixturesDir, name);
-  const dest = path.join(workRoot, name);
+  const dest = path.join(workRoot, label);
   cpSync(src, dest, { recursive: true });
   const pkgJsonPath = path.join(dest, "package.json");
   let pkgJson = readFileSync(pkgJsonPath, "utf8");
   pkgJson = pkgJson.replace(/__UI_TARBALL__/g, toFileSpec(uiTarball)).replace(/__VUE_TARBALL__/g, toFileSpec(vueTarball));
+  if (buefy) {
+    const parsed = JSON.parse(pkgJson);
+    parsed.dependencies.buefy = buefy;
+    pkgJson = JSON.stringify(parsed, null, 2) + "\n";
+  }
   writeFileSync(pkgJsonPath, pkgJson);
   return dest;
+}
+
+function assertInstalledBuefy(fixtureDir, expected) {
+  const installed = JSON.parse(readFileSync(path.join(fixtureDir, "node_modules", "buefy", "package.json"), "utf8")).version;
+  if (installed !== expected) {
+    throw new Error(`expected buefy ${expected} to be installed, found ${installed}`);
+  }
 }
 
 function assertNoSymlinkOrLocalSource(fixtureDir) {
@@ -119,24 +137,27 @@ function assertNoSymlinkOrLocalSource(fixtureDir) {
   }
 }
 
-function runFixture(name, verify) {
-  const dir = prepareFixture(name);
+function runFixture(name, verify, { buefy } = {}) {
+  const label = buefy ? `${name}-buefy-${buefy}` : name;
+  const title = buefy ? `consumer: ${name} (buefy ${buefy})` : `consumer: ${name}`;
+  const dir = prepareFixture(name, { buefy, label });
   const install = run("npm", ["install", "--no-audit", "--no-fund"], dir);
   if (install.status !== 0) {
-    record(`consumer: ${name}`, false, "npm install failed:\n" + install.stdout + install.stderr);
+    record(title, false, "npm install failed:\n" + install.stdout + install.stderr);
     return;
   }
   try {
     assertNoSymlinkOrLocalSource(dir);
+    if (buefy) assertInstalledBuefy(dir, buefy);
   } catch (err) {
-    record(`consumer: ${name}`, false, err.message);
+    record(title, false, err.message);
     return;
   }
   try {
     verify(dir);
-    record(`consumer: ${name}`, true);
+    record(title, true);
   } catch (err) {
-    record(`consumer: ${name}`, false, err.message);
+    record(title, false, err.message);
   }
 }
 
@@ -162,7 +183,9 @@ function verifyCheckScript(dir) {
   if (check.status !== 0) throw new Error("check script failed:\n" + check.stdout + check.stderr);
 }
 
-runFixture("spa", verifySpa);
+for (const buefy of BUEFY_VERSIONS) {
+  runFixture("spa", verifySpa, { buefy });
+}
 runFixture("tokens-only", verifyCheckScript);
 runFixture("ssr-hydration", verifyCheckScript);
 

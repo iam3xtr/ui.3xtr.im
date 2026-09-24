@@ -8,6 +8,7 @@
 import { describe, expect, it } from "vitest";
 import { createSSRApp } from "vue";
 import { renderToString } from "@vue/server-renderer";
+import { ModelSelect } from "@iam3xtr/vue";
 import { App } from "../app.mjs";
 
 describe("ssr-hydration fixture: server half", () => {
@@ -17,5 +18,14 @@ describe("ssr-hydration fixture: server half", () => {
     const html = await renderToString(createSSRApp(App));
     expect(html).toContain("tr-loader");
     expect(html).toContain("tr-async-state");
+  });
+
+  it("exposes ModelSelect from the core entry without window/document", () => {
+    // Importing the packed core entry above already evaluated the
+    // ModelSelect SFC module in a server worker; it must be a real
+    // component export, not an entry that only loads in a browser.
+    expect(typeof window).toBe("undefined");
+    expect(ModelSelect).toBeTruthy();
+    expect(typeof ModelSelect.setup === "function" || typeof ModelSelect.render === "function").toBe(true);
   });
 });
