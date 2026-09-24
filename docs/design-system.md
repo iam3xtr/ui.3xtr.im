@@ -122,7 +122,9 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
 `ModelSelect.vue` показывает закрытый button-trigger с выбранной моделью.
 Раскрытый список начинается с отдельной строки поиска на Buefy
 `b-autocomplete`; его результаты, keyboard navigation и selection остаются
-внутри Buefy. Контракт разделяет два состояния:
+внутри Buefy. Список остаётся в потоке документа и увеличивает высоту
+панели, поэтому варианты не выходят за её границы. Контракт разделяет два
+состояния:
 
 - **canonical selected display** — read-only проекция выбора
   (`modelValue` → `modelsStore.getModel(id).name`, либо
