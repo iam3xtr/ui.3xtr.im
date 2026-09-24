@@ -26,8 +26,9 @@ const statusOptions = [
   <Loader size="inline" label="Loading" />
   <NavbarMenu />
 
-  <!-- Near the viewport edge: ToolbarDropdown (inline) and MobileFilters
-       (body-portal) sit there so a future browser smoke run can verify
+  <!-- Near the viewport edge: ToolbarDropdown and MobileFilters (inline
+       here; each moves to a body portal only under a clipping ancestor)
+       sit there so a future browser smoke run can verify
        auto-flip against the published tarball. The jsdom smoke here only
        asserts public-class presence; the actual flip is covered by
        focused tests inside `@iam3xtr/vue`. -->

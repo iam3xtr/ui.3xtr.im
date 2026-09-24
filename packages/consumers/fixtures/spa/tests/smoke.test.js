@@ -42,8 +42,8 @@ describe("consumer SPA fixture", () => {
     expect(wrapper.find(".tr-icon--placeholder").exists()).toBe(false);
     expect(wrapper.find(".mdi-cog").exists()).toBe(true);
 
-    // Stage 1 `.plan` "Floating dropdowns": ToolbarDropdown (inline) and
-    // MobileFilters (body-portal) ship as public exports of `@iam3xtr/vue`
+    // Stage 1 `.plan` "Floating dropdowns": ToolbarDropdown and
+    // MobileFilters (inline unless clipped) ship as public exports of `@iam3xtr/vue`
     // and mount without source aliases. The fixture exercises them next to
     // the viewport edge so a future browser smoke run can catch auto-flip
     // regressions against the published tarball; the unit-level flip,
