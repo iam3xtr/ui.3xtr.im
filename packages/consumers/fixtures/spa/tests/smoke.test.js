@@ -141,3 +141,110 @@ describe("consumer SPA fixture", () => {
     expect(document.querySelector(".tr-dropdown-overlay-portal")).toBeNull();
   });
 });
+
+// Stage 2.2 BYOK modes from the packed tarball. Helpers drive the real
+// DOM only (no component internals): open via ArrowDown on the trigger,
+// type into the single search row, commit a free-form id with Enter.
+async function openPicker(root) {
+  const trigger = root.find("button.tr-model-select__trigger");
+  await trigger.trigger("keydown", { key: "ArrowDown" });
+  await settle();
+  expect(root.classes()).toContain("tr-model-select--open");
+  const popup = document.getElementById(trigger.attributes("aria-controls"));
+  expect(popup).not.toBeNull();
+  return { trigger, popup };
+}
+
+async function pickRecommendation(popup, name) {
+  const option = [...popup.querySelectorAll(".tr-model-select__option")].find((el) =>
+    el.textContent.includes(name),
+  );
+  expect(option).toBeTruthy();
+  option.closest(".dropdown-item").dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  await settle();
+}
+
+async function commitFreeform(popup, query) {
+  const search = popup.querySelector("input:not([type=checkbox])");
+  search.value = query;
+  search.dispatchEvent(new Event("input", { bubbles: true }));
+  await settle();
+  // No consumer search results: the free-form action is offered.
+  expect(popup.querySelector(".tr-model-select__freeform-action")).not.toBeNull();
+  search.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  await settle();
+}
+
+describe("consumer SPA fixture: ModelSelect BYOK modes", () => {
+  it("mode=byok: slot, catalog pick and free-form Enter keep ids exclusive", async () => {
+    const wrapper = await mountApp();
+    const root = wrapper.find(".tr-consumer-flow__model-byok");
+    expect(root.exists()).toBe(true);
+    // No switch outside mode=both.
+    expect(root.find(".tr-model-select__switch").exists()).toBe(false);
+
+    let { trigger, popup } = await openPicker(root);
+    // Consumer-owned byok-key slot is rendered inside the popup.
+    expect(popup.querySelector(".tr-model-select__byok-key .tr-consumer-flow__byok-key-input")).not.toBeNull();
+
+    // Catalog BYOK pick → byokModelId, clears the free-form id.
+    await pickRecommendation(popup, "Claude");
+    expect(wrapper.vm.byokModelId).toBe("claude");
+    expect(wrapper.vm.byokProviderModelId).toBeNull();
+    expect(trigger.text()).toBe("Claude");
+    expect(root.classes()).not.toContain("tr-model-select--open");
+
+    // Free-form id committed with Enter → providerModelId, clears byokModelId.
+    ({ trigger, popup } = await openPicker(root));
+    await commitFreeform(popup, "  acme/model-x  ");
+    expect(wrapper.vm.byokProviderModelId).toBe("acme/model-x");
+    expect(wrapper.vm.byokModelId).toBeNull();
+    expect(trigger.text()).toBe("acme/model-x");
+    expect(root.classes()).not.toContain("tr-model-select--open");
+    expect(document.activeElement).toBe(trigger.element);
+
+    wrapper.unmount();
+  });
+
+  it("mode=both: the switch flips useOwnApiKey without erasing hidden ids", async () => {
+    const wrapper = await mountApp();
+    const root = wrapper.find(".tr-consumer-flow__model-both");
+    expect(root.exists()).toBe(true);
+
+    let { trigger, popup } = await openPicker(root);
+    expect(trigger.text()).toBe("GPT");
+    const switchInput = popup.querySelector(".tr-model-select__switch-input");
+    expect(switchInput).not.toBeNull();
+    expect(switchInput.checked).toBe(false);
+
+    switchInput.click();
+    await settle();
+    expect(wrapper.vm.bothUseOwnApiKey).toBe(true);
+    expect(wrapper.vm.bothModelId).toBe("gpt");
+    expect(wrapper.vm.bothByokModelId).toBe("claude");
+    expect(wrapper.vm.bothProviderModelId).toBeNull();
+    expect(trigger.text()).toBe("Claude");
+
+    // BYOK scope: free-form Enter commits providerModelId, clears only
+    // byokModelId; the hidden regular modelId stays.
+    await commitFreeform(popup, "acme/model-y");
+    expect(wrapper.vm.bothProviderModelId).toBe("acme/model-y");
+    expect(wrapper.vm.bothByokModelId).toBeNull();
+    expect(wrapper.vm.bothModelId).toBe("gpt");
+    expect(trigger.text()).toBe("acme/model-y");
+
+    // Switch back: regular scope shows modelId, BYOK draft is preserved.
+    ({ trigger, popup } = await openPicker(root));
+    const switchAgain = popup.querySelector(".tr-model-select__switch-input");
+    expect(switchAgain.checked).toBe(true);
+    switchAgain.click();
+    await settle();
+    expect(wrapper.vm.bothUseOwnApiKey).toBe(false);
+    expect(wrapper.vm.bothModelId).toBe("gpt");
+    expect(wrapper.vm.bothProviderModelId).toBe("acme/model-y");
+    expect(wrapper.vm.bothByokModelId).toBeNull();
+    expect(trigger.text()).toBe("GPT");
+
+    wrapper.unmount();
+  });
+});

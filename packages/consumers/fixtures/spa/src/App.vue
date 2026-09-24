@@ -7,7 +7,10 @@
 // the bottom of the viewport so a smoke test can catch obvious regressions
 // in the public drop-down positioning layer. Two `ModelSelect` instances
 // cover the stage 2.1 catalog picker from the packed tarball: one inline,
-// one under a clipping ancestor so it moves to a Buefy body portal.
+// one under a clipping ancestor so it moves to a Buefy body portal. Two
+// more cover stage 2.2: `mode="byok"` (catalog BYOK id, free-form id and
+// the consumer-owned `byok-key` slot) and `mode="both"` (the controlled
+// `useOwnApiKey` switch over hidden model/BYOK ids).
 import { ref } from "vue";
 import { Icon, Loader, NavbarMenu, ToolbarDropdown, MobileFilters, ModelSelect } from "@iam3xtr/vue";
 import { PageHeader } from "@iam3xtr/vue/navigation";
@@ -29,8 +32,26 @@ const models = [
 const recommendedModels = ["gpt", "claude"];
 const inlineModelId = ref("gpt");
 const portalModelId = ref("gpt");
-// Exposed so the smoke test can assert the bound `v-model:model-id` value.
-defineExpose({ inlineModelId, portalModelId });
+// Stage 2.2 BYOK instances. Initial values are chosen so the smoke test
+// can prove exclusivity (catalog pick clears a free-form id and vice
+// versa) and that the `both` switch never erases hidden ids.
+const byokModelId = ref(null);
+const byokProviderModelId = ref("vendor/custom-model");
+const bothModelId = ref("gpt");
+const bothByokModelId = ref("claude");
+const bothProviderModelId = ref(null);
+const bothUseOwnApiKey = ref(false);
+// Exposed so the smoke test can assert the bound `v-model:*` values.
+defineExpose({
+  inlineModelId,
+  portalModelId,
+  byokModelId,
+  byokProviderModelId,
+  bothModelId,
+  bothByokModelId,
+  bothProviderModelId,
+  bothUseOwnApiKey,
+});
 const modelSelectCopy = {
   triggerPlaceholder: "Choose a model",
   searchPlaceholder: "Search models",
@@ -39,6 +60,14 @@ const modelSelectCopy = {
   emptyLabel: "Nothing found",
   loadingLabel: "Loading models",
   errorLabel: "Could not load models",
+};
+const byokCopy = {
+  switchLabel: "Use my own API key",
+  switchAriaLabel: "Use my own API key",
+  freeformActionLabel: "Use {id}",
+  freeformActionAriaLabel: "Use typed model id",
+  freeformHint: "Press Enter to use this id",
+  freeformErrorLabel: "Invalid model id",
 };
 </script>
 
@@ -85,6 +114,38 @@ const modelSelectCopy = {
         v-bind="modelSelectCopy"
       />
     </div>
+  </div>
+
+  <!-- Stage 2.2 BYOK modes from the packed tarball. -->
+  <div class="tr-consumer-flow__byok">
+    <ModelSelect
+      v-model:byok-model-id="byokModelId"
+      v-model:provider-model-id="byokProviderModelId"
+      class="tr-consumer-flow__model-byok"
+      mode="byok"
+      :models="models"
+      :recommended-models="recommendedModels"
+      v-bind="{ ...modelSelectCopy, ...byokCopy }"
+    >
+      <template #byok-key>
+        <input
+          class="tr-consumer-flow__byok-key-input"
+          type="password"
+          aria-label="API key"
+        >
+      </template>
+    </ModelSelect>
+    <ModelSelect
+      v-model:model-id="bothModelId"
+      v-model:byok-model-id="bothByokModelId"
+      v-model:provider-model-id="bothProviderModelId"
+      v-model:use-own-api-key="bothUseOwnApiKey"
+      class="tr-consumer-flow__model-both"
+      mode="both"
+      :models="models"
+      :recommended-models="recommendedModels"
+      v-bind="{ ...modelSelectCopy, ...byokCopy }"
+    />
   </div>
 </template>
 
