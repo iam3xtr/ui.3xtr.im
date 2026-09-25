@@ -63,11 +63,14 @@ function packOne(pkgDir, label) {
     encoding: "utf8",
     shell: process.platform === "win32",
   });
-  // `npm pack` also re-runs `prepack` (our own build script) and interleaves
-  // its stdout with the `--json` payload, so pull out just the JSON array.
-  const jsonStart = packOut.indexOf("[");
-  const jsonEnd = packOut.lastIndexOf("]");
-  const [info] = JSON.parse(packOut.slice(jsonStart, jsonEnd + 1));
+  // `prepack` output may contain ANSI sequences such as `[1m` before npm's
+  // final JSON payload. Match the array that starts with an object on its
+  // own line instead of taking the first `[` in the full output.
+  const jsonPayload = packOut.match(/(?:^|\r?\n)(\[\s*\{[\s\S]*\}\s*\])\s*$/);
+  if (!jsonPayload) {
+    throw new Error(`${label}: npm pack did not return a JSON package array`);
+  }
+  const [info] = JSON.parse(jsonPayload[1]);
   return path.join(packCache, info.filename);
 }
 
