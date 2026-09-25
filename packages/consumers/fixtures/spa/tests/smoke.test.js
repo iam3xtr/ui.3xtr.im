@@ -165,6 +165,42 @@ describe("consumer SPA fixture", () => {
         expect(empty.find(".tr-consumer-flow__chat-empty-text").text()).toBe("No messages yet");
         wrapper.unmount();
     });
+
+    // Stage 3 MessageComposer from the packed tarball: the controlled
+    // draft round-trips through v-model, the submit button triggers
+    // `submit` with the trimmed value, and the consumer-supplied
+    // `submit-icon` slot replaces the default glyph. Disabled / busy
+    // guards and keyboard/IME path are covered by the focused tests
+    // inside `@iam3xtr/vue`; here we only assert the public surface.
+    it("MessageComposer renders, round-trips the controlled draft and emits submit on button click", async () => {
+        const wrapper = await mountApp();
+        const root = wrapper.find(".tr-consumer-flow__composer");
+        expect(root.exists()).toBe(true);
+        const textarea = root.find("textarea.tr-message-composer__textarea");
+        expect(textarea.exists()).toBe(true);
+        expect(textarea.attributes("placeholder")).toBe("Write a message");
+        expect(textarea.attributes("aria-label")).toBe("Message body");
+
+        wrapper.vm.composerDraft = "  hello  ";
+        await nextTick();
+        expect(textarea.element.value).toBe("  hello  ");
+
+        const button = root.find("button.tr-message-composer__submit");
+        expect(button.attributes("aria-label")).toBe("Send");
+        await button.trigger("click");
+        await nextTick();
+
+        expect(wrapper.vm.submittedDrafts).toEqual(["hello"]);
+        // Package never clears the consumer's draft — the consumer is
+        // responsible for resetting the v-model after a successful send.
+        expect(wrapper.vm.composerDraft).toBe("  hello  ");
+
+        // Consumer-supplied submit-icon slot replaces the default glyph
+        // without duplicating it.
+        expect(button.find(".tr-consumer-flow__composer-icon").exists()).toBe(true);
+
+        wrapper.unmount();
+    });
 });
 
 // Stage 2.2 BYOK modes from the packed tarball. Helpers drive the real

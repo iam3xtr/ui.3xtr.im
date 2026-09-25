@@ -12,7 +12,7 @@
 // the consumer-owned `byok-key` slot) and `mode="both"` (the controlled
 // `useOwnApiKey` switch over hidden model/BYOK ids).
 import { ref } from "vue";
-import { Icon, Loader, NavbarMenu, ToolbarDropdown, MobileFilters, ModelSelect, ChatHistory } from "@iam3xtr/vue";
+import { Icon, Loader, NavbarMenu, ToolbarDropdown, MobileFilters, ModelSelect, ChatHistory, MessageComposer } from "@iam3xtr/vue";
 import { PageHeader } from "@iam3xtr/vue/navigation";
 
 // `provideIconRegistry(app, registry)` takes the app instance, so it is
@@ -80,6 +80,20 @@ const chatMessages = [
   { id: "c3", text: "Multi\nline message", outgoing: false },
 ];
 const chatEmpty = [];
+
+// Stage 3 MessageComposer from the packed tarball. The fixture proves
+// that the controlled draft round-trips through v-model, that Enter /
+// button submit produce the same submit event, and that consumer-owned
+// `submit-icon` slot replaces the default glyph.
+const composerDraft = ref("");
+const composerCopy = {
+    placeholder: "Write a message",
+    textareaAriaLabel: "Message body",
+    submitAriaLabel: "Send",
+    ariaLabel: "Composer",
+};
+const submittedDrafts = ref([]);
+defineExpose({ composerDraft, submittedDrafts });
 </script>
 
 <template>
@@ -150,6 +164,16 @@ const chatEmpty = [];
         <p class="tr-consumer-flow__chat-empty-text">No messages yet</p>
       </template>
     </ChatHistory>
+    <MessageComposer
+      v-model="composerDraft"
+      class="tr-consumer-flow__composer"
+      v-bind="composerCopy"
+      @submit="(text) => submittedDrafts.push(text)"
+    >
+      <template #submit-icon>
+        <span class="tr-consumer-flow__composer-icon" aria-hidden="true">&#10148;</span>
+      </template>
+    </MessageComposer>
   </div>
 
   <!-- Stage 2.2 BYOK modes from the packed tarball. -->
