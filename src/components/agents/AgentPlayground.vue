@@ -50,31 +50,25 @@
             из-за временной ошибки. Остальные ниже — актуальны.
           </b-message>
 
-          <div
-            v-for="message in agent?.messages"
-            :key="message.id"
-            class="tr-chat-message"
-            :class="{ 'is-outgoing': message.outgoing }"
+          <ChatHistory
+            :messages="agent?.messages ?? []"
+            aria-label="История песочницы"
           >
-            <p>{{ message.text }}</p>
-            <small>{{ message.time }}</small>
-          </div>
+            <template #metadata="{ message }">
+              <small>{{ message.time }}</small>
+            </template>
+          </ChatHistory>
         </div>
 
-        <footer class="tr-conversation-composer">
-          <b-input
-            v-model="draft"
-            class="tr-conversation-composer-input"
-            placeholder="Сообщение для агента"
-            @keyup.enter="sendMessage"
-          />
-          <b-button
-            type="is-primary"
-            icon-left="send"
-            aria-label="Отправить"
-            @click="sendMessage"
-          />
-        </footer>
+        <MessageComposer
+          v-model="draft"
+          class="tr-conversation-composer"
+          placeholder="Сообщение для агента"
+          textarea-aria-label="Сообщение"
+          submit-aria-label="Отправить"
+          aria-label="Поле ввода сообщения"
+          @submit="onComposerSubmit"
+        />
       </article>
 
       <aside
@@ -124,6 +118,8 @@
 import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
+
+import { ChatHistory, MessageComposer } from "@iam3xtr/vue";
 
 import { useAgentsStore } from "../../stores/agents";
 import { useDemoStore } from "../../stores/demo";
@@ -181,10 +177,12 @@ const agent = computed(
   () => agentsStore.getAgent(activeWorkspaceId.value, route.params.id),
 );
 
-function sendMessage() {
-  const text = draft.value.trim();
-
-  if (!text || !agent.value) {
+// Adapter between MessageComposer's `submit` event and the
+// demo-owned send lifecycle: MessageComposer hands us the trimmed
+// draft, we delegate to the agent store and clear the consumer's
+// v-model on success. The package never clears its own draft.
+function onComposerSubmit(text) {
+  if (!agent.value) {
     return;
   }
 

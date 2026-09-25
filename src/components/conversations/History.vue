@@ -10,22 +10,21 @@
         из-за временной ошибки. Остальные ниже — актуальны.
       </b-message>
 
-      <div
-        v-for="message in conversation.messages"
-        :key="message.id"
-        class="tr-chat-message"
-        :class="{ 'is-outgoing': message.outgoing }"
+      <ChatHistory
+        :messages="conversation.messages"
+        aria-label="История диалога"
       >
-        <p>{{ message.text }}</p>
-        <small>
-          {{ message.time }}
+        <template #metadata="{ message }">
+          <small>{{ message.time }}</small>
+        </template>
+        <template #status="{ message }">
           <MessageDeliveryStatus
             v-if="message.delivery"
             :delivery="message.delivery"
             @retry="retryDelivery(message)"
           />
-        </small>
-      </div>
+        </template>
+      </ChatHistory>
     </div>
 
     <b-message
@@ -37,20 +36,15 @@
       {{ sendConflict }}
     </b-message>
 
-    <footer class="tr-conversation-composer">
-      <b-input
-        v-model="draft"
-        class="tr-conversation-composer-input"
-        placeholder="Напишите сообщение"
-        @keyup.enter="sendMessage"
-      />
-      <b-button
-        type="is-primary"
-        icon-left="send"
-        aria-label="Отправить"
-        @click="sendMessage"
-      />
-    </footer>
+    <MessageComposer
+      v-model="draft"
+      class="tr-conversation-composer"
+      placeholder="Напишите сообщение"
+      textarea-aria-label="Сообщение"
+      submit-aria-label="Отправить"
+      aria-label="Поле ввода сообщения"
+      @submit="onComposerSubmit"
+    />
   </template>
 </template>
 
@@ -60,6 +54,8 @@ import {
   computed, ref, watch,
 } from "vue";
 import { useRoute } from "vue-router";
+
+import { ChatHistory, MessageComposer } from "@iam3xtr/vue";
 
 import { useConversationsStore } from "../../stores/conversations";
 import { useDemoStore } from "../../stores/demo";
@@ -92,15 +88,17 @@ import MessageDeliveryStatus from "./MessageDeliveryStatus.vue";
 // tab only adds the `partial` banner over its own message list — the same
 // `b-message` contract as `knowledge/Files.vue`/`agents/AgentPlayground.vue`.
 //
-// Task A10.5: `sendMessage` now returns `{ ok, reason, handoff }` — when the
-// dialog is escalated and owned by a different operator, `ok` is `false`
-// and the draft is deliberately *not* cleared (`draft.value = ""` only runs
-// on `ok: true`), so the composer never silently drops what was typed nor
-// sends it under the wrong operator's name. `sendConflict` renders that
-// refusal as a warning banner right above the composer; the owner it names
-// comes straight from the result's own `handoff` (the same reactive store
-// state `ConversationHeader.vue`'s owner tag already shows), so there is
-// nothing to separately "refresh" — the state shown here already is current.
+// Task A10.5: `conversationsStore.sendMessage` returns `{ ok, reason,
+// handoff }` — when the dialog is escalated and owned by a different
+// operator, `ok` is `false` and the draft is deliberately *not* cleared
+// (`draft.value = ""` only runs on `ok: true`), so the composer never
+// silently drops what was typed nor sends it under the wrong operator's
+// name. `sendConflict` renders that refusal as a warning banner right
+// above the composer; the owner it names comes straight from the
+// result's own `handoff` (the same reactive store state
+// `ConversationHeader.vue`'s owner tag already shows), so there is
+// nothing to separately "refresh" — the state shown here already is
+// current.
 const route = useRoute();
 const demoStore = useDemoStore();
 const conversationsStore = useConversationsStore();
@@ -139,10 +137,14 @@ function describeSendConflict(reason, handoff) {
   return "Сообщение не отправлено: возьмите диалог, чтобы отвечать от своего имени.";
 }
 
-function sendMessage() {
-  const text = draft.value.trim();
-
-  if (!text || !conversation.value) {
+// Adapter between MessageComposer's `submit` event and the
+// demo-owned send lifecycle: the trimmed draft arrives already trimmed
+// from the package, so the adapter only orchestrates store mutation
+// and clears the consumer's `v-model` itself on success — the package
+// never clears its own draft. Conflict/refusal banner logic above
+// already keeps the draft untouched when sending fails.
+function onComposerSubmit(text) {
+  if (!conversation.value) {
     return;
   }
 

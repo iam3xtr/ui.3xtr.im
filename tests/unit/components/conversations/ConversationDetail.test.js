@@ -214,7 +214,7 @@ describe("ConversationDetail.vue — конфликт handoff в композе�
     const store = useConversationsStore();
     const before = store.getConversation("demo", 1, 5).messages.length;
 
-    const input = wrapper.find(".tr-conversation-composer-input input");
+    const input = wrapper.find("textarea.tr-message-composer__textarea");
     await input.setValue("Секретный ответ клиенту");
 
     wrapper.find('[aria-label="Отправить"]').element
@@ -236,7 +236,7 @@ describe("ConversationDetail.vue — конфликт handoff в композе�
     const store = useConversationsStore();
     const before = store.getConversation("demo", 1, 1).messages.length;
 
-    const input = wrapper.find(".tr-conversation-composer-input input");
+    const input = wrapper.find("textarea.tr-message-composer__textarea");
     await input.setValue("Пробуем ответить без claim");
 
     wrapper.find('[aria-label="Отправить"]').element
@@ -255,7 +255,7 @@ describe("ConversationDetail.vue — конфликт handoff в композе�
     const store = useConversationsStore();
     const before = store.getConversation("demo", 3, 6).messages.length;
 
-    const input = wrapper.find(".tr-conversation-composer-input input");
+    const input = wrapper.find("textarea.tr-message-composer__textarea");
     await input.setValue("Разобрался, отвечаю клиенту");
 
     wrapper.find('[aria-label="Отправить"]').element
@@ -280,7 +280,7 @@ describe("ConversationDetail.vue — конфликт handoff в композе�
     await flushPromises();
 
     const before = store.getConversation("demo", 1, 1).messages.length;
-    const input = wrapper.find(".tr-conversation-composer-input input");
+    const input = wrapper.find("textarea.tr-message-composer__textarea");
     await input.setValue("Теперь я веду диалог");
 
     wrapper.find('[aria-label="Отправить"]').element

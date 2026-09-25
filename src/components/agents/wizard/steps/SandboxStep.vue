@@ -42,30 +42,21 @@
       <p v-if="!messages.length" class="tr-muted">
         Ещё нет тестовых сообщений — выберите вопрос выше или напишите свой.
       </p>
-      <div
-        v-for="message in messages"
-        :key="message.id"
-        class="tr-chat-message"
-        :class="{ 'is-outgoing': message.outgoing }"
-      >
-        <p>{{ message.text }}</p>
-      </div>
+      <ChatHistory
+        :messages="messages"
+        aria-label="История песочницы мастера"
+      />
     </div>
 
-    <footer class="tr-conversation-composer">
-      <b-input
-        v-model="customQuestion"
-        class="tr-conversation-composer-input"
-        placeholder="Свой вопрос от имени клиента"
-        @keyup.enter="sendCustom"
-      />
-      <b-button
-        type="is-primary"
-        icon-left="send"
-        aria-label="Отправить"
-        @click="sendCustom"
-      />
-    </footer>
+    <MessageComposer
+      v-model="customQuestion"
+      class="tr-conversation-composer"
+      placeholder="Свой вопрос от имени клиента"
+      textarea-aria-label="Вопрос"
+      submit-aria-label="Отправить"
+      aria-label="Поле ввода своего вопроса"
+      @submit="onComposerSubmit"
+    />
 
     <div class="tr-row mt-4">
       <b-button icon-left="tune-variant" @click="emit('go-to-step', 'rules')">
@@ -80,6 +71,7 @@
 
 <script setup>
 import { computed, reactive, ref } from "vue";
+import { ChatHistory, MessageComposer } from "@iam3xtr/vue";
 import {
   getSandboxNoAnswerReply,
   getSandboxVerificationSignature,
@@ -218,9 +210,13 @@ function ask(text, hasAnswer = true) {
 
 const customQuestion = ref("");
 
-function sendCustom() {
-  const text = customQuestion.value;
-  customQuestion.value = "";
+// Adapter between MessageComposer's `submit` event and the
+// demo-owned send lifecycle. The composer hands us the trimmed
+// draft, we delegate to the same `ask` helper that the quick
+// question buttons use, then reset the consumer's v-model. The
+// package never clears its own draft.
+function onComposerSubmit(text) {
   ask(text, true);
+  customQuestion.value = "";
 }
 </script>

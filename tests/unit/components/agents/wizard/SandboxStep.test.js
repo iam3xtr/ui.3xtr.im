@@ -101,7 +101,7 @@ describe("AgentWizard.vue — шаг «Песочница» (Task A9.6)", () => 
     vi.useFakeTimers();
     const { wrapper } = await mountWizardAtSandbox();
 
-    const input = wrapper.find(".tr-conversation-composer-input input");
+    const input = wrapper.find("textarea.tr-message-composer__textarea");
     await input.setValue("Работаете ли вы в праздники?");
     await input.trigger("keyup.enter");
     await flushPromises();
@@ -116,7 +116,7 @@ describe("AgentWizard.vue — шаг «Песочница» (Task A9.6)", () => 
   it("пустой свой вопрос не отправляется", async () => {
     const { wrapper } = await mountWizardAtSandbox();
 
-    const input = wrapper.find(".tr-conversation-composer-input input");
+    const input = wrapper.find("textarea.tr-message-composer__textarea");
     await input.setValue("   ");
     await input.trigger("keyup.enter");
     await flushPromises();
