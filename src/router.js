@@ -30,6 +30,7 @@ import CollectionFiles from "./components/knowledge/Files.vue";
 import CollectionSettings from "./components/knowledge/Settings.vue";
 import CollectionStatistics from "./components/knowledge/Statistics.vue";
 import DialogsOverlays from "./components/kit/DialogsOverlays.vue";
+import ChatComponents from "./components/kit/ChatComponents.vue";
 import Forms from "./components/kit/Forms.vue";
 import KitShell from "./components/kit/KitShell.vue";
 import NavigationStates from "./components/kit/NavigationStates.vue";
@@ -423,6 +424,14 @@ const router = createRouter({
           path: "dialogs-overlays",
           name: "kit-dialogs-overlays",
           component: DialogsOverlays,
+        },
+        // Stage 3 chat components (.plan этап 3 «Публичные история чата и
+        // composer»): ChatHistory и MessageComposer. Один работающий
+        // диалог + пустое состояние + multiline draft + сводка API.
+        {
+          path: "chat",
+          name: "kit-chat",
+          component: ChatComponents,
         },
         // Handoff.2 (.todo строки 761-828, требование 3): connected
         // application-shell scenario — trVue install order, sidebar with a
