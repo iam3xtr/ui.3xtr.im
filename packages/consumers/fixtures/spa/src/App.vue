@@ -12,7 +12,7 @@
 // the consumer-owned `byok-key` slot) and `mode="both"` (the controlled
 // `useOwnApiKey` switch over hidden model/BYOK ids).
 import { ref } from "vue";
-import { Icon, Loader, NavbarMenu, ToolbarDropdown, MobileFilters, ModelSelect } from "@iam3xtr/vue";
+import { Icon, Loader, NavbarMenu, ToolbarDropdown, MobileFilters, ModelSelect, ChatHistory } from "@iam3xtr/vue";
 import { PageHeader } from "@iam3xtr/vue/navigation";
 
 // `provideIconRegistry(app, registry)` takes the app instance, so it is
@@ -69,6 +69,17 @@ const byokCopy = {
   freeformHint: "Press Enter to use this id",
   freeformErrorLabel: "Invalid model id",
 };
+
+// Stage 3 ChatHistory from the packed tarball. The fixture proves that
+// the consumer-owned slots (body / metadata / status) and the empty
+// state render as documented — the package never injects user-facing
+// text, so the fixture supplies all visible copy itself.
+const chatMessages = [
+  { id: "c1", text: "Hi there", outgoing: false },
+  { id: "c2", text: "Hello back", outgoing: true },
+  { id: "c3", text: "Multi\nline message", outgoing: false },
+];
+const chatEmpty = [];
 </script>
 
 <template>
@@ -114,6 +125,31 @@ const byokCopy = {
         v-bind="modelSelectCopy"
       />
     </div>
+  </div>
+
+  <!-- Stage 2.2 BYOK modes from the packed tarball. -->
+  <div class="tr-consumer-flow__chat">
+    <ChatHistory
+      :messages="chatMessages"
+      class="tr-consumer-flow__chat-history"
+      aria-label="Dialog history"
+    >
+      <template #metadata="{ message }">
+        <span class="tr-consumer-flow__chat-meta">@{{ message.id }}</span>
+      </template>
+      <template #status="{ message }">
+        <span class="tr-consumer-flow__chat-status">{{ message.outgoing ? "sent" : "received" }}</span>
+      </template>
+    </ChatHistory>
+    <ChatHistory
+      :messages="chatEmpty"
+      class="tr-consumer-flow__chat-empty"
+      aria-label="Empty history"
+    >
+      <template #empty>
+        <p class="tr-consumer-flow__chat-empty-text">No messages yet</p>
+      </template>
+    </ChatHistory>
   </div>
 
   <!-- Stage 2.2 BYOK modes from the packed tarball. -->

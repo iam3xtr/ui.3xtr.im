@@ -140,6 +140,31 @@ describe("consumer SPA fixture", () => {
     // The Buefy portal wrapper is removed together with the component.
     expect(document.querySelector(".tr-dropdown-overlay-portal")).toBeNull();
   });
+
+    // Stage 3 ChatHistory from the packed tarball: the consumer-owned
+    // slots surface consumer text; the package ships no built-in copy.
+    it("ChatHistory renders messages, applies the outgoing class, and uses consumer-supplied slot text", async () => {
+        const wrapper = await mountApp();
+        const root = wrapper.find(".tr-consumer-flow__chat-history");
+        expect(root.exists()).toBe(true);
+        const messages = root.findAll(".tr-chat-history__message");
+        expect(messages).toHaveLength(3);
+        expect(messages[0].text()).toContain("Hi there");
+        expect(messages[1].text()).toContain("Hello back");
+        expect(messages[1].classes()).toContain("tr-chat-history__message--outgoing");
+        expect(root.find(".tr-consumer-flow__chat-meta").text()).toBe("@c1");
+        expect(root.find(".tr-consumer-flow__chat-status").text()).toBe("received");
+        wrapper.unmount();
+    });
+
+    it("ChatHistory empty state renders the consumer-supplied empty slot and no built-in copy", async () => {
+        const wrapper = await mountApp();
+        const empty = wrapper.find(".tr-consumer-flow__chat-empty");
+        expect(empty.exists()).toBe(true);
+        expect(empty.find(".tr-chat-history__empty").exists()).toBe(true);
+        expect(empty.find(".tr-consumer-flow__chat-empty-text").text()).toBe("No messages yet");
+        wrapper.unmount();
+    });
 });
 
 // Stage 2.2 BYOK modes from the packed tarball. Helpers drive the real
