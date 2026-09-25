@@ -84,8 +84,12 @@ const chatEmpty = [];
 // Stage 3 MessageComposer from the packed tarball. The fixture proves
 // that the controlled draft round-trips through v-model, that Enter /
 // button submit produce the same submit event, and that consumer-owned
-// `submit-icon` slot replaces the default glyph.
+// `submit-icon` slot replaces the default glyph. A second instance
+// carries a multi-line draft so a browser smoke run can verify the
+// auto-grow geometry and the bounded 100px max-height from
+// `.tr-message-composer__textarea`.
 const composerDraft = ref("");
+const multilineDraft = ref("First line\nSecond line\nThird line");
 const composerCopy = {
     placeholder: "Write a message",
     textareaAriaLabel: "Message body",
@@ -93,7 +97,7 @@ const composerCopy = {
     ariaLabel: "Composer",
 };
 const submittedDrafts = ref([]);
-defineExpose({ composerDraft, submittedDrafts });
+defineExpose({ composerDraft, multilineDraft, submittedDrafts });
 </script>
 
 <template>
@@ -174,6 +178,12 @@ defineExpose({ composerDraft, submittedDrafts });
         <span class="tr-consumer-flow__composer-icon" aria-hidden="true">&#10148;</span>
       </template>
     </MessageComposer>
+    <MessageComposer
+      v-model="multilineDraft"
+      class="tr-consumer-flow__composer-multiline"
+      v-bind="composerCopy"
+      placeholder="Multi-line draft"
+    />
   </div>
 
   <!-- Stage 2.2 BYOK modes from the packed tarball. -->

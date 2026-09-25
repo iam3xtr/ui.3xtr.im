@@ -201,6 +201,19 @@ describe("consumer SPA fixture", () => {
 
         wrapper.unmount();
     });
+
+    // Stage 3 task 3: the second composer carries a multi-line draft.
+    // A real browser smoke run can verify the textarea grew past one
+    // line; jsdom can't render computed styles, so this test pins
+    // the underlying CSS contract in the theme package.
+    it("MessageComposer multi-line draft is reflected verbatim in the textarea", async () => {
+        const wrapper = await mountApp();
+        const root = wrapper.find(".tr-consumer-flow__composer-multiline");
+        expect(root.exists()).toBe(true);
+        const textarea = root.find("textarea.tr-message-composer__textarea");
+        expect(textarea.element.value).toBe("First line\nSecond line\nThird line");
+        wrapper.unmount();
+    });
 });
 
 // Stage 2.2 BYOK modes from the packed tarball. Helpers drive the real
