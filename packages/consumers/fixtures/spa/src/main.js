@@ -1,6 +1,7 @@
 import { createApp } from "vue";
 import { createRouter, createWebHistory } from "vue-router";
 import Buefy from "buefy";
+import "@mdi/font/css/materialdesignicons.css";
 import { provideIconRegistry } from "@iam3xtr/vue";
 import App from "./App.vue";
 
