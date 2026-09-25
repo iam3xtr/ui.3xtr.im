@@ -130,7 +130,15 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
 
 ### ModelSelect — жизненный цикл выбора
 
-`ModelSelect.vue` показывает закрытый button-trigger с выбранной моделью.
+Публичный `ModelSelect` из `@iam3xtr/vue` уже реализован в package sources:
+он использует единый `b-dropdown` и общий overlay, поэтому весь popup
+перекрывает следующий контент и меняет направление у края viewport.
+Режимы `model`/`byok`/`both`, controlled values и consumer-owned copy
+описаны в `packages/vue/README.md`. Root demo пока использует отдельный
+`src/components/agents/ModelSelect.vue`; его миграция на опубликованный
+компонент и exact pins входит в следующий этап.
+
+Текущий demo `ModelSelect.vue` показывает закрытый button-trigger с выбранной моделью.
 Раскрытый список начинается с отдельной строки поиска на Buefy
 `b-autocomplete`; его результаты, keyboard navigation и selection остаются
 внутри Buefy. Список остаётся в потоке документа и увеличивает высоту
