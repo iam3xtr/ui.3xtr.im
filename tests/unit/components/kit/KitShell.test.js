@@ -183,3 +183,31 @@ describe("kit/KitShell.vue — маршруты и совместимый вхо
     expect(demoStore.mode).toBe("error");
   });
 });
+
+describe("kit/chat — рабочие состояния публичных компонентов", () => {
+  it("показывает сообщения, consumer slots, пустую историю и многострочный draft", async () => {
+    const { wrapper } = await mountKitShell("/kit/chat");
+    const chat = wrapper.findComponent(ChatComponents);
+
+    expect(chat.findAll(".tr-chat-kit .tr-chat-history__message")).toHaveLength(4);
+    expect(chat.find(".tr-chat-history__message--outgoing").exists()).toBe(true);
+    expect(chat.find(".tr-chat-kit__meta").text()).toContain("agent");
+    expect(chat.find(".tr-chat-kit__status").text()).toBe("доставлено");
+    expect(chat.find(".tr-chat-kit__empty-text").text()).toContain("Сообщений ещё нет");
+    expect(chat.find(".tr-chat-kit__composer-multiline textarea").element.value).toContain("\n");
+  });
+
+  it("отправляет trimmed draft и очищает его только через consumer", async () => {
+    const { wrapper } = await mountKitShell("/kit/chat");
+    const chat = wrapper.findComponent(ChatComponents);
+    const textarea = chat.find(".tr-chat-kit__composer textarea");
+
+    await textarea.setValue("  новый ответ  ");
+    await chat.find("form.tr-chat-kit__composer").trigger("submit");
+
+    const messages = chat.findAll(".tr-chat-kit .tr-chat-history__message");
+    expect(messages).toHaveLength(5);
+    expect(messages.at(-1).text()).toContain("новый ответ");
+    expect(textarea.element.value).toBe("");
+  });
+});
