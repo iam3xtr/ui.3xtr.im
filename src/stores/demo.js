@@ -68,12 +68,13 @@ const DEFAULTS = Object.freeze({
   longLabels: false,
   denseData: false,
   resourceMenuSize: /** @type {ResourceMenuSize} */ ("compact"),
-  // Этап 4, задача Navbar: по умолчанию действие «Создать агента» скрыто и в
-  // desktop actions, и в мобильном меню, поэтому в Navbar нет входа в мастер
-  // создания агента; вернуть его можно переключателем в Demo-панели (её
-  // открывает Demo trigger). Явное значение `false` здесь намеренно: до появления
-  // переключателя кнопка была постоянной (Task A9.2), и прежнее поведение
-  // не должно прорасти в новые сессии через persisted storage.
+  // Stage 4, Navbar task: by default the "Create agent" action is hidden in
+  // both desktop actions and the mobile menu, so the Navbar has no entry point
+  // into the agent creation wizard; it can be re-enabled with the toggle in the
+  // Demo panel (opened by the Demo trigger). The explicit `false` is
+  // intentional: before the toggle existed the button was permanent (Task
+  // A9.2), and that behaviour must not leak into new sessions via persisted
+  // storage.
   showCreateAgentAction: false,
 });
 

@@ -111,10 +111,10 @@ describe("Sidebar.vue — стабильная ширина и labels меню (
   });
 });
 
-// Этап 4 `.plan`: компактная карточка тарифа в Sidebar — TariffSummaryCard
-// получает не полный `activeWorkspaceTariff`, а проекцию в
-// `COMPACT_TARIFF_LIMIT_ORDER`, без `zero`/`unknown`/`error`. Полный тариф
-// и API `TariffSummaryCard` не меняются.
+// Stage 4 `.plan`: compact tariff card in the Sidebar — TariffSummaryCard
+// receives not the full `activeWorkspaceTariff` but a projection in
+// `COMPACT_TARIFF_LIMIT_ORDER`, excluding `zero`/`unknown`/`error`. The full
+// tariff and the `TariffSummaryCard` API are unchanged.
 describe("Sidebar.vue — компактная карточка тарифа (этап 4)", () => {
   it("TariffSummaryCard получает проекцию с не более чем тремя лимитами", async () => {
     const { wrapper } = await mountSidebar();
@@ -157,8 +157,8 @@ describe("Sidebar.vue — компактная карточка тарифа (э
     const compactLimits = card.props("tariff").limits;
     const sourceLimits = store.activeWorkspaceTariff.limits;
 
-    // Ожидаемые ключи выводятся независимо от selectCompactTariffLimits:
-    // видимые лимиты store в COMPACT_TARIFF_LIMIT_ORDER, первые три.
+    // Expected keys are derived independently of selectCompactTariffLimits:
+    // the store's visible limits in COMPACT_TARIFF_LIMIT_ORDER, first three.
     const expectedKeys = COMPACT_TARIFF_LIMIT_ORDER.filter((key) => {
       const source = sourceLimits.find((limit) => limit.key === key);
       return source && !["zero", "unknown", "error"].includes(source.state);
@@ -184,7 +184,7 @@ describe("Sidebar.vue — компактная карточка тарифа (э
   });
 
   it("полный activeWorkspaceTariff в store не меняется проекцией: 7 лимитов и исходные caption", async () => {
-    // Эталон берётся из отдельного, нигде не смонтированного store.
+    // The reference comes from a separate store that is never mounted.
     const referencePinia = createPinia();
     setActivePinia(referencePinia);
     const reference = JSON.parse(
@@ -215,7 +215,7 @@ describe("Sidebar.vue — компактная карточка тарифа (э
     const card = wrapper.findComponent({ name: "TariffSummaryCard" });
     expect(card.exists()).toBe(true);
     expect(card.props("tariff").limits).toEqual([]);
-    // Полный fallback-тариф при этом остаётся из 7 лимитов в состоянии unknown.
+    // The full fallback tariff still has 7 limits in the unknown state.
     expect(store.activeWorkspaceTariff.limits).toHaveLength(7);
     expect(store.activeWorkspaceTariff.limits.every((limit) => limit.state === "unknown")).toBe(true);
   });

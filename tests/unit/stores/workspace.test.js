@@ -199,11 +199,11 @@ describe("stores/workspace — аудит пространства (Task A10.8)"
 });
 
 
-// Этап 4 `.plan`: focused unit-проверки компактной проекции лимитов тарифа
-// для карточки Sidebar. Helper использует ресурсные метаданные и formatter-ы
-// из того же модуля, поэтому проверяем сквозной результат: порядок, фильтр
-// «не показывать zero/unknown/error», поведение «меньше двух — выдать всё»,
-// пересборку caption и сохранение `progress`.
+// Stage 4 `.plan`: focused unit checks for the compact tariff limit
+// projection used by the Sidebar card. The helper relies on resource metadata
+// and formatters from the same module, so we check the end-to-end result:
+// order, the "hide zero/unknown/error" filter, the "fewer than two — return
+// all" behaviour, caption rebuilding and `progress` preservation.
 
 /**
  * @typedef {import("../../../src/stores/workspace.js").WorkspaceTariffLimit} WorkspaceTariffLimit

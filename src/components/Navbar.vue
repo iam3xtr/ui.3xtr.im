@@ -74,9 +74,9 @@
         error списка каталога — здесь же на мобильном viewport, где нет
         отдельного `.tr-topbar__actions`. Ведёт в общий route-driven мастер,
         не в отдельную форму — см. `src/components/agents/AgentWizard.vue`.
-        Этап 4: по умолчанию скрыто, kit-only переключатель
-        `useDemoStore().showCreateAgentAction` открывает оба входа
-        (desktop + mobile) синхронно вместе с относящимся разделителем.
+        Stage 4: hidden by default; the kit-only toggle
+        `useDemoStore().showCreateAgentAction` reveals both entry points
+        (desktop + mobile) together, along with the related separator.
       -->
       <template v-if="demoShowCreateAgentAction">
         <b-dropdown-item
@@ -192,13 +192,13 @@
 
     <div v-if="!minimal" class="tr-topbar__actions">
       <!--
-        Постоянное действие «Создать агента» (Stage A9, Task A9.2): не
-        зависит от текущего маршрута/фильтра/пагинации — открывает общий
-        route-driven мастер (`agent-wizard`), не отдельную форму. Этап 4:
-        по умолчанию скрыто в desktop actions и mobile menu, kit-only
-        переключатель `useDemoStore().showCreateAgentAction` открывает оба
-        входа синхронно вместе с относящимся разделителем. На минимальном
-        (auth) navbar не показывается в принципе.
+        "Create agent" action (Stage A9, Task A9.2): independent of the
+        current route/filter/pagination — opens the shared route-driven
+        wizard (`agent-wizard`), not a separate form. Stage 4: hidden by
+        default in both desktop actions and the mobile menu; the kit-only
+        toggle `useDemoStore().showCreateAgentAction` reveals both entry
+        points together, along with the related separator. Never shown on
+        the minimal (auth) navbar.
       -->
       <b-button
         v-if="demoShowCreateAgentAction"
@@ -216,11 +216,11 @@
       >
         <template #trigger>
           <!--
-            Этап 4: trigger Demo-панели становится icon-only — текстовая
-            подпись «Demo» убрана, чтобы не раздувать правую часть Navbar
-            на промежуточных ширинах. Доступное имя и tooltip с названием
-            панели сохраняются через `aria-label`/`title`, чтобы AT и
-            пользователи клавиатуры по-прежнему видели назначение кнопки.
+            Stage 4: the Demo panel trigger is icon-only — the "Demo" text
+            label is removed so the right side of the Navbar does not grow
+            at intermediate widths. The accessible name and the panel-name
+            tooltip are kept via `aria-label`/`title`, so assistive tech and
+            keyboard users still see what the button does.
           -->
           <button
             class="tr-navbar-trigger tr-demo-panel-trigger"
@@ -287,12 +287,12 @@
         </b-dropdown-item>
 
         <!--
-          Этап 4: kit-only переключатель видимости постоянного действия
-          «Создать агента» (Task A9.2). По умолчанию скрыто в desktop
-          actions и mobile menu, чтобы Navbar на промежуточных ширинах не
-          раздувал правую часть и не вытеснял вкладки. Один switch
-          одновременно открывает оба входа в мастер; minimal navbar
-          переключатель не показывает, так как и самих действий там нет.
+          Stage 4: kit-only visibility toggle for the "Create agent" action
+          (Task A9.2). Hidden by default in desktop actions and the mobile
+          menu so the Navbar does not grow on the right and push out the
+          tabs at intermediate widths. A single switch reveals both wizard
+          entry points at once; the minimal navbar does not show the toggle
+          because it has no such actions.
         -->
         <b-dropdown-item custom :focusable="false">
           <div class="tr-dropdown-setting">

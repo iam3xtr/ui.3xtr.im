@@ -17,10 +17,10 @@ const workspaces = [
 
 const user = { firstName: "Иван", lastName: "Петров", role: "Владелец" };
 
-// Демо-стор persist'ит состояние в `localStorage` кита; без изоляции
-// включённый в одном тесте флаг (например, showCreateAgentAction) протекает в
-// следующие. Как в tests/unit/stores/demo.test.js, каждому тесту — свежее
-// in-memory хранилище.
+// The demo store persists its state to the kit's `localStorage`; without
+// isolation a flag enabled in one test (e.g. showCreateAgentAction) leaks into
+// the following ones. As in tests/unit/stores/demo.test.js, each test gets a
+// fresh in-memory storage.
 function createMemoryStorage() {
   const map = new Map();
   return {
@@ -216,11 +216,11 @@ describe("Navbar.vue — опциональное resource-меню (Task A8.1)"
 // Task A9.2: постоянное действие «Создать агента» — доступно на любом
 // кабинетном экране (полный Navbar), отсутствует на auth/служебных
 // маршрутах (минимальный Navbar), ведёт в общий route-driven мастер.
-// Этап 4: видимость управляется kit-only переключателем
-// `useDemoStore().showCreateAgentAction` (по умолчанию `false`) — оба
-// входа (desktop-кнопка и пункт mobile-меню) синхронно скрыты или показаны
-// вместе с относящимся разделителем, на минимальном navbar переключатель
-// и сами действия не появляются.
+// Stage 4: visibility is driven by the kit-only toggle
+// `useDemoStore().showCreateAgentAction` (default `false`) — both entry
+// points (desktop button and mobile menu item) are hidden or shown together
+// with the related separator; on the minimal navbar neither the toggle nor
+// the actions appear.
 describe("Navbar.vue — действие «Создать агента» (Task A9.2 + этап 4)", () => {
   it("по умолчанию скрыто и на desktop actions, и в mobile menu", async () => {
     const { wrapper } = await mountNavbar();
@@ -266,9 +266,9 @@ describe("Navbar.vue — действие «Создать агента» (Task 
       .find((btn) => btn.text().includes("Создать агента"))).toBeFalsy();
     expect(wrapper.findAll(".tr-mobile-nav .dropdown-item")
       .find((item) => item.text().includes("Создать агента"))).toBeFalsy();
-    // «Создать агента» — это первая пара в mobile menu над основной навигацией,
-    // её исчезновение уносит и относящийся разделитель, поэтому первая
-    // оставшаяся `dropdown-item` уже относится к основной навигации.
+    // "Create agent" is the first pair in the mobile menu above the main
+    // navigation; removing it also removes the related separator, so the
+    // first remaining `dropdown-item` already belongs to the main navigation.
     const firstMobileItem = wrapper.findAll(".tr-mobile-nav .dropdown-item")[0];
     expect(firstMobileItem?.text()).not.toContain("Создать агента");
   });
@@ -314,9 +314,9 @@ describe("Navbar.vue — действие «Создать агента» (Task 
   });
 });
 
-// Этап 4: trigger Demo-панели становится icon-only — текстовая подпись
-// «Demo» убрана, чтобы не раздувать правую часть Navbar; доступное имя и
-// tooltip с названием панели сохраняются.
+// Stage 4: the Demo panel trigger becomes icon-only — the "Demo" text label
+// is removed so the right side of the Navbar does not grow; the accessible
+// name and the panel-name tooltip are kept.
 describe("Navbar.vue — icon-only Demo trigger (этап 4)", () => {
   it("текстовая подпись «Demo» отсутствует, иконка и доступное имя сохранены", async () => {
     const { wrapper } = await mountNavbar();

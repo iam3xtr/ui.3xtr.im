@@ -76,12 +76,12 @@ const route = useRoute();
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceTariff } = storeToRefs(workspaceStore);
 
-// Этап 4 `.plan`: компактная проекция `activeWorkspaceTariff` для карточки
-// Sidebar — берём первые три подходящих лимита в фиксированном порядке
+// Stage 4 `.plan`: compact projection of `activeWorkspaceTariff` for the
+// Sidebar card — takes the first three eligible limits in a fixed order
 // (`agents`, `conversations`, `members`, `objects`, `collections`,
-// `channels`, `extracted`), без `zero`/`unknown`/`error`. Полный тариф
-// остаётся без изменений для экранов тарифов/расходов; public
-// `TariffSummaryCard` API тоже не меняется.
+// `channels`, `extracted`), excluding `zero`/`unknown`/`error`. The full
+// tariff stays unchanged for the plans/usage screens; the public
+// `TariffSummaryCard` API is unchanged too.
 const compactTariff = computed(() => ({
   ...activeWorkspaceTariff.value,
   limits: selectCompactTariffLimits(activeWorkspaceTariff.value.limits),

@@ -333,12 +333,12 @@ export function getLimitsNeedingAttention(limits, threshold = 90) {
 }
 
 /**
- * Фиксированный порядок лимитов в компактной карточке тарифа Sidebar
- * (этап 4 `.plan`): именно в этой очерёдности demo consumer отбирает
- * первые подходящие значения, чтобы карточка оставалась стабильной и
- * предсказуемой между workspace и не подменялась «случайными» ключами.
- * Полный `activeWorkspaceTariff.limits` сохраняет production-порядок из
- * `RESOURCE_LIMIT_KEYS` — компактная проекция использует свой.
+ * Fixed limit order for the compact Sidebar tariff card (Stage 4 `.plan`):
+ * the demo consumer picks the first eligible values in exactly this order so
+ * the card stays stable and predictable across workspaces and is not filled
+ * with "random" keys. The full `activeWorkspaceTariff.limits` keeps the
+ * production order from `RESOURCE_LIMIT_KEYS`; the compact projection uses
+ * its own.
  * @type {string[]}
  */
 export const COMPACT_TARIFF_LIMIT_ORDER = [
@@ -352,21 +352,21 @@ export const COMPACT_TARIFF_LIMIT_ORDER = [
 ];
 
 /**
- * Состояния лимита, которые карточка Sidebar не показывает вовсе
- * (этап 4 `.plan`): «не входит в тариф», «значение уточняется» и
- * «временная ошибка» не несут полезной информации для компактного
- * вида и вводят в заблуждение относительно реальных остатков.
- * `unlimited` допускается, если попал в первую тройку подходящих.
+ * Limit states the Sidebar card never shows (Stage 4 `.plan`): "not
+ * included in the plan", "value pending" and "temporary error" carry no
+ * useful information in the compact view and are misleading about the
+ * actual remaining quota. `unlimited` is allowed if it lands in the first
+ * three eligible limits.
  * @type {WorkspaceLimitState[]}
  */
 const COMPACT_TARIFF_HIDDEN_STATES = ["zero", "unknown", "error"];
 
 /**
- * Caption для одного отобранного лимита в компактной карточке (этап 4
- * `.plan`): период из полного caption намеренно не переносится — карточка
- * Sidebar не дублирует контекст «в этом месяце», его несёт полный экран
- * тарифов/расходов. Статус исчерпания и единицы измерения сохраняются;
- * `unlimited` превращается в «Без ограничений» без периода.
+ * Caption for a single selected limit in the compact card (Stage 4
+ * `.plan`): the period from the full caption is intentionally dropped — the
+ * Sidebar card does not repeat the "в этом месяце" context, which the full
+ * plans/usage screen carries. The exhausted status and units are kept;
+ * `unlimited` becomes "Без ограничений" with no period.
  *
  * @param {WorkspaceTariffLimit} limit
  * @returns {string}
@@ -385,22 +385,21 @@ function buildCompactLimitCaption(limit) {
     return limit.state === "exhausted" ? `${base} — лимит исчерпан` : base;
   }
 
-  // Любое состояние, прошедшее фильтр, но не обработанное выше, отдаёт
-  // исходный caption как есть, чтобы compact-карточка не выдумывала
-  // формулировку для непредусмотренной ветви.
+  // Any state that passed the filter but is not handled above returns the
+  // original caption as is, so the compact card does not invent wording for
+  // an unexpected branch.
   return limit.caption;
 }
 
 /**
- * Компактная проекция полного `WorkspaceTariff.limits` для карточки
- * Sidebar (этап 4 `.plan`): первые три подходящих в
- * `COMPACT_TARIFF_LIMIT_ORDER`, без `zero`/`unknown`/`error`, но
- * `unlimited` допускается. Если подходящих меньше двух, выдаём все
- * имеющиеся (без выдуманных показаний) — узкая карточка не должна
- * скрывать единственный реальный сигнал «что-то измеримо». Прочие
- * поля лимита (`label`, `key`, `progress`, `used`, `limit`) сохраняются,
- * `caption` переписывается компактным форматом через
- * `buildCompactLimitCaption`.
+ * Compact projection of the full `WorkspaceTariff.limits` for the Sidebar
+ * card (Stage 4 `.plan`): the first three eligible limits in
+ * `COMPACT_TARIFF_LIMIT_ORDER`, excluding `zero`/`unknown`/`error`, while
+ * `unlimited` is allowed. If fewer than two are eligible, all available ones
+ * are returned (no invented readings) — the narrow card must not hide the
+ * only real "something is measurable" signal. Other limit fields (`label`,
+ * `key`, `progress`, `used`, `limit`) are preserved; `caption` is rewritten
+ * in the compact format via `buildCompactLimitCaption`.
  *
  * @param {WorkspaceTariffLimit[]} limits
  * @returns {WorkspaceTariffLimit[]}
