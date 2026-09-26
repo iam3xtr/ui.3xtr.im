@@ -71,6 +71,7 @@
                   <b-icon icon="robot-outline" size="is-medium" />
                 </span>
                 <b-tag
+                  class="tr-status-tag"
                   :type="statusProjection(agent).badgeType"
                   size="is-small"
                 >

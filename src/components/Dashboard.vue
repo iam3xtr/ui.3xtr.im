@@ -154,7 +154,7 @@
             </b-table-column>
 
             <b-table-column field="status" label="Статус" v-slot="{ row }">
-              <b-tag :type="agentBadge(row).badgeType">
+              <b-tag class="tr-status-tag" :type="agentBadge(row).badgeType">
                 {{ agentBadge(row).badgeLabel }}
               </b-tag>
             </b-table-column>
@@ -186,7 +186,10 @@
             </b-table-column>
 
             <b-table-column field="status" label="Статус" v-slot="{ row }">
-              <b-tag :type="row.status === 'Активен' ? 'is-primary' : undefined">
+              <b-tag
+                class="tr-status-tag"
+                :type="row.status === 'Активен' ? 'is-primary' : undefined"
+              >
                 {{ row.status }}
               </b-tag>
             </b-table-column>

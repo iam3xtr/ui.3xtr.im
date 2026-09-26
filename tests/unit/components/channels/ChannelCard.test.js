@@ -38,6 +38,7 @@ describe("ChannelCard.vue — статус checking (Task A9.7 post-review fix)"
     const wrapper = mountCard(makeChannel());
 
     expect(wrapper.find(".tag").text()).toBe("Проверяется");
+    expect(wrapper.find(".tag").classes()).toContain("tr-status-tag");
     expect(wrapper.text()).not.toContain("checking");
   });
 

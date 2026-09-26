@@ -582,3 +582,24 @@ describe("Dashboard.vue — длинные значения плиток ост�
     expect(header.element.lastElementChild.classList.contains("tr-dashboard-icon")).toBe(true);
   });
 });
+
+describe("Dashboard.vue — статусные tags в таблицах «Последние…» ограничены ячейкой", () => {
+  it("оба статусных tag несут .tr-status-tag, полный текст и не содержат иконок", async () => {
+    const { wrapper } = await mountDashboard({ workspaceId: "demo" });
+
+    const agentsTable = wrapper.findAll("table").find((t) => t.text().includes("Название"));
+    const conversationsTable = wrapper.findAll("table").find((t) => t.text().includes("Контакт"));
+
+    for (const table of [agentsTable, conversationsTable]) {
+      const tags = table.findAll("tbody .tag");
+      expect(tags.length).toBeGreaterThan(0);
+      for (const tag of tags) {
+        // The theme's `.tag.tr-status-tag` rule wraps a long status inside
+        // the cell; the full text stays rendered and is the accessible name.
+        expect(tag.classes()).toContain("tr-status-tag");
+        expect(tag.text().length).toBeGreaterThan(0);
+        expect(tag.find(".icon").exists()).toBe(false);
+      }
+    }
+  });
+});

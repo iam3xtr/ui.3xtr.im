@@ -181,6 +181,21 @@ describe("Agents.vue — S2 presentation-статус карточки (Task A9.
     expect(card.find(".tag").text()).toBe("Не отвечает: ошибка подключения");
   });
 
+  it("длинный статус карточки — текстовый .tr-status-tag без иконок, иконка карточки сохранена", async () => {
+    const { wrapper } = await mountAgents();
+
+    const card = wrapper.findAll(".tr-entity-card")
+      .find((c) => c.text().includes("Служба поддержки корпоративных клиентов"));
+    const tag = card.find(".tr-entity-card__header .tag");
+
+    // The theme's `.tag.tr-status-tag` rule wraps the long status inside the
+    // card header; the full text stays rendered as the tag's accessible name.
+    expect(tag.classes()).toContain("tr-status-tag");
+    expect(tag.text()).toBe("Не отвечает: ошибка подключения");
+    expect(tag.find(".icon").exists()).toBe(false);
+    expect(card.find(".tr-entity-card__header .tr-entity-card__icon .icon").exists()).toBe(true);
+  });
+
   it("черновик с заполненной инструкцией показывается как «Готов к запуску», не просто «Черновик»", async () => {
     const { wrapper } = await mountAgents();
 
