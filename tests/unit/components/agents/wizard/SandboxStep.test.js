@@ -72,7 +72,7 @@ describe("AgentWizard.vue — шаг «Песочница» (Task A9.6)", () => 
     await scenarioButton.trigger("click");
     await flushPromises();
 
-    expect(wrapper.find(".tr-chat-message.is-outgoing").text()).toBe("Какой у вас график работы по выходным?");
+    expect(wrapper.find(".tr-chat-history__message--outgoing").text()).toBe("Какой у вас график работы по выходным?");
     expect(sendSpy).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(500);
@@ -103,10 +103,10 @@ describe("AgentWizard.vue — шаг «Песочница» (Task A9.6)", () => 
 
     const input = wrapper.find("textarea.tr-message-composer__textarea");
     await input.setValue("Работаете ли вы в праздники?");
-    await input.trigger("keyup.enter");
+    await input.trigger("keydown", { key: "Enter" });
     await flushPromises();
 
-    expect(wrapper.find(".tr-chat-message.is-outgoing").text()).toBe("Работаете ли вы в праздники?");
+    expect(wrapper.find(".tr-chat-history__message--outgoing").text()).toBe("Работаете ли вы в праздники?");
     expect(input.element.value).toBe("");
 
     vi.advanceTimersByTime(500);
@@ -118,10 +118,10 @@ describe("AgentWizard.vue — шаг «Песочница» (Task A9.6)", () => 
 
     const input = wrapper.find("textarea.tr-message-composer__textarea");
     await input.setValue("   ");
-    await input.trigger("keyup.enter");
+    await input.trigger("keydown", { key: "Enter" });
     await flushPromises();
 
-    expect(wrapper.find(".tr-chat-message").exists()).toBe(false);
+    expect(wrapper.find(".tr-chat-history__message").exists()).toBe(false);
   });
 
   it("«Изменить правила»/«Изменить знания» переводят draft на нужный шаг", async () => {

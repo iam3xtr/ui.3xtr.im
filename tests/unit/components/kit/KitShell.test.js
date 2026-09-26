@@ -12,6 +12,7 @@ import Tables from "../../../../src/components/kit/Tables.vue";
 import NavigationStates from "../../../../src/components/kit/NavigationStates.vue";
 import DialogsOverlays from "../../../../src/components/kit/DialogsOverlays.vue";
 import ApplicationShell from "../../../../src/components/kit/ApplicationShell.vue";
+import ChatComponents from "../../../../src/components/kit/ChatComponents.vue";
 import { navbarMenuKey } from "@iam3xtr/vue";
 import { useDemoStore } from "../../../../src/stores/demo.js";
 
@@ -49,6 +50,14 @@ function buildRouter() {
       { path: "/knowledge", name: "knowledge", component: RouteStub },
       { path: "/workspace", name: "workspace", component: RouteStub },
       { path: "/workspace/plans", name: "workspace-plans", component: RouteStub },
+      // `ChatComponents.vue` links to the live chat screens by route name.
+      { path: "/agents/new/:step?", name: "agent-wizard", component: RouteStub },
+      { path: "/agents/:id", name: "agent", component: RouteStub },
+      {
+        path: "/conversations/:agentId/:conversationId",
+        name: "conversation",
+        component: RouteStub,
+      },
       {
         path: "/kit",
         component: KitShell,
@@ -66,6 +75,7 @@ function buildRouter() {
             name: "kit-dialogs-overlays",
             component: DialogsOverlays,
           },
+          { path: "chat", name: "kit-chat", component: ChatComponents },
           {
             path: "application-shell",
             name: "kit-application-shell",
@@ -133,6 +143,7 @@ describe("kit/KitShell.vue — маршруты и совместимый вхо
         name: "kit-dialogs-overlays",
         component: DialogsOverlays,
       },
+      { path: "/kit/chat", name: "kit-chat", component: ChatComponents },
       {
         path: "/kit/application-shell",
         name: "kit-application-shell",
@@ -153,7 +164,7 @@ describe("kit/KitShell.vue — маршруты и совместимый вхо
     // NavbarTabs is teleported into the shared target — exactly one owner
     // per route, per Task A8.6's acceptance criteria.
     const links = target.querySelectorAll(".tr-navbar-tabs__link");
-    expect(links.length).toBe(6);
+    expect(links.length).toBe(7);
 
     const activeLinks = target.querySelectorAll(".tr-navbar-tabs__link.router-link-active");
     expect(activeLinks.length).toBe(1);

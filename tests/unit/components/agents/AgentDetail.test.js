@@ -115,6 +115,6 @@ describe("AgentDetail.vue — demo-состояния (Task A7.5)", () => {
     const { wrapper } = await mountAgentDetail({ demoMode: "partial" });
 
     expect(wrapper.find(".message.is-warning").exists()).toBe(true);
-    expect(wrapper.find(".tr-conversation-messages").exists()).toBe(true);
+    expect(wrapper.find(".tr-chat-history__message").exists()).toBe(true);
   });
 });

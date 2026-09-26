@@ -76,7 +76,11 @@ async function mountConversationDetail({ agentId = "1", conversationId = "1", de
   // `advanceTimersByTimeAsync(2000)` rather than one delay window: mounting
   // the shell directly makes its own `<RouterView>` render itself once more
   // before reaching the real child tab, doubling up `useSimulatedLoading`.
-  vi.useFakeTimers();
+  // Only the timeout APIs are faked: a faked `Date` would jump 2s ahead
+  // during mount, and once real timers return, Vue's DOM-event invoker
+  // (`e._vts <= invoker.attached`) would silently drop the composer's
+  // input/submit events for those 2s.
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   const wrapper = mount(ConversationDetail, {
     global: {
       plugins: [pinia, router, Buefy],
@@ -129,7 +133,7 @@ describe("ConversationDetail.vue — demo-состояния (Task A7.5)", () =>
     const { wrapper } = await mountConversationDetail({ demoMode: "partial" });
 
     expect(wrapper.find(".message.is-warning").exists()).toBe(true);
-    expect(wrapper.find(".tr-conversation-messages").exists()).toBe(true);
+    expect(wrapper.find(".tr-chat-history__message").exists()).toBe(true);
   });
 });
 
@@ -217,8 +221,7 @@ describe("ConversationDetail.vue — конфликт handoff в композе�
     const input = wrapper.find("textarea.tr-message-composer__textarea");
     await input.setValue("Секретный ответ клиенту");
 
-    wrapper.find('[aria-label="Отправить"]').element
-      .dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    await wrapper.find("form.tr-message-composer").trigger("submit");
     await flushPromises();
 
     expect(wrapper.text()).toContain("Анна Смирнова");
@@ -239,8 +242,7 @@ describe("ConversationDetail.vue — конфликт handoff в композе�
     const input = wrapper.find("textarea.tr-message-composer__textarea");
     await input.setValue("Пробуем ответить без claim");
 
-    wrapper.find('[aria-label="Отправить"]').element
-      .dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    await wrapper.find("form.tr-message-composer").trigger("submit");
     await flushPromises();
 
     expect(wrapper.text()).toContain("Сообщение не отправлено");
@@ -258,8 +260,7 @@ describe("ConversationDetail.vue — конфликт handoff в композе�
     const input = wrapper.find("textarea.tr-message-composer__textarea");
     await input.setValue("Разобрался, отвечаю клиенту");
 
-    wrapper.find('[aria-label="Отправить"]').element
-      .dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    await wrapper.find("form.tr-message-composer").trigger("submit");
     await flushPromises();
 
     expect(wrapper.text()).not.toContain("Сообщение не отправлено");
@@ -283,8 +284,7 @@ describe("ConversationDetail.vue — конфликт handoff в композе�
     const input = wrapper.find("textarea.tr-message-composer__textarea");
     await input.setValue("Теперь я веду диалог");
 
-    wrapper.find('[aria-label="Отправить"]').element
-      .dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    await wrapper.find("form.tr-message-composer").trigger("submit");
     await flushPromises();
 
     expect(store.getConversation("demo", 1, 1).messages.length).toBe(before + 1);
