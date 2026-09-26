@@ -92,7 +92,7 @@ describe("Sidebar.vue — стабильная ширина и labels меню (
   it("показывает provenance ui/vue и не выдаёт локальные исходники за опубликованную пару", async () => {
     const { wrapper } = await mountSidebar();
 
-    const versions = wrapper.find(".tr-sidebar__versions");
+    const versions = wrapper.find('section[aria-label="Версии библиотек"]');
     expect(versions.exists()).toBe(true);
     expect(versions.attributes("aria-label")).toBe("Версии библиотек");
     expect(versions.text()).toContain("ui");
