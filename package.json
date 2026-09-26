@@ -11,6 +11,7 @@
         "guard:no-component-styles": "node scripts/no-component-styles.js",
         "lint:style": "npm run guard:no-component-styles",
         "test:unit": "vitest run",
+        "test:unit:sources": "vitest run --mode development",
         "release:ui": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/release-packages.ps1 -Package ui",
         "release:vue": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/release-packages.ps1 -Package vue",
         "release:all": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/release-packages.ps1 -Package all"

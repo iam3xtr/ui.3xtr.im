@@ -3,6 +3,11 @@ import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import svgLoader from "vite-svg-loader";
+import {
+  PACKAGE_SOURCES_MODE,
+  packageSourceAliasesFor,
+  sharedRuntimeDedupe,
+} from "./package-sources.config.js";
 
 const packageManifest = JSON.parse(
   readFileSync(fileURLToPath(new URL("./package.json", import.meta.url)), "utf8"),
@@ -22,43 +27,8 @@ export default defineConfig(({ mode }) => {
   // submodule-пакетах. Это намеренно ограничено dev server: build и
   // build:pages по-прежнему проверяют ровно те tarball/registry exports,
   // которые получает downstream-потребитель.
-  const usePackageSources = mode === "development";
-  const packageAliases = usePackageSources
-    ? [
-        {
-          find: "@iam3xtr/ui/styles/theme.scss",
-          replacement: fileURLToPath(new URL("./packages/ui/src/styles/theme.scss", import.meta.url)),
-        },
-        {
-          find: "@iam3xtr/ui/styles/tokens.scss",
-          replacement: fileURLToPath(new URL("./packages/ui/src/styles/tokens.scss", import.meta.url)),
-        },
-        {
-          find: "@iam3xtr/ui/icons",
-          replacement: fileURLToPath(new URL("./src/local-ui-icons.js", import.meta.url)),
-        },
-        {
-          find: "@iam3xtr/ui/assets",
-          replacement: fileURLToPath(new URL("./packages/ui/src/assets", import.meta.url)),
-        },
-        {
-          find: "@iam3xtr/vue/navigation",
-          replacement: fileURLToPath(new URL("./packages/vue/src/navigation.js", import.meta.url)),
-        },
-        {
-          find: "@iam3xtr/vue/plugin",
-          replacement: fileURLToPath(new URL("./packages/vue/src/plugin.js", import.meta.url)),
-        },
-        {
-          find: /^@iam3xtr\/vue$/,
-          replacement: fileURLToPath(new URL("./packages/vue/src/index.js", import.meta.url)),
-        },
-        {
-          find: /^@iam3xtr\/ui$/,
-          replacement: fileURLToPath(new URL("./packages/ui/src/index.js", import.meta.url)),
-        },
-      ]
-    : [];
+  const usePackageSources = mode === PACKAGE_SOURCES_MODE;
+  const packageAliases = packageSourceAliasesFor(mode);
 
   return {
     plugins: [
@@ -90,10 +60,7 @@ export default defineConfig(({ mode }) => {
         ...packageAliases,
         { find: "@", replacement: fileURLToPath(new URL("./src", import.meta.url)) },
       ],
-      // packages/vue может иметь собственный node_modules во время работы
-      // над библиотекой; приложение и локальные исходники всегда должны
-      // разделять один Vue/Buefy runtime.
-      dedupe: ["vue", "vue-router", "buefy"],
+      dedupe: sharedRuntimeDedupe,
     },
 
     css: {

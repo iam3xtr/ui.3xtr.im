@@ -57,6 +57,7 @@ npm run preview
 npm run lint:style
 npm run guard:no-component-styles
 npm run test:unit
+npm run test:unit:sources   # opt-in: tests against package submodule sources
 node packages/consumers/scripts/run-matrix.mjs
 
 # Releases
@@ -110,8 +111,13 @@ Development also builds the custom SVG registry directly from:
 packages/ui/src/assets/icons
 ```
 
-Normal builds and external consumers must behave like real package consumers and use
-published exact versions from `node_modules`.
+`npm run test:unit:sources` (`vitest run --mode development`) applies the same aliases
+and runtime dedupe to the unit suite, so unreleased package exports can be tested before
+publication. The alias list lives in `package-sources.config.js` and is shared by
+`vite.config.js` and `vitest.config.js`; do not enable it for any other mode.
+
+Normal builds, `npm run test:unit`, and external consumers must behave like real package
+consumers and use published exact versions from `node_modules`.
 
 Do not introduce `file:packages/*` as a runtime dependency for production-style builds.
 
