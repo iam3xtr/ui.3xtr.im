@@ -333,6 +333,99 @@ export function getLimitsNeedingAttention(limits, threshold = 90) {
 }
 
 /**
+ * Фиксированный порядок лимитов в компактной карточке тарифа Sidebar
+ * (этап 4 `.plan`): именно в этой очерёдности demo consumer отбирает
+ * первые подходящие значения, чтобы карточка оставалась стабильной и
+ * предсказуемой между workspace и не подменялась «случайными» ключами.
+ * Полный `activeWorkspaceTariff.limits` сохраняет production-порядок из
+ * `RESOURCE_LIMIT_KEYS` — компактная проекция использует свой.
+ * @type {string[]}
+ */
+export const COMPACT_TARIFF_LIMIT_ORDER = [
+  "agents",
+  "conversations",
+  "members",
+  "objects",
+  "collections",
+  "channels",
+  "extracted",
+];
+
+/**
+ * Состояния лимита, которые карточка Sidebar не показывает вовсе
+ * (этап 4 `.plan`): «не входит в тариф», «значение уточняется» и
+ * «временная ошибка» не несут полезной информации для компактного
+ * вида и вводят в заблуждение относительно реальных остатков.
+ * `unlimited` допускается, если попал в первую тройку подходящих.
+ * @type {WorkspaceLimitState[]}
+ */
+const COMPACT_TARIFF_HIDDEN_STATES = ["zero", "unknown", "error"];
+
+/**
+ * Caption для одного отобранного лимита в компактной карточке (этап 4
+ * `.plan`): период из полного caption намеренно не переносится — карточка
+ * Sidebar не дублирует контекст «в этом месяце», его несёт полный экран
+ * тарифов/расходов. Статус исчерпания и единицы измерения сохраняются;
+ * `unlimited` превращается в «Без ограничений» без периода.
+ *
+ * @param {WorkspaceTariffLimit} limit
+ * @returns {string}
+ */
+function buildCompactLimitCaption(limit) {
+  if (limit.state === "unlimited") {
+    return "Без ограничений";
+  }
+
+  const meta = RESOURCE_LIMIT_META[limit.key];
+
+  if (limit.state === "ok" || limit.state === "exhausted") {
+    const used = formatValue(meta.unit, limit.used ?? 0);
+    const ceiling = formatValue(meta.unit, limit.limit ?? 0);
+    const base = `${used} из ${ceiling}`;
+    return limit.state === "exhausted" ? `${base} — лимит исчерпан` : base;
+  }
+
+  // Любое состояние, прошедшее фильтр, но не обработанное выше, отдаёт
+  // исходный caption как есть, чтобы compact-карточка не выдумывала
+  // формулировку для непредусмотренной ветви.
+  return limit.caption;
+}
+
+/**
+ * Компактная проекция полного `WorkspaceTariff.limits` для карточки
+ * Sidebar (этап 4 `.plan`): первые три подходящих в
+ * `COMPACT_TARIFF_LIMIT_ORDER`, без `zero`/`unknown`/`error`, но
+ * `unlimited` допускается. Если подходящих меньше двух, выдаём все
+ * имеющиеся (без выдуманных показаний) — узкая карточка не должна
+ * скрывать единственный реальный сигнал «что-то измеримо». Прочие
+ * поля лимита (`label`, `key`, `progress`, `used`, `limit`) сохраняются,
+ * `caption` переписывается компактным форматом через
+ * `buildCompactLimitCaption`.
+ *
+ * @param {WorkspaceTariffLimit[]} limits
+ * @returns {WorkspaceTariffLimit[]}
+ */
+export function selectCompactTariffLimits(limits) {
+  const orderIndex = new Map(
+    COMPACT_TARIFF_LIMIT_ORDER.map((key, index) => [key, index]),
+  );
+  const ordered = [...limits].sort(
+    (a, b) => (orderIndex.get(a.key) ?? Number.MAX_SAFE_INTEGER)
+      - (orderIndex.get(b.key) ?? Number.MAX_SAFE_INTEGER),
+  );
+  const fitting = ordered.filter(
+    (limit) => !COMPACT_TARIFF_HIDDEN_STATES.includes(limit.state),
+  );
+
+  const picked = fitting.length < 2 ? fitting : fitting.slice(0, 3);
+
+  return picked.map((limit) => ({
+    ...limit,
+    caption: buildCompactLimitCaption(limit),
+  }));
+}
+
+/**
  * Roles allowed to view the workspace audit (Task A10.8, `.plan` item 7,
  * API Issue #109: "видимую по capability"). The kit has no real permission
  * store — `activeWorkspace.role` (`"Владелец" | "Администратор" | "Участник"`)

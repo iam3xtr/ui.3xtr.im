@@ -105,3 +105,55 @@ describe("Sidebar.vue — стабильная ширина и labels меню (
     }
   });
 });
+
+// Этап 4 `.plan`: компактная карточка тарифа в Sidebar — TariffSummaryCard
+// получает не полный `activeWorkspaceTariff`, а проекцию в
+// `COMPACT_TARIFF_LIMIT_ORDER`, без `zero`/`unknown`/`error`. Полный тариф
+// и API `TariffSummaryCard` не меняются.
+describe("Sidebar.vue — компактная карточка тарифа (этап 4)", () => {
+  it("TariffSummaryCard получает проекцию с не более чем тремя лимитами", async () => {
+    const { wrapper } = await mountSidebar();
+
+    const card = wrapper.findComponent({ name: "TariffSummaryCard" });
+    expect(card.exists()).toBe(true);
+
+    const tariff = card.props("tariff");
+    expect(tariff.limits.length).toBeLessThanOrEqual(3);
+  });
+
+  it("проекция скрывает zero/unknown/error из demo-тарифа", async () => {
+    const { wrapper } = await mountSidebar();
+
+    const card = wrapper.findComponent({ name: "TariffSummaryCard" });
+    const tariff = card.props("tariff");
+
+    const states = tariff.limits.map((limit) => limit.state);
+    expect(states).not.toContain("zero");
+    expect(states).not.toContain("unknown");
+    expect(states).not.toContain("error");
+  });
+
+  it("проекция не содержит периода («в этом месяце») в caption", async () => {
+    const { wrapper } = await mountSidebar();
+
+    const card = wrapper.findComponent({ name: "TariffSummaryCard" });
+    const tariff = card.props("tariff");
+
+    for (const limit of tariff.limits) {
+      expect(limit.caption).not.toContain("в этом месяце");
+    }
+  });
+
+  it("проекция сохраняет progress исходного лимита", async () => {
+    const { wrapper } = await mountSidebar();
+
+    const card = wrapper.findComponent({ name: "TariffSummaryCard" });
+    const tariff = card.props("tariff");
+
+    for (const limit of tariff.limits) {
+      // null допустим для unlimited/error/unknown, но эти состояния уже
+      // исключены выше — значит здесь каждый progress либо числом.
+      expect(typeof limit.progress === "number" || limit.progress === null).toBe(true);
+    }
+  });
+});

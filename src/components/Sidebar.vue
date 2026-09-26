@@ -50,7 +50,7 @@
 
 
     <TariffSummaryCard
-      :tariff="activeWorkspaceTariff"
+      :tariff="compactTariff"
       :to="{ name: 'workspace-plans' }"
     />
 
@@ -58,6 +58,7 @@
 </template>
 
 <script setup>
+import { computed } from "vue";
 import { storeToRefs } from "pinia";
 import { useRoute } from "vue-router";
 
@@ -65,12 +66,26 @@ import {
   administrationNavigationItems,
   mainNavigationItems,
 } from "../navigation";
-import { useWorkspaceStore } from "../stores/workspace";
+import {
+  selectCompactTariffLimits,
+  useWorkspaceStore,
+} from "../stores/workspace";
 import { TariffSummaryCard } from "@iam3xtr/vue/navigation";
 
 const route = useRoute();
 const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceTariff } = storeToRefs(workspaceStore);
+
+// Этап 4 `.plan`: компактная проекция `activeWorkspaceTariff` для карточки
+// Sidebar — берём первые три подходящих лимита в фиксированном порядке
+// (`agents`, `conversations`, `members`, `objects`, `collections`,
+// `channels`, `extracted`), без `zero`/`unknown`/`error`. Полный тариф
+// остаётся без изменений для экранов тарифов/расходов; public
+// `TariffSummaryCard` API тоже не меняется.
+const compactTariff = computed(() => ({
+  ...activeWorkspaceTariff.value,
+  limits: selectCompactTariffLimits(activeWorkspaceTariff.value.limits),
+}));
 
 // Defined by vite.config.js from root package.json. In `npm run dev` Vite
 // aliases the packages to their submodule sources, so the visible marker
