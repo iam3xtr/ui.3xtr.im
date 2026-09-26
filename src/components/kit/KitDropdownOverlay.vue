@@ -106,7 +106,9 @@
         меню пользователя в Navbar на каждой странице,
         <RouterLink :to="{ name: 'agent-settings', params: { id: 1 } }">
           выбор API-ключа в настройках агента
-        </RouterLink>,
+        </RouterLink>
+        (поле появляется после включения «Использовать собственный ключ
+        API (BYOK)»),
         <RouterLink :to="{ name: 'knowledge-collection', params: { id: 1 } }">
           действия с файлами коллекции
         </RouterLink>,
