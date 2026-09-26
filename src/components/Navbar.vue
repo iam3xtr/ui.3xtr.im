@@ -860,7 +860,7 @@ function closeMobileNav() {
 }
 
 function closeUserMenu() {
-  userDropdown.value?.toggle();
+  userDropdown.value?.close();
 }
 
 /**

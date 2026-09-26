@@ -563,3 +563,29 @@ describe("Navbar.vue — общий overlay desktop dropdown", () => {
     expect(userDropdown.element.contains(menu)).toBe(true);
   });
 });
+
+// Stage 5 review fix: the mobile-modal user-menu close button goes through
+// the adapter's public `close()` (OverlayDropdown exposes no `toggle`).
+describe("Navbar.vue — закрытие user-меню кнопкой в заголовке", () => {
+  it("кнопка закрытия закрывает открытое user-меню без ошибок", async () => {
+    const { wrapper } = await mountNavbar();
+    await flushPromises();
+
+    const userDropdown = wrapper.findAllComponents(OverlayDropdown)
+      .find((item) => item.classes().includes("tr-user-dropdown"));
+    const errors = [];
+    wrapper.vm.$.appContext.config.errorHandler = (err) => {
+      errors.push(err);
+    };
+
+    userDropdown.vm.dropdown.isActive = true;
+    await flushPromises();
+    expect(userDropdown.vm.dropdown.isActive).toBe(true);
+
+    await wrapper.find(".tr-user-dropdown .tr-mobile-menu-header__close").trigger("click");
+    await flushPromises();
+
+    expect(errors).toEqual([]);
+    expect(userDropdown.vm.dropdown.isActive).toBe(false);
+  });
+});
