@@ -35,30 +35,29 @@
           />
         </header>
 
-        <div class="tr-conversation-messages" aria-live="polite">
-          <div class="tr-agents__sandbox-note">
-            <b-icon icon="flask-outline" size="is-small" />
-            Сообщения здесь не попадут в реальные диалоги.
-          </div>
-
-          <b-message
-            v-if="demoStore.isPartial"
-            type="is-warning"
-            :closable="false"
-          >
-            Показана не вся история песочницы: часть сообщений недоступна
-            из-за временной ошибки. Остальные ниже — актуальны.
-          </b-message>
-
-          <ChatHistory
-            :messages="agent?.messages ?? []"
-            aria-label="История песочницы"
-          >
-            <template #metadata="{ message }">
-              <small>{{ message.time }}</small>
-            </template>
-          </ChatHistory>
+        <div class="tr-agents__sandbox-note mt-3">
+          <b-icon icon="flask-outline" size="is-small" />
+          Сообщения здесь не попадут в реальные диалоги.
         </div>
+
+        <b-message
+          v-if="demoStore.isPartial"
+          type="is-warning"
+          :closable="false"
+          class="mx-4 mb-3"
+        >
+          Показана не вся история песочницы: часть сообщений недоступна
+          из-за временной ошибки. Остальные ниже — актуальны.
+        </b-message>
+
+        <ChatHistory
+          :messages="agent?.messages ?? []"
+          aria-label="История песочницы"
+        >
+          <template #metadata="{ message }">
+            <small>{{ message.time }}</small>
+          </template>
+        </ChatHistory>
 
         <MessageComposer
           v-model="draft"

@@ -1,31 +1,30 @@
 <template>
   <template v-if="conversation">
-    <div class="tr-conversation-messages" aria-live="polite">
-      <b-message
-        v-if="demoStore.isPartial"
-        type="is-warning"
-        :closable="false"
-      >
-        Показана не вся история диалога: часть сообщений недоступна
-        из-за временной ошибки. Остальные ниже — актуальны.
-      </b-message>
+    <b-message
+      v-if="demoStore.isPartial"
+      type="is-warning"
+      :closable="false"
+      class="mx-4 mt-4 mb-0"
+    >
+      Показана не вся история диалога: часть сообщений недоступна
+      из-за временной ошибки. Остальные ниже — актуальны.
+    </b-message>
 
-      <ChatHistory
-        :messages="conversation.messages"
-        aria-label="История диалога"
-      >
-        <template #metadata="{ message }">
-          <small>{{ message.time }}</small>
-        </template>
-        <template #status="{ message }">
-          <MessageDeliveryStatus
-            v-if="message.delivery"
-            :delivery="message.delivery"
-            @retry="retryDelivery(message)"
-          />
-        </template>
-      </ChatHistory>
-    </div>
+    <ChatHistory
+      :messages="conversation.messages"
+      aria-label="История диалога"
+    >
+      <template #metadata="{ message }">
+        <small>{{ message.time }}</small>
+      </template>
+      <template #status="{ message }">
+        <MessageDeliveryStatus
+          v-if="message.delivery"
+          :delivery="message.delivery"
+          @retry="retryDelivery(message)"
+        />
+      </template>
+    </ChatHistory>
 
     <b-message
       v-if="sendConflict"

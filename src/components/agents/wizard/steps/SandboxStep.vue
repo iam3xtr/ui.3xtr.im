@@ -38,15 +38,17 @@
       </b-button>
     </div>
 
-    <div class="tr-conversation-messages tr-wizard-sandbox-messages" aria-live="polite">
-      <p v-if="!messages.length" class="tr-muted">
-        Ещё нет тестовых сообщений — выберите вопрос выше или напишите свой.
-      </p>
-      <ChatHistory
-        :messages="messages"
-        aria-label="История песочницы мастера"
-      />
-    </div>
+    <ChatHistory
+      :messages="messages"
+      class="tr-wizard-sandbox-messages"
+      aria-label="История песочницы мастера"
+    >
+      <template #empty>
+        <p class="tr-muted">
+          Ещё нет тестовых сообщений — выберите вопрос выше или напишите свой.
+        </p>
+      </template>
+    </ChatHistory>
 
     <MessageComposer
       v-model="customQuestion"
