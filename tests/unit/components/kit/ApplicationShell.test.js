@@ -6,6 +6,12 @@ import Buefy from "buefy";
 
 import ApplicationShell from "../../../../src/components/kit/ApplicationShell.vue";
 import { mainNavigationItems } from "../../../../src/navigation.js";
+import { PACKAGE_SOURCES_MODE } from "../../../../package-sources.config.js";
+
+// `npm run test:unit:sources` resolves `@iam3xtr/vue` from the submodule
+// source, whose unreleased `Icon` already has the Buefy MDI fallback (Issue
+// #8.2); `npm run test:unit` resolves the published pin without it.
+const usesPackageSources = import.meta.env.MODE === PACKAGE_SOURCES_MODE;
 
 const RouteStub = { template: "<div />" };
 
@@ -77,8 +83,14 @@ describe("kit/ApplicationShell.vue — application shell scenario (Handoff.2)", 
     // инъекция реестра тестового окружения не настроена, поэтому здесь
     // проверяется единственный гарантированный путь без совпадения —
     // aria-hidden placeholder, не Buefy MDI fallback.
-    const placeholders = wrapper.findAll(".tr-icon--placeholder");
-    expect(placeholders.length).toBeGreaterThan(0);
+    // Source mode resolves the unreleased contract instead: the unmatched
+    // name goes to the globally registered Buefy `BIcon`.
+    if (usesPackageSources) {
+      expect(wrapper.find(".mdi-not-registered-icon").exists()).toBe(true);
+    } else {
+      const placeholders = wrapper.findAll(".tr-icon--placeholder");
+      expect(placeholders.length).toBeGreaterThan(0);
+    }
 
     // Расширенная slot/registry/MDI-fallback цепочка (Issue #8.2) — показана
     // только как код, не выполняется этим сценарием.
