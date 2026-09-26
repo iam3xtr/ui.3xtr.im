@@ -9,6 +9,7 @@ import { useAgentsStore } from "../../../src/stores/agents.js";
 import { useChannelsStore } from "../../../src/stores/channels.js";
 import { useConversationsStore } from "../../../src/stores/conversations.js";
 import { useDemoStore } from "../../../src/stores/demo.js";
+import { useProfileStore } from "../../../src/stores/profile.js";
 import { useWizardStore } from "../../../src/stores/wizard.js";
 import { useWorkspaceStore } from "../../../src/stores/workspace.js";
 
@@ -542,5 +543,42 @@ describe("Dashboard.vue — «Последние…» сортируются п�
     expect(rowTexts).toHaveLength(5);
     expect(rowTexts[0]).toContain("Самый свежий агент");
     expect(table.text()).not.toContain("Самый старый агент");
+  });
+});
+
+describe("Dashboard.vue — длинные значения плиток остаются полными", () => {
+  const LONG_WORKSPACE = "Очень-длинное-название-рабочего-пространства-без-пробелов-для-проверки-переноса";
+  const LONG_ROLE = "Администратор с расширенными правами на управление биллингом и участниками";
+  const LONG_PROFILE = "Константин Константинович Константинопольский-Преображенский";
+
+  it("рендерит значение и роль целиком внутри wrap-контейнера плитки", async () => {
+    const { wrapper } = await mountDashboard();
+    const workspace = useWorkspaceStore().workspaces.find((item) => item.id === "demo");
+    workspace.name = LONG_WORKSPACE;
+    workspace.role = LONG_ROLE;
+    useProfileStore().profile.name = LONG_PROFILE;
+    await flushPromises();
+
+    const tiles = wrapper.findAll(".tr-dashboard-link");
+    const workspaceTile = tiles.find((tile) => tile.attributes("href") === "/workspace/settings");
+    const profileTile = tiles.find((tile) => tile.attributes("href") === "/profile");
+
+    // Theme wraps `.tr-dashboard-link__metric` children, so the full value
+    // must be rendered there as-is (no truncation) and stays part of the
+    // tile link's text, i.e. its accessible name.
+    const workspaceMetric = workspaceTile.find(".tr-dashboard-link__metric");
+    expect(workspaceMetric.find("strong").text()).toBe(LONG_WORKSPACE);
+    expect(workspaceMetric.find("span").text()).toBe(LONG_ROLE);
+    expect(workspaceTile.text()).toContain(LONG_WORKSPACE);
+    expect(workspaceTile.text()).toContain(LONG_ROLE);
+
+    expect(profileTile.find(".tr-dashboard-link__metric strong").text()).toBe(LONG_PROFILE);
+
+    // The label sits first in the header so the theme's
+    // `.tr-dashboard-link__header > :first-child` wrap rule applies to it,
+    // and the icon keeps its own fixed slot.
+    const header = workspaceTile.find(".tr-dashboard-link__header");
+    expect(header.element.firstElementChild.querySelector(".tr-card__title")).not.toBeNull();
+    expect(header.element.lastElementChild.classList.contains("tr-dashboard-icon")).toBe(true);
   });
 });
