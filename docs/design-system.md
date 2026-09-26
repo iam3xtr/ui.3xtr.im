@@ -22,6 +22,9 @@ dedupe'ит `vue`, `vue-router` и `buefy`, поэтому у компонент
 aliases и проверяют опубликованные exact-пакеты из `node_modules` — это
 сохраняет реальный downstream-контракт.
 
+`npm run test:unit:sources` проверяет demo против тех же package sources до
+публикации. Обычный `npm run test:unit` использует опубликованные exact pins.
+
 ## Тема и токены
 
 Подключайте один entrypoint: @iam3xtr/ui/styles/theme.scss или theme.css.
@@ -127,6 +130,29 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
   `workspace source`, потому что Vite исполняет исходники `packages/*/src`, а
   не опубликованные пакеты. Индикатор не является навигацией, контролом
   обновления или заявлением о registry-публикации.
+
+### Публичные компоненты чата
+
+`ChatHistory` и `MessageComposer` реализованы в package sources
+`@iam3xtr/vue` и доступны в `npm run dev` на экранах истории диалога,
+песочницы агента, шага Sandbox мастера и `/kit/chat`. Их выпуск и переход
+production/Pages сборок на новые exact pins относятся к отдельному этапу.
+
+`ChatHistory` принимает упорядоченные `{ id, text, outgoing }` сообщения.
+Текст по умолчанию экранируется; `body`, `metadata`, `status` и `empty` slots
+оставляют дополнительную разметку и действия потребителю. `MessageComposer`
+держит draft через `v-model` и эмитит только намерение `submit` с trimmed
+непустой строкой. Enter отправляет без Shift и вне IME при `!disabled &&
+!busy`; Shift+Enter добавляет строку. Отправку, retry, conflict и очистку
+draft после успеха выполняет consumer. Placeholder и доступные имена тоже
+передаёт consumer.
+
+Тема `@iam3xtr/ui` владеет новыми `tr-chat-history*` и
+`tr-message-composer*` selectors. В bounded flex-column history получает
+оставшееся место и собственную прокрутку, composer остаётся снизу;
+textarea начинается с высоты кнопки, растёт до 100 px и затем прокручивается
+внутри. Прежние `tr-conversation-*` и `tr-chat-message` selectors сохраняют
+действующий контракт для старых потребителей.
 
 ### ModelSelect — жизненный цикл выбора
 
