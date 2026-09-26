@@ -13,7 +13,17 @@
 // `useOwnApiKey` switch over hidden model/BYOK ids).
 import { ref } from "vue";
 import { Icon, Loader, NavbarMenu, ToolbarDropdown, MobileFilters, ModelSelect, ChatHistory, MessageComposer } from "@iam3xtr/vue";
-import { PageHeader } from "@iam3xtr/vue/navigation";
+import { NavbarTabs, PageHeader } from "@iam3xtr/vue/navigation";
+
+// `NavbarTabs` sits in a deliberately narrow flex bar with long labels so a
+// browser smoke run against the packed tarball sees overflow arrows; the
+// fixture has a single route, so tabs differ only by query.
+const navbarTabs = [
+  { label: "Overview and getting started", to: { path: "/" } },
+  { label: "Usage and quotas", to: { path: "/", query: { tab: "usage" } } },
+  { label: "Members and permissions", to: { path: "/", query: { tab: "members" } } },
+  { label: "Billing history", to: { path: "/", query: { tab: "billing" } } },
+];
 
 // `provideIconRegistry(app, registry)` takes the app instance, so it is
 // called once in main.js at app-creation time, not here.
@@ -108,6 +118,15 @@ defineExpose({
   <Icon name="cog" />
   <Loader size="inline" label="Loading" />
   <NavbarMenu />
+
+  <div class="tr-consumer-flow__tabs-bar" style="display: flex; width: 320px;">
+    <NavbarTabs
+      :items="navbarTabs"
+      aria-label="Fixture sections"
+      prev-label="Previous sections"
+      next-label="Next sections"
+    />
+  </div>
 
   <!-- Near the viewport edge: ToolbarDropdown and MobileFilters (inline
        here; each moves to a body portal only under a clipping ancestor)
