@@ -3,7 +3,9 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { createMemoryHistory, createRouter } from "vue-router";
 import Buefy from "buefy";
-import { RouterView } from "vue-router";
+import { RouterLink, RouterView } from "vue-router";
+
+import appRouter from "../../../../src/router.js";
 
 import KitShell from "../../../../src/components/kit/KitShell.vue";
 import Overview from "../../../../src/components/kit/Overview.vue";
@@ -284,6 +286,30 @@ describe("kit/chat — каталог оставшихся публичных Vu
       "/kit/navigation-states",
     ]) {
       expect(hrefs).toContain(href);
+    }
+  });
+
+  it("ссылки на места применения разрешаются в реальные маршруты src/router.js", async () => {
+    // `buildRouter()` above declares its own stand-in records, so renaming or
+    // moving a route in src/router.js would not break the href check above.
+    // Resolve every rendered consumer link's `to` against the app router
+    // itself: the name must exist there, and its href must round-trip to the
+    // same named route rather than the 404 catch-all.
+    const { wrapper } = await mountKitShell("/kit/chat");
+    const links = wrapper
+      .findComponent(ChatComponents)
+      .findAllComponents(RouterLink)
+      .filter((link) => link.element.closest("ul"));
+    expect(links.length).toBeGreaterThanOrEqual(8);
+
+    for (const link of links) {
+      const to = link.props("to");
+      const resolved = appRouter.resolve(to);
+      expect(resolved.name, JSON.stringify(to)).toBe(to.name);
+
+      const byHref = appRouter.resolve(resolved.href);
+      expect(byHref.name, resolved.href).toBe(to.name);
+      expect(byHref.name, resolved.href).not.toBe("not-found");
     }
   });
 });
