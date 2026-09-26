@@ -1,7 +1,9 @@
 <template>
   <!--
     Stage 3 chat components (.plan этап 3 «Публичные история чата и
-    composer»): публичные ChatHistory и MessageComposer из @iam3xtr/vue
+    composer»), дополненные на этапе 5 оставшимися публичными exports
+    (`KitModelSelect`, `KitNavbarTabs`, `KitDropdownOverlay` ниже):
+    публичные ChatHistory и MessageComposer из @iam3xtr/vue
     с consumer-owned slot-ами, controlled draft и auto-grow геометрией.
     Каждое состояние (обычная переписка, outgoing message, custom body,
     status slot, multiline draft, busy, disabled, empty state) выведено
@@ -14,8 +16,8 @@
     contract из ui.3xtr.im#15.
   -->
   <PageHeader
-    title="Чат"
-    subtitle="Публичные ChatHistory и MessageComposer: consumer-owned copy, controlled draft, auto-grow до 100 px."
+    title="Vue-компоненты"
+    subtitle="Публичные ChatHistory, MessageComposer, ModelSelect, NavbarTabs и overlay composable из @iam3xtr/vue: рабочие варианты, API и места применения."
   />
 
   <section class="tr-card mb-5">
@@ -204,6 +206,10 @@
       </li>
     </ul>
   </section>
+
+  <KitModelSelect />
+  <KitNavbarTabs />
+  <KitDropdownOverlay />
 </template>
 
 <script setup>
@@ -211,6 +217,10 @@ import { ref } from "vue";
 
 import { ChatHistory, MessageComposer } from "@iam3xtr/vue";
 import { PageHeader } from "@iam3xtr/vue/navigation";
+
+import KitDropdownOverlay from "./KitDropdownOverlay.vue";
+import KitModelSelect from "./KitModelSelect.vue";
+import KitNavbarTabs from "./KitNavbarTabs.vue";
 
 // Initial demo transcript: a small inbound/outbound conversation with
 // mixed statuses so the metadata/status slots have something to render.

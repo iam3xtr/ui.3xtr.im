@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { createMemoryHistory, createRouter } from "vue-router";
 import Buefy from "buefy";
@@ -13,7 +13,7 @@ import NavigationStates from "../../../../src/components/kit/NavigationStates.vu
 import DialogsOverlays from "../../../../src/components/kit/DialogsOverlays.vue";
 import ApplicationShell from "../../../../src/components/kit/ApplicationShell.vue";
 import ChatComponents from "../../../../src/components/kit/ChatComponents.vue";
-import { navbarMenuKey } from "@iam3xtr/vue";
+import { DROPDOWN_OVERLAY_MARKER, POSITIONS, navbarMenuKey } from "@iam3xtr/vue";
 import { useDemoStore } from "../../../../src/stores/demo.js";
 
 // jsdom has no `matchMedia` — `Loader.vue` (mounted in Overview) reads it on
@@ -53,6 +53,9 @@ function buildRouter() {
       // `ChatComponents.vue` links to the live chat screens by route name.
       { path: "/agents/new/:step?", name: "agent-wizard", component: RouteStub },
       { path: "/agents/:id", name: "agent", component: RouteStub },
+      { path: "/agents/:id/settings", name: "agent-settings", component: RouteStub },
+      { path: "/knowledge/:id", name: "knowledge-collection", component: RouteStub },
+      { path: "/profile", name: "profile", component: RouteStub },
       {
         path: "/conversations/:agentId/:conversationId",
         name: "conversation",
@@ -209,5 +212,78 @@ describe("kit/chat — рабочие состояния публичных ко
     expect(messages).toHaveLength(5);
     expect(messages.at(-1).text()).toContain("новый ответ");
     expect(textarea.element.value).toBe("");
+  });
+});
+
+describe("kit/chat — каталог оставшихся публичных Vue exports (этап 5)", () => {
+  it("ModelSelect работает через public API: mode, состояния и consumer copy", async () => {
+    const { wrapper } = await mountKitShell("/kit/chat");
+    const page = wrapper.findComponent(ChatComponents);
+    const picker = page.find(".tr-model-select-kit__picker");
+
+    expect(picker.classes()).toContain("tr-model-select--mode-model");
+    const trigger = picker.find(".tr-model-select__trigger");
+    expect(trigger.attributes("id")).toBe("kit-model-select");
+    expect(trigger.attributes("aria-label")).toBe("Модель: Выберите модель");
+    expect(trigger.text()).toBe("Выберите модель");
+
+    const modeRadio = page
+      .findAll(".tr-model-select-kit__controls input[type='radio']")
+      .find((input) => input.element.value === "both");
+    await modeRadio.setValue(true);
+    expect(page.find(".tr-model-select-kit__picker").classes()).toContain("tr-model-select--mode-both");
+    expect(page.find(".tr-model-select__switch-label").text()).toBe("Собственный ключ (OpenRouter)");
+
+    const disabledFlag = page
+      .findAll(".tr-model-select-kit__flags .b-checkbox")
+      .find((label) => label.text() === "disabled");
+    await disabledFlag.find("input").setValue(true);
+    expect(page.find(".tr-model-select__trigger").attributes("disabled")).toBeDefined();
+  });
+
+  it("NavbarTabs рендерит реальные разделы kit и подсвечивает текущий", async () => {
+    const { wrapper } = await mountKitShell("/kit/chat");
+    const page = wrapper.findComponent(ChatComponents);
+    const nav = page.find(".tr-navbar-tabs-kit__frame .tr-navbar-tabs");
+
+    expect(nav.attributes("aria-label")).toBe("Разделы UI Kit (пример)");
+    expect(nav.findAll(".tr-navbar-tabs__link")).toHaveLength(7);
+    const active = nav.findAll(".tr-navbar-tabs__link.router-link-exact-active");
+    expect(active).toHaveLength(1);
+    expect(active[0].text()).toBe("Vue-компоненты");
+    expect(active[0].attributes("aria-current")).toBe("page");
+  });
+
+  it("overlay composable: POSITIONS, placement и marker из public API", async () => {
+    const { wrapper } = await mountKitShell("/kit/chat");
+    await flushPromises();
+    const page = wrapper.findComponent(ChatComponents);
+
+    const options = page.findAll("#kit-overlay-position option").map((option) => option.element.value);
+    expect(options).toEqual([...POSITIONS]);
+    expect(page.find("[data-testid='placement-inline']").text()).toBe("inline");
+    expect(page.text()).toContain(DROPDOWN_OVERLAY_MARKER);
+    expect(page.findAll(".tr-dropdown-overlay-kit__variant .dropdown-trigger")).toHaveLength(2);
+  });
+
+  it("ссылки на места применения ведут на реальные маршруты демо", async () => {
+    const { wrapper } = await mountKitShell("/kit/chat");
+    const hrefs = wrapper
+      .findComponent(ChatComponents)
+      .findAll("ul a")
+      .map((link) => link.attributes("href"));
+
+    for (const href of [
+      "/agents/1/settings",
+      "/agents/new/rules",
+      "/agents/1",
+      "/knowledge/1",
+      "/workspace",
+      "/profile",
+      "/kit/tables",
+      "/kit/navigation-states",
+    ]) {
+      expect(hrefs).toContain(href);
+    }
   });
 });
