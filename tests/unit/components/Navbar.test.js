@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { createMemoryHistory, createRouter } from "vue-router";
@@ -16,6 +16,34 @@ const workspaces = [
 ];
 
 const user = { firstName: "Иван", lastName: "Петров", role: "Владелец" };
+
+// Демо-стор persist'ит состояние в `localStorage` кита; без изоляции
+// включённый в одном тесте флаг (например, showCreateAgentAction) протекает в
+// следующие. Как в tests/unit/stores/demo.test.js, каждому тесту — свежее
+// in-memory хранилище.
+function createMemoryStorage() {
+  const map = new Map();
+  return {
+    getItem: (key) => (map.has(key) ? map.get(key) : null),
+    setItem: (key, value) => {
+      map.set(key, String(value));
+    },
+    removeItem: (key) => {
+      map.delete(key);
+    },
+    clear: () => {
+      map.clear();
+    },
+  };
+}
+
+beforeEach(() => {
+  vi.stubGlobal("localStorage", createMemoryStorage());
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 async function mountNavbar({ minimal = false } = {}) {
   const pinia = createPinia();
@@ -298,7 +326,7 @@ describe("Navbar.vue — icon-only Demo trigger (этап 4)", () => {
     expect(trigger.attributes("aria-label")).toBe("Панель демо-режима кита");
     expect(trigger.attributes("title")).toBe("Панель демо-режима кита");
     expect(trigger.text()).not.toContain("Demo");
-    expect(trigger.find("b-icon").exists()).toBe(true);
+    expect(trigger.find("i.mdi-tune-variant").exists()).toBe(true);
   });
 
   it("icon-only Demo trigger отсутствует на минимальном (auth) navbar", async () => {

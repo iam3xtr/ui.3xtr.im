@@ -244,13 +244,26 @@ describe("stores/demo — persistence", () => {
     expect(store.showCreateAgentAction).toBe(true);
   });
 
-  it("отсутствующий или невалидный showCreateAgentAction восстанавливается как false", () => {
+  it("отсутствующий showCreateAgentAction восстанавливается как false", () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode: "ready" }));
+    setActivePinia(createPinia());
+
+    expect(useDemoStore().showCreateAgentAction).toBe(false);
+  });
+
+  it("не-boolean showCreateAgentAction коэрсится в boolean, как остальные флаги", () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({ mode: "ready", showCreateAgentAction: "yes" }),
     );
     setActivePinia(createPinia());
+    expect(useDemoStore().showCreateAgentAction).toBe(true);
 
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ mode: "ready", showCreateAgentAction: 0 }),
+    );
+    setActivePinia(createPinia());
     expect(useDemoStore().showCreateAgentAction).toBe(false);
   });
 
