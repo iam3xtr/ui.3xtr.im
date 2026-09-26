@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { nextTick } from "vue";
 import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { createMemoryHistory, createRouter } from "vue-router";
@@ -9,6 +10,10 @@ import {
   administrationNavigationItems,
   mainNavigationItems,
 } from "../../../src/navigation.js";
+import {
+  COMPACT_TARIFF_LIMIT_ORDER,
+  useWorkspaceStore,
+} from "../../../src/stores/workspace.js";
 
 // Task #10.1: a menu item's visible label can be clipped with an ellipsis
 // (theme.scss) once a long RU/EN/ES translation no longer fits the
@@ -144,16 +149,74 @@ describe("Sidebar.vue — компактная карточка тарифа (э
     }
   });
 
-  it("проекция сохраняет progress исходного лимита", async () => {
+  it("проекция идёт в COMPACT_TARIFF_LIMIT_ORDER и сохраняет key/progress/used/limit исходных лимитов", async () => {
     const { wrapper } = await mountSidebar();
+    const store = useWorkspaceStore();
 
     const card = wrapper.findComponent({ name: "TariffSummaryCard" });
-    const tariff = card.props("tariff");
+    const compactLimits = card.props("tariff").limits;
+    const sourceLimits = store.activeWorkspaceTariff.limits;
 
-    for (const limit of tariff.limits) {
-      // null допустим для unlimited/error/unknown, но эти состояния уже
-      // исключены выше — значит здесь каждый progress либо числом.
-      expect(typeof limit.progress === "number" || limit.progress === null).toBe(true);
+    // Ожидаемые ключи выводятся независимо от selectCompactTariffLimits:
+    // видимые лимиты store в COMPACT_TARIFF_LIMIT_ORDER, первые три.
+    const expectedKeys = COMPACT_TARIFF_LIMIT_ORDER.filter((key) => {
+      const source = sourceLimits.find((limit) => limit.key === key);
+      return source && !["zero", "unknown", "error"].includes(source.state);
+    }).slice(0, 3);
+
+    expect(compactLimits.length).toBeGreaterThan(0);
+    expect(compactLimits.map((limit) => limit.key)).toEqual(expectedKeys);
+
+    for (const limit of compactLimits) {
+      const source = sourceLimits.find((entry) => entry.key === limit.key);
+      expect({
+        key: limit.key,
+        progress: limit.progress,
+        used: limit.used,
+        limit: limit.limit,
+      }).toEqual({
+        key: source.key,
+        progress: source.progress,
+        used: source.used,
+        limit: source.limit,
+      });
     }
+  });
+
+  it("полный activeWorkspaceTariff в store не меняется проекцией: 7 лимитов и исходные caption", async () => {
+    // Эталон берётся из отдельного, нигде не смонтированного store.
+    const referencePinia = createPinia();
+    setActivePinia(referencePinia);
+    const reference = JSON.parse(
+      JSON.stringify(useWorkspaceStore().activeWorkspaceTariff.limits),
+    );
+
+    const { wrapper } = await mountSidebar();
+    const store = useWorkspaceStore();
+    const card = wrapper.findComponent({ name: "TariffSummaryCard" });
+    expect(card.exists()).toBe(true);
+
+    const storeLimits = store.activeWorkspaceTariff.limits;
+    expect(storeLimits).toHaveLength(7);
+    expect(storeLimits.map((limit) => limit.key)).toEqual(reference.map((limit) => limit.key));
+    expect(storeLimits.map((limit) => limit.caption)).toEqual(
+      reference.map((limit) => limit.caption),
+    );
+    expect(JSON.parse(JSON.stringify(storeLimits))).toEqual(reference);
+  });
+
+  it("неизвестный activeWorkspaceId (fallback emptyTariff) даёт пустую компактную проекцию", async () => {
+    const { wrapper } = await mountSidebar();
+    const store = useWorkspaceStore();
+
+    store.activeWorkspaceId = "does-not-exist";
+    await nextTick();
+
+    const card = wrapper.findComponent({ name: "TariffSummaryCard" });
+    expect(card.exists()).toBe(true);
+    expect(card.props("tariff").limits).toEqual([]);
+    // Полный fallback-тариф при этом остаётся из 7 лимитов в состоянии unknown.
+    expect(store.activeWorkspaceTariff.limits).toHaveLength(7);
+    expect(store.activeWorkspaceTariff.limits.every((limit) => limit.state === "unknown")).toBe(true);
   });
 });
