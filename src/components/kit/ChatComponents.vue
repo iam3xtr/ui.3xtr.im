@@ -110,9 +110,8 @@
       поднимает textarea до package-уровневого <code>max-height: 100px</code>,
       после чего composer сам прокручивается внутри (см. CSS rule
       <code>.tr-message-composer__textarea</code> в <code>@iam3xtr/ui</code>).
-      Реальный browser-smoke покажет геометрию; jsdom-проверка ниже
-      закрепляет только то, что v-model проходит сквозь textarea
-      дословно.
+      Итоговую геометрию проверяет реальный браузер; v-model проходит
+      сквозь textarea дословно.
     </p>
 
     <MessageComposer
@@ -128,26 +127,24 @@
   <section class="tr-card mb-5">
     <h2 class="tr-card__title">Публичный API</h2>
     <p class="tr-muted mb-4">
-      Оба компонента импортируются из <code>@iam3xtr/vue</code>; полная
-      таблица props/events/slots — в
-      <code>packages/vue/README.md</code>. Краткая сводка для этого
-      каталога:
+      Оба компонента импортируются из <code>@iam3xtr/vue</code>. Краткая
+      сводка props/events/slots для этого каталога:
     </p>
 
     <h3 class="tr-card__subtitle">ChatHistory</h3>
     <ul class="tr-muted">
       <li>
-        Импорт: <code>import \{ ChatHistory \} from "@iam3xtr/vue";</code>
+        Импорт: <code>import { ChatHistory } from "@iam3xtr/vue";</code>
       </li>
       <li>
-        Props: <code>messages</code> (обязателен, <code>\{id, text, outgoing\}</code>),
+        Props: <code>messages</code> (обязателен, <code>{id, text, outgoing}</code>),
         <code>ariaLabel</code> (опционально), <code>ariaLive</code>
         (по умолчанию <code>"polite"</code>).
       </li>
       <li>
-        Slots: <code>#body</code> (scoped <code>\{ message \}</code>),
-        <code>#metadata</code> (scoped <code>\{ message \}</code>),
-        <code>#status</code> (scoped <code>\{ message \}</code>),
+        Slots: <code>#body</code> (scoped <code>{ message }</code>),
+        <code>#metadata</code> (scoped <code>{ message }</code>),
+        <code>#status</code> (scoped <code>{ message }</code>),
         <code>#empty</code> (no scope).
       </li>
       <li>
@@ -156,16 +153,24 @@
       </li>
       <li>
         Консьюмерские места применения в этом демо:
-        <code>conversations/History.vue</code>,
-        <code>agents/AgentPlayground.vue</code>,
-        <code>agents/wizard/steps/SandboxStep.vue</code>.
+        <RouterLink :to="{ name: 'conversation', params: { agentId: 1, conversationId: 1 } }">
+          история диалога
+        </RouterLink>,
+        <RouterLink :to="{ name: 'agent', params: { id: 1 } }">
+          песочница агента
+        </RouterLink>,
+        <RouterLink :to="{ name: 'agent-wizard', params: { step: 'sandbox' } }">
+          шаг «Песочница» мастера создания агента
+        </RouterLink>
+        (если шаг ещё недостижим для текущего черновика, мастер откроет
+        его актуальный шаг).
       </li>
     </ul>
 
     <h3 class="tr-card__subtitle mt-4">MessageComposer</h3>
     <ul class="tr-muted">
       <li>
-        Импорт: <code>import \{ MessageComposer \} from "@iam3xtr/vue";</code>
+        Импорт: <code>import { MessageComposer } from "@iam3xtr/vue";</code>
       </li>
       <li>
         Props: <code>v-model</code> (controlled draft, обязателен),
