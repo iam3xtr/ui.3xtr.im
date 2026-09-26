@@ -1,12 +1,11 @@
 <template>
   <div class="tr-api-key-select">
-    <b-dropdown
+    <OverlayDropdown
       ref="dropdownRef"
       v-model="localValue"
       aria-role="list"
       expanded
-      :position="openAbove ? 'is-top-right' : undefined"
-      :append-to-body="openAbove"
+      :position="openAbove ? 'is-top-right' : 'is-bottom-right'"
     >
       <template #trigger>
         <button :id="inputId" type="button" class="button tr-api-key-select__trigger">
@@ -52,7 +51,7 @@
           Добавить ключ…
         </button>
       </b-dropdown-item>
-    </b-dropdown>
+    </OverlayDropdown>
 
     <b-modal
       :model-value="modalStore.isOpen(modalKey)"
@@ -108,6 +107,7 @@
 import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
 
+import OverlayDropdown from "../common/OverlayDropdown.vue";
 import { useAgentsStore } from "../../stores/agents.js";
 import { useApiKeysStore } from "../../stores/apiKeys.js";
 import { useModalStore } from "../../stores/modal.js";
@@ -126,6 +126,9 @@ const modalKey = "agent-byok-key-create";
 // so `FormErrorSummary`'s `document.getElementById(field)?.focus()` jump
 // (Task A10.1) has a real focusable target — omitted by every consumer that
 // doesn't need one (e.g. the wizard's `ExpertParameters.vue`).
+// `openAbove` only seeds the preferred direction: the shared overlay flips
+// the menu at the viewport edge and moves it to a body portal only when an
+// ancestor clips overflow (see `common/OverlayDropdown.vue`).
 defineProps({
   inputId: { type: String, default: null },
   openAbove: { type: Boolean, default: false },
@@ -158,11 +161,9 @@ function openCreateModal() {
 }
 
 function closeDropdown() {
-  // Buefy does not close custom items; an active body-appended menu would
-  // otherwise remain above the modal opened by Add or Delete.
-  if (dropdownRef.value?.isActive) {
-    dropdownRef.value.isActive = false;
-  }
+  // Buefy does not close custom items; an active menu would otherwise
+  // remain open behind the modal opened by Add or Delete.
+  dropdownRef.value?.close();
 }
 
 function submit() {

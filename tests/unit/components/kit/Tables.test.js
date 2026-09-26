@@ -6,7 +6,7 @@ import Buefy from "buefy";
 import Tables from "../../../../src/components/kit/Tables.vue";
 import DirtyExitModal from "../../../../src/components/common/DirtyExitModal.vue";
 
-// `b-sidebar`/`b-dropdown` (`append-to-body`) both move their own DOM node
+// `b-sidebar` (and `b-dropdown` in portal placement) move their own DOM node
 // to `document.body` via a plain `appendChild` in `mounted()` — outside
 // this suite's own `wrapper`, so a previous test's drawer/dropdown would
 // still answer body-rooted queries in a later test unless explicitly
@@ -49,8 +49,11 @@ function normalizedText(wrapperNode) {
   return wrapperNode.text().replace(/\s+/g, " ").trim();
 }
 
+// Row actions use the shared overlay adapter: without a clipping ancestor
+// (jsdom applies no theme CSS) the menu stays inline in the row, so it is
+// queried through `wrapper` rather than `document.body`.
 async function openEditDrawer(wrapper, rowName = "Консультант") {
-  const editItem = bodyWrapper()
+  const editItem = wrapper
     .findAll(".dropdown-item")
     .find((item) => normalizedText(item) === `Редактировать ${rowName}`);
   await editItem.trigger("click");

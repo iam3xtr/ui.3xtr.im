@@ -96,6 +96,12 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
   закрепляется через `position: fixed`. Тема @iam3xtr/ui стилизует
   portal wrapper через `.tr-dropdown-overlay-portal`, сохраняя прежние
   ancestor selectors для inline меню и шкалу z-index ниже modal.
+- Демо-dropdown с собственной разметкой (`ApiKeySelect`, desktop-меню
+  `Navbar`, действия `knowledge/Files` и строк kit-таблицы) подключают тот
+  же overlay через демо-адаптер `common/OverlayDropdown.vue`: он передаёт
+  атрибуты, `v-model` и слоты в `b-dropdown`, а placement выбирает
+  `resolveDropdownPlacement`. Мобильное главное меню `Navbar` и native
+  `b-select` остаются без адаптера; Buefy mobile-modal не меняется.
 - В src/**/*.vue по умолчанию не допускаются style blocks. Kit-only override
   допустим, если он не является public contract `@iam3xtr/ui`, использует
   ровно один `<style scoped>` и перед ним документирует причину через
@@ -216,9 +222,9 @@ Free-form id никогда не получает marker — это не catalog
 Buefy-овский dropdown chrome, keyboard navigation, hover, scroll и
 `is-hovered` состояние остаются.
 
-Выбор ключа внутри экспертной панели раскрывается над trigger и через
-Buefy `append-to-body` располагается поверх содержимого панели. Вне
-панели `ApiKeySelect` сохраняет обычное раскрытие вниз.
+Выбор ключа внутри экспертной панели предпочитает раскрытие над trigger,
+вне панели — вниз. Направление и вынос в body portal при обрезающем
+контейнере определяет общий overlay (см. раздел о dropdown выше).
 
 Theme rules для marker и option layout живут в `packages/ui/src/styles/
 theme.scss` и публикуются вместе с `@iam3xtr/ui`. Component-local

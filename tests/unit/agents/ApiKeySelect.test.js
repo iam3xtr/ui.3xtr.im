@@ -37,17 +37,39 @@ async function submitNewKey(wrapper, { label, secret }) {
 }
 
 describe("ApiKeySelect.vue", () => {
-  it("в panel-режиме выносит раскрытый список поверх контейнера и открывает вверх", () => {
+  it("в panel-режиме предпочитает раскрытие вверх через общий overlay", async () => {
     const wrapper = mountApiKeySelect({ openAbove: true });
+    await flushPromises();
     const dropdown = wrapper.findComponent({ name: "BDropdown" });
 
-    expect(dropdown.props("appendToBody")).toBe(true);
     expect(dropdown.props("position")).toBe("is-top-right");
-    expect(document.body.contains(dropdown.vm.$refs.dropdownMenu)).toBe(true);
+    expect(dropdown.props("appendToBody")).toBe(false);
     wrapper.unmount();
   });
 
-  it("закрывает вынесенное меню перед модальным окном добавления ключа", async () => {
+  it("под обрезающим контейнером выносит список в body-portal", async () => {
+    const host = document.createElement("div");
+    host.style.overflow = "auto";
+    document.body.appendChild(host);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    useWorkspaceStore().activeWorkspaceId = "trickster";
+    const wrapper = mount(ApiKeySelect, {
+      attachTo: host,
+      props: { modelValue: null, openAbove: true },
+      global: { plugins: [pinia, Buefy] },
+    });
+    await flushPromises();
+    const dropdown = wrapper.findComponent({ name: "BDropdown" });
+
+    expect(dropdown.props("appendToBody")).toBe(true);
+    expect(host.contains(dropdown.vm.$refs.dropdownMenu)).toBe(false);
+    expect(document.body.contains(dropdown.vm.$refs.dropdownMenu)).toBe(true);
+    wrapper.unmount();
+    host.remove();
+  });
+
+  it("закрывает меню перед модальным окном добавления ключа", async () => {
     const wrapper = mountApiKeySelect({ openAbove: true });
     const dropdown = wrapper.findComponent({ name: "BDropdown" });
 
@@ -62,12 +84,13 @@ describe("ApiKeySelect.vue", () => {
     wrapper.unmount();
   });
 
-  it("вне панели сохраняет обычное раскрытие", () => {
+  it("вне панели сохраняет обычное раскрытие вниз", async () => {
     const wrapper = mountApiKeySelect();
+    await flushPromises();
     const dropdown = wrapper.findComponent({ name: "BDropdown" });
 
     expect(dropdown.props("appendToBody")).toBe(false);
-    expect(dropdown.props("position")).toBeUndefined();
+    expect(dropdown.props("position")).toBe("is-bottom-right");
   });
 
   it("без сохранённых ключей показывает пустое состояние в списке", () => {
@@ -134,7 +157,7 @@ describe("ApiKeySelect.vue — удаление ключа (Task A10.2)", () => 
     return wrapper.find(".tr-api-key-select__item-delete");
   }
 
-  it("закрывает вынесенное меню перед подтверждением удаления", async () => {
+  it("закрывает меню перед подтверждением удаления", async () => {
     const wrapper = mountApiKeySelect({ openAbove: true });
     const dropdown = wrapper.findComponent({ name: "BDropdown" });
     const modalStore = useModalStore();

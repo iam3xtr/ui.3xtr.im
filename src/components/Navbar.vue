@@ -209,7 +209,7 @@
         Создать агента
       </b-button>
 
-      <b-dropdown
+      <OverlayDropdown
         class="tr-dropdown tr-demo-panel"
         position="is-bottom-left"
         aria-role="menu"
@@ -327,9 +327,9 @@
             </b-select>
           </div>
         </b-dropdown-item>
-      </b-dropdown>
+      </OverlayDropdown>
 
-      <b-dropdown
+      <OverlayDropdown
         v-model="workspace"
         class="tr-dropdown tr-workspace-dropdown"
         position="is-bottom-left"
@@ -430,9 +430,9 @@
             Создать пространство
           </span>
         </b-dropdown-item>
-      </b-dropdown>
+      </OverlayDropdown>
 
-      <b-dropdown
+      <OverlayDropdown
         v-if="hasUnreadNotifications"
         class="tr-dropdown tr-notifications-dropdown"
         position="is-bottom-left"
@@ -485,9 +485,9 @@
         <b-dropdown-item @click="markAllNotificationsRead">
           <span class="tr-notifications-all">Все события</span>
         </b-dropdown-item>
-      </b-dropdown>
+      </OverlayDropdown>
 
-      <b-dropdown
+      <OverlayDropdown
         ref="userDropdown"
         class="tr-dropdown tr-user-dropdown"
         position="is-bottom-left"
@@ -633,7 +633,7 @@
             {{ item.label }}
           </b-dropdown-item>
         </template>
-      </b-dropdown>
+      </OverlayDropdown>
     </div>
   </header>
 </template>
@@ -658,6 +658,7 @@ import {
 import { useNotificationsStore } from "../stores/notifications";
 import { useLocaleStore } from "../stores/locale.js";
 import Logo from "./Logo.vue";
+import OverlayDropdown from "./common/OverlayDropdown.vue";
 
 /**
  * @typedef {Object} Workspace
@@ -749,8 +750,11 @@ const isUserMenuActive = ref(false);
 const mobileNavMenuEl = computed(
   () => mobileNavDropdown.value?.$el?.querySelector(".dropdown-menu") ?? null,
 );
+// The desktop menus use the shared overlay adapter (`OverlayDropdown`),
+// which exposes the Buefy instance; its `dropdownMenu` ref stays valid even
+// if the menu moves to a body portal.
 const userMenuEl = computed(
-  () => userDropdown.value?.$el?.querySelector(".dropdown-menu") ?? null,
+  () => userDropdown.value?.dropdown?.$refs?.dropdownMenu ?? null,
 );
 
 useFocusTrap(mobileNavMenuEl, isMobileNavActive);

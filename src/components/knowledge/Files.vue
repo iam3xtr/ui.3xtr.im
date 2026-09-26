@@ -9,7 +9,7 @@
           </a>
         </b-upload>
 
-        <b-dropdown position="is-bottom-left" aria-role="list">
+        <OverlayDropdown position="is-bottom-left" aria-role="list">
           <template #trigger>
             <b-button icon-left="plus" size="is-small" type="is-primary">
               Добавить
@@ -21,7 +21,7 @@
           <b-dropdown-item aria-role="listitem" @click="openObjectForm('url')">
             Добавить ссылку
           </b-dropdown-item>
-        </b-dropdown>
+        </OverlayDropdown>
       </template>
     </Toolbar>
 
@@ -77,7 +77,7 @@
               </b-table-column>
 
               <b-table-column v-slot="{ row }" width="56">
-                <b-dropdown position="is-bottom-left" aria-role="list" append-to-body>
+                <OverlayDropdown position="is-bottom-left" aria-role="list">
                   <template #trigger>
                     <b-button
                       type="is-text"
@@ -89,7 +89,7 @@
                   <b-dropdown-item aria-role="listitem" @click="removeObject(row)">
                     Удалить
                   </b-dropdown-item>
-                </b-dropdown>
+                </OverlayDropdown>
               </b-table-column>
             </b-table>
           </div>
@@ -118,6 +118,7 @@ import { useKnowledgeStore } from "../../stores/knowledge";
 import { useModalStore } from "../../stores/modal";
 import { useWorkspaceStore } from "../../stores/workspace";
 import { Loader, ListAsyncState, Toolbar, FileDropTarget } from "@iam3xtr/vue";
+import OverlayDropdown from "../common/OverlayDropdown.vue";
 import KnowledgeFileFormModal from "./KnowledgeFileFormModal.vue";
 
 // Files tab (Task A5.6), routed at `/knowledge/:id`. Adding a file has two

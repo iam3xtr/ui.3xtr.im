@@ -5,6 +5,7 @@ import { createMemoryHistory, createRouter } from "vue-router";
 import Buefy from "buefy";
 
 import Navbar from "../../../src/components/Navbar.vue";
+import OverlayDropdown from "../../../src/components/common/OverlayDropdown.vue";
 import { useDemoStore } from "../../../src/stores/demo.js";
 import { useNotificationsStore } from "../../../src/stores/notifications.js";
 
@@ -531,5 +532,34 @@ describe("Navbar.vue — постоянные пункты «История ув
     await flushPromises();
 
     expect(router.currentRoute.value.name).toBe("help");
+  });
+});
+
+// .plan stage 5, audited demo dropdowns: the desktop menus go through the
+// shared overlay adapter; the mobile-only main menu keeps plain Buefy
+// mobile-modal behaviour.
+describe("Navbar.vue — общий overlay desktop dropdown", () => {
+  it("desktop-меню используют OverlayDropdown, мобильное меню — нет", async () => {
+    const { wrapper } = await mountNavbar();
+    await flushPromises();
+
+    const overlayClasses = wrapper.findAllComponents(OverlayDropdown)
+      .map((item) => item.classes());
+    expect(overlayClasses.some((classes) => classes.includes("tr-demo-panel"))).toBe(true);
+    expect(overlayClasses.some((classes) => classes.includes("tr-workspace-dropdown"))).toBe(true);
+    expect(overlayClasses.some((classes) => classes.includes("tr-notifications-dropdown"))).toBe(true);
+    expect(overlayClasses.some((classes) => classes.includes("tr-user-dropdown"))).toBe(true);
+    expect(overlayClasses.some((classes) => classes.includes("tr-mobile-nav"))).toBe(false);
+  });
+
+  it("focus trap пользовательского меню получает меню из адаптера", async () => {
+    const { wrapper } = await mountNavbar();
+    await flushPromises();
+
+    const userDropdown = wrapper.findAllComponents(OverlayDropdown)
+      .find((item) => item.classes().includes("tr-user-dropdown"));
+    const menu = userDropdown.vm.dropdown.$refs.dropdownMenu;
+    expect(menu.classList.contains("dropdown-menu")).toBe(true);
+    expect(userDropdown.element.contains(menu)).toBe(true);
   });
 });
