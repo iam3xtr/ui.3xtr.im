@@ -47,6 +47,7 @@ describe("stores/demo — default state", () => {
     expect(store.mode).toBe("ready");
     expect(store.longLabels).toBe(false);
     expect(store.denseData).toBe(false);
+    expect(store.showCreateAgentAction).toBe(false);
     expect(store.isReady).toBe(true);
   });
 
@@ -167,6 +168,7 @@ describe("stores/demo — переключатели и проекция", () =>
     store.setLongLabels(true);
     store.setDenseData(true);
     store.setResourceMenuSize("full");
+    store.setShowCreateAgentAction(true);
 
     store.reset();
 
@@ -174,6 +176,17 @@ describe("stores/demo — переключатели и проекция", () =>
     expect(store.longLabels).toBe(false);
     expect(store.denseData).toBe(false);
     expect(store.resourceMenuSize).toBe("compact");
+    expect(store.showCreateAgentAction).toBe(false);
+  });
+
+  it("setShowCreateAgentAction коэрсит значение в boolean", () => {
+    const store = useDemoStore();
+
+    store.setShowCreateAgentAction(1);
+    expect(store.showCreateAgentAction).toBe(true);
+
+    store.setShowCreateAgentAction(0);
+    expect(store.showCreateAgentAction).toBe(false);
   });
 });
 
@@ -193,6 +206,7 @@ describe("stores/demo — persistence", () => {
     store.setLongLabels(true);
     store.setDenseData(true);
     store.setResourceMenuSize("full");
+    store.setShowCreateAgentAction(true);
 
     // watch — асинхронный по умолчанию; ждём flush перед чтением localStorage.
     await Promise.resolve();
@@ -204,6 +218,7 @@ describe("stores/demo — persistence", () => {
       longLabels: true,
       denseData: true,
       resourceMenuSize: "full",
+      showCreateAgentAction: true,
     });
   });
 
@@ -215,6 +230,7 @@ describe("stores/demo — persistence", () => {
         longLabels: true,
         denseData: false,
         resourceMenuSize: "none",
+        showCreateAgentAction: true,
       }),
     );
     setActivePinia(createPinia());
@@ -225,6 +241,17 @@ describe("stores/demo — persistence", () => {
     expect(store.longLabels).toBe(true);
     expect(store.denseData).toBe(false);
     expect(store.resourceMenuSize).toBe("none");
+    expect(store.showCreateAgentAction).toBe(true);
+  });
+
+  it("отсутствующий или невалидный showCreateAgentAction восстанавливается как false", () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ mode: "ready", showCreateAgentAction: "yes" }),
+    );
+    setActivePinia(createPinia());
+
+    expect(useDemoStore().showCreateAgentAction).toBe(false);
   });
 
   it("невалидный сохранённый режим заменяется на ready, флаги коэрсятся в boolean", () => {

@@ -81,13 +81,16 @@ describe("Navbar.vue — демо-панель (Task A7.2)", () => {
     const demoStore = useDemoStore();
 
     const switches = wrapper.findAll(".tr-demo-panel input[type=checkbox]");
-    expect(switches).toHaveLength(2);
+    expect(switches.length).toBeGreaterThanOrEqual(3);
 
     await switches[0].setValue(true);
     expect(demoStore.longLabels).toBe(true);
 
     await switches[1].setValue(true);
     expect(demoStore.denseData).toBe(true);
+
+    await switches[2].setValue(true);
+    expect(demoStore.showCreateAgentAction).toBe(true);
   });
 });
 
@@ -185,26 +188,80 @@ describe("Navbar.vue — опциональное resource-меню (Task A8.1)"
 // Task A9.2: постоянное действие «Создать агента» — доступно на любом
 // кабинетном экране (полный Navbar), отсутствует на auth/служебных
 // маршрутах (минимальный Navbar), ведёт в общий route-driven мастер.
-describe("Navbar.vue — постоянный вход в мастер создания агента (Task A9.2)", () => {
-  it("действие присутствует на полном (кабинетном) navbar", async () => {
+// Этап 4: видимость управляется kit-only переключателем
+// `useDemoStore().showCreateAgentAction` (по умолчанию `false`) — оба
+// входа (desktop-кнопка и пункт mobile-меню) синхронно скрыты или показаны
+// вместе с относящимся разделителем, на минимальном navbar переключатель
+// и сами действия не появляются.
+describe("Navbar.vue — действие «Создать агента» (Task A9.2 + этап 4)", () => {
+  it("по умолчанию скрыто и на desktop actions, и в mobile menu", async () => {
     const { wrapper } = await mountNavbar();
 
-    const button = wrapper.findAll(".tr-topbar__actions button")
+    const desktopButton = wrapper.findAll(".tr-topbar__actions button")
       .find((btn) => btn.text().includes("Создать агента"));
-    expect(button).toBeTruthy();
+    expect(desktopButton).toBeFalsy();
+
+    const mobileItem = wrapper.findAll(".tr-mobile-nav .dropdown-item")
+      .find((item) => item.text().includes("Создать агента"));
+    expect(mobileItem).toBeFalsy();
   });
 
-  it("действие отсутствует на минимальном (auth) navbar", async () => {
+  it("включение переключателя в Demo-панели открывает оба входа синхронно", async () => {
+    const { wrapper } = await mountNavbar();
+    const demoStore = useDemoStore();
+
+    expect(wrapper.findAll(".tr-topbar__actions button")
+      .find((btn) => btn.text().includes("Создать агента"))).toBeFalsy();
+
+    demoStore.setShowCreateAgentAction(true);
+    await wrapper.vm.$nextTick();
+
+    const desktopButton = wrapper.findAll(".tr-topbar__actions button")
+      .find((btn) => btn.text().includes("Создать агента"));
+    expect(desktopButton).toBeTruthy();
+
+    const mobileItem = wrapper.findAll(".tr-mobile-nav .dropdown-item")
+      .find((item) => item.text().includes("Создать агента"));
+    expect(mobileItem).toBeTruthy();
+  });
+
+  it("выключение переключателя скрывает оба входа и не оставляет пустой разделитель", async () => {
+    const { wrapper } = await mountNavbar();
+    const demoStore = useDemoStore();
+    demoStore.setShowCreateAgentAction(true);
+    await wrapper.vm.$nextTick();
+
+    demoStore.setShowCreateAgentAction(false);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.findAll(".tr-topbar__actions button")
+      .find((btn) => btn.text().includes("Создать агента"))).toBeFalsy();
+    expect(wrapper.findAll(".tr-mobile-nav .dropdown-item")
+      .find((item) => item.text().includes("Создать агента"))).toBeFalsy();
+    // «Создать агента» — это первая пара в mobile menu над основной навигацией,
+    // её исчезновение уносит и относящийся разделитель, поэтому первая
+    // оставшаяся `dropdown-item` уже относится к основной навигации.
+    const firstMobileItem = wrapper.findAll(".tr-mobile-nav .dropdown-item")[0];
+    expect(firstMobileItem?.text()).not.toContain("Создать агента");
+  });
+
+  it("действие отсутствует на минимальном (auth) navbar даже при включённом переключателе", async () => {
     const { wrapper } = await mountNavbar({ minimal: true });
+    const demoStore = useDemoStore();
+    demoStore.setShowCreateAgentAction(true);
+    await wrapper.vm.$nextTick();
 
     expect(wrapper.find(".tr-topbar__actions").exists()).toBe(false);
-    const button = wrapper.findAll("button")
-      .find((btn) => btn.text().includes("Создать агента"));
-    expect(button).toBeFalsy();
+    expect(wrapper.find(".tr-mobile-nav").exists()).toBe(false);
+    expect(wrapper.findAll("button")
+      .find((btn) => btn.text().includes("Создать агента"))).toBeFalsy();
   });
 
-  it("клик по действию открывает общий мастер, а не отдельную форму", async () => {
+  it("desktop-кнопка открывает общий route-driven мастер", async () => {
     const { wrapper, router } = await mountNavbar();
+    const demoStore = useDemoStore();
+    demoStore.setShowCreateAgentAction(true);
+    await wrapper.vm.$nextTick();
 
     const button = wrapper.findAll(".tr-topbar__actions button")
       .find((btn) => btn.text().includes("Создать агента"));
@@ -212,6 +269,42 @@ describe("Navbar.vue — постоянный вход в мастер созд�
     await flushPromises();
 
     expect(router.currentRoute.value.name).toBe("agent-wizard");
+  });
+
+  it("пункт mobile-меню открывает общий route-driven мастер", async () => {
+    const { wrapper, router } = await mountNavbar();
+    const demoStore = useDemoStore();
+    demoStore.setShowCreateAgentAction(true);
+    await wrapper.vm.$nextTick();
+
+    const item = wrapper.findAll(".tr-mobile-nav .dropdown-item")
+      .find((el) => el.text().includes("Создать агента"));
+    await item.trigger("click");
+    await flushPromises();
+
+    expect(router.currentRoute.value.name).toBe("agent-wizard");
+  });
+});
+
+// Этап 4: trigger Demo-панели становится icon-only — текстовая подпись
+// «Demo» убрана, чтобы не раздувать правую часть Navbar; доступное имя и
+// tooltip с названием панели сохраняются.
+describe("Navbar.vue — icon-only Demo trigger (этап 4)", () => {
+  it("текстовая подпись «Demo» отсутствует, иконка и доступное имя сохранены", async () => {
+    const { wrapper } = await mountNavbar();
+
+    const trigger = wrapper.find(".tr-demo-panel-trigger");
+    expect(trigger.exists()).toBe(true);
+    expect(trigger.attributes("aria-label")).toBe("Панель демо-режима кита");
+    expect(trigger.attributes("title")).toBe("Панель демо-режима кита");
+    expect(trigger.text()).not.toContain("Demo");
+    expect(trigger.find("b-icon").exists()).toBe(true);
+  });
+
+  it("icon-only Demo trigger отсутствует на минимальном (auth) navbar", async () => {
+    const { wrapper } = await mountNavbar({ minimal: true });
+
+    expect(wrapper.find(".tr-demo-panel-trigger").exists()).toBe(false);
   });
 });
 

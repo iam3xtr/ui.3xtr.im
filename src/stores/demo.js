@@ -68,6 +68,12 @@ const DEFAULTS = Object.freeze({
   longLabels: false,
   denseData: false,
   resourceMenuSize: /** @type {ResourceMenuSize} */ ("compact"),
+  // Этап 4, задача Navbar: по умолчанию действие «Создать агента» скрыто и в
+  // desktop actions, и в мобильном меню — Demo trigger остаётся единственным
+  // входом в мастер. Явное значение `false` здесь намеренно: до появления
+  // переключателя кнопка была постоянной (Task A9.2), и прежнее поведение
+  // не должно прорасти в новые сессии через persisted storage.
+  showCreateAgentAction: false,
 });
 
 /**
@@ -137,15 +143,17 @@ export const useDemoStore = defineStore("demo", () => {
   const longLabels = ref(Boolean(persisted?.longLabels));
   const denseData = ref(Boolean(persisted?.denseData));
   const resourceMenuSize = ref(normalizeResourceMenuSize(persisted?.resourceMenuSize));
+  const showCreateAgentAction = ref(Boolean(persisted?.showCreateAgentAction));
 
   watch(
-    [mode, longLabels, denseData, resourceMenuSize],
-    ([nextMode, nextLongLabels, nextDenseData, nextResourceMenuSize]) => {
+    [mode, longLabels, denseData, resourceMenuSize, showCreateAgentAction],
+    ([nextMode, nextLongLabels, nextDenseData, nextResourceMenuSize, nextShowCreateAgentAction]) => {
       writePersisted({
         mode: nextMode,
         longLabels: nextLongLabels,
         denseData: nextDenseData,
         resourceMenuSize: nextResourceMenuSize,
+        showCreateAgentAction: nextShowCreateAgentAction,
       });
     },
   );
@@ -170,6 +178,11 @@ export const useDemoStore = defineStore("demo", () => {
     resourceMenuSize.value = normalizeResourceMenuSize(value);
   }
 
+  /** @param {boolean} value */
+  function setShowCreateAgentAction(value) {
+    showCreateAgentAction.value = Boolean(value);
+  }
+
   function toggleLongLabels() {
     longLabels.value = !longLabels.value;
   }
@@ -183,6 +196,7 @@ export const useDemoStore = defineStore("demo", () => {
     longLabels.value = DEFAULTS.longLabels;
     denseData.value = DEFAULTS.denseData;
     resourceMenuSize.value = DEFAULTS.resourceMenuSize;
+    showCreateAgentAction.value = DEFAULTS.showCreateAgentAction;
   }
 
   const isReady = computed(() => mode.value === "ready");
@@ -232,10 +246,12 @@ export const useDemoStore = defineStore("demo", () => {
     longLabels,
     denseData,
     resourceMenuSize,
+    showCreateAgentAction,
     setMode,
     setLongLabels,
     setDenseData,
     setResourceMenuSize,
+    setShowCreateAgentAction,
     toggleLongLabels,
     toggleDenseData,
     reset,

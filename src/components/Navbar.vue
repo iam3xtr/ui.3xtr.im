@@ -74,18 +74,23 @@
         error списка каталога — здесь же на мобильном viewport, где нет
         отдельного `.tr-topbar__actions`. Ведёт в общий route-driven мастер,
         не в отдельную форму — см. `src/components/agents/AgentWizard.vue`.
+        Этап 4: по умолчанию скрыто, kit-only переключатель
+        `useDemoStore().showCreateAgentAction` открывает оба входа
+        (desktop + mobile) синхронно вместе с относящимся разделителем.
       -->
-      <b-dropdown-item
-        aria-role="menuitem"
-        @click="openAgentWizard"
-      >
-        <span class="tr-dropdown-action">
-          <b-icon icon="plus" size="is-small" />
-          Создать агента
-        </span>
-      </b-dropdown-item>
+      <template v-if="demoShowCreateAgentAction">
+        <b-dropdown-item
+          aria-role="menuitem"
+          @click="openAgentWizard"
+        >
+          <span class="tr-dropdown-action">
+            <b-icon icon="plus" size="is-small" />
+            Создать агента
+          </span>
+        </b-dropdown-item>
 
-      <b-dropdown-item separator />
+        <b-dropdown-item separator />
+      </template>
 
       <b-dropdown-item
         v-for="item in mainNavigationItems"
@@ -188,10 +193,15 @@
     <div v-if="!minimal" class="tr-topbar__actions">
       <!--
         Постоянное действие «Создать агента» (Stage A9, Task A9.2): не
-        зависит от текущего маршрута/фильтра/пагинации — всегда открывает
-        общий route-driven мастер (`agent-wizard`), не отдельную форму.
+        зависит от текущего маршрута/фильтра/пагинации — открывает общий
+        route-driven мастер (`agent-wizard`), не отдельную форму. Этап 4:
+        по умолчанию скрыто в desktop actions и mobile menu, kit-only
+        переключатель `useDemoStore().showCreateAgentAction` открывает оба
+        входа синхронно вместе с относящимся разделителем. На минимальном
+        (auth) navbar не показывается в принципе.
       -->
       <b-button
+        v-if="demoShowCreateAgentAction"
         type="is-primary"
         icon-left="plus"
         @click="openAgentWizard"
@@ -205,13 +215,20 @@
         aria-role="menu"
       >
         <template #trigger>
+          <!--
+            Этап 4: trigger Demo-панели становится icon-only — текстовая
+            подпись «Demo» убрана, чтобы не раздувать правую часть Navbar
+            на промежуточных ширинах. Доступное имя и tooltip с названием
+            панели сохраняются через `aria-label`/`title`, чтобы AT и
+            пользователи клавиатуры по-прежнему видели назначение кнопки.
+          -->
           <button
             class="tr-navbar-trigger tr-demo-panel-trigger"
             type="button"
             aria-label="Панель демо-режима кита"
+            title="Панель демо-режима кита"
           >
             <b-icon icon="tune-variant" size="is-small" />
-            <span class="tr-navbar-trigger__label">Demo</span>
           </button>
         </template>
 
@@ -265,6 +282,25 @@
               v-model="demoDenseData"
               size="is-small"
               aria-label="Большой набор демо-данных"
+            />
+          </div>
+        </b-dropdown-item>
+
+        <!--
+          Этап 4: kit-only переключатель видимости постоянного действия
+          «Создать агента» (Task A9.2). По умолчанию скрыто в desktop
+          actions и mobile menu, чтобы Navbar на промежуточных ширинах не
+          раздувал правую часть и не вытеснял вкладки. Один switch
+          одновременно открывает оба входа в мастер; minimal navbar
+          переключатель не показывает, так как и самих действий там нет.
+        -->
+        <b-dropdown-item custom :focusable="false">
+          <div class="tr-dropdown-setting">
+            <span class="tr-dropdown-action">Создать агента</span>
+            <b-switch
+              v-model="demoShowCreateAgentAction"
+              size="is-small"
+              aria-label="Показывать действие «Создать агента» в навбаре"
             />
           </div>
         </b-dropdown-item>
@@ -690,6 +726,7 @@ const {
   longLabels: demoLongLabels,
   denseData: demoDenseData,
   resourceMenuSize: demoResourceMenuSize,
+  showCreateAgentAction: demoShowCreateAgentAction,
 } = storeToRefs(demoStore);
 
 const demoModeOptions = DEMO_MODES.map((value) => ({
