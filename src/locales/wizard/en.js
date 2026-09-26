@@ -41,6 +41,8 @@ export default {
   catalog: {
     title: "Exact model (catalog)",
     searchPlaceholder: "Search models",
+    triggerPlaceholder: "Select a model",
+    emptyLabel: "Nothing found.",
     unavailable: "Picking an exact model is not available on your plan — "
       + "the recommended class is used instead.",
   },
@@ -66,6 +68,11 @@ export default {
     unavailable: "Your own key is not available on your plan.",
     modelLabel: "Model (OpenRouter, your own key)",
     keyLabel: "API key",
+    scopeHint: "The list is limited to OpenRouter models — that is how your own key (BYOK) works.",
+    freeformActionLabel: "Use “{id}” as the model identifier",
+    freeformHint: "Format: vendor/model",
+    freeformWhitespace: "The identifier must not contain spaces.",
+    freeformTooLong: "At most 255 characters.",
   },
   capability: {
     downgradeWarning: "The current selection is not available on this plan. "

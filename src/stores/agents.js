@@ -50,7 +50,7 @@ import { getChannelsNeedingAttention, hasWorkingChannel } from "./channels.js";
  *   приём, что и `provider_model_id`).
  * @property {string | null} provider_model_id Свободный BYOK-идентификатор
  *   вида `vendor/model`, действителен только при `use_own_api_key`, наравне с
- *   `byok_model` (выбор одного сбрасывает другой — см. `ModelSelect.vue`). В
+ *   `byok_model` (выбор одного сбрасывает другой — см. публичный `ModelSelect`). В
  *   кабинете пока не сохраняется — блокировано Issue api.3xtr.im#112; в ките
  *   реализовано полностью как спецификация контракта. Не подменяет `model`.
  * @property {number | null} knowledgeCollectionId Durable-ссылка на личную

@@ -42,6 +42,8 @@ export default {
   catalog: {
     title: "Modelo exacto (catálogo)",
     searchPlaceholder: "Buscar modelos",
+    triggerPlaceholder: "Selecciona un modelo",
+    emptyLabel: "No se encontró nada.",
     unavailable: "Elegir un modelo exacto no está disponible en tu plan — se "
       + "usa la clase recomendada.",
   },
@@ -68,6 +70,11 @@ export default {
     unavailable: "Tu propia clave no está disponible en tu plan.",
     modelLabel: "Modelo (OpenRouter, clave propia)",
     keyLabel: "Clave de API",
+    scopeHint: "La lista se limita a modelos de OpenRouter — así funciona la clave propia (BYOK).",
+    freeformActionLabel: "Usar «{id}» como identificador del modelo",
+    freeformHint: "Formato: vendor/model",
+    freeformWhitespace: "El identificador no debe contener espacios.",
+    freeformTooLong: "Como máximo 255 caracteres.",
   },
   capability: {
     downgradeWarning: "La selección actual no está disponible en este plan. "
