@@ -150,18 +150,37 @@ defineExpose({
 
   <!-- Stage 3 ChatHistory and MessageComposer from the packed tarball. -->
   <div class="tr-consumer-flow__chat">
-    <ChatHistory
-      :messages="chatMessages"
-      class="tr-consumer-flow__chat-history"
-      aria-label="Dialog history"
+    <!-- Bounded chat pane: a fixed-height flex column, the way a real
+         consumer embeds the pair. The history scrolls inside its own box
+         (`.tr-chat-history` from `@iam3xtr/ui`) and the composer stays
+         anchored at the bottom. Inline style so jsdom sees the bounds. -->
+    <div
+      class="tr-consumer-flow__chat-pane"
+      style="display: flex; flex-direction: column; height: 240px; overflow: hidden"
     >
-      <template #metadata="{ message }">
-        <span class="tr-consumer-flow__chat-meta">@{{ message.id }}</span>
-      </template>
-      <template #status="{ message }">
-        <span class="tr-consumer-flow__chat-status">{{ message.outgoing ? "sent" : "received" }}</span>
-      </template>
-    </ChatHistory>
+      <ChatHistory
+        :messages="chatMessages"
+        class="tr-consumer-flow__chat-history"
+        aria-label="Dialog history"
+      >
+        <template #metadata="{ message }">
+          <span class="tr-consumer-flow__chat-meta">@{{ message.id }}</span>
+        </template>
+        <template #status="{ message }">
+          <span class="tr-consumer-flow__chat-status">{{ message.outgoing ? "sent" : "received" }}</span>
+        </template>
+      </ChatHistory>
+      <MessageComposer
+        v-model="composerDraft"
+        class="tr-consumer-flow__composer"
+        v-bind="composerCopy"
+        @submit="(text) => submittedDrafts.push(text)"
+      >
+        <template #submit-icon>
+          <span class="tr-consumer-flow__composer-icon" aria-hidden="true">&#10148;</span>
+        </template>
+      </MessageComposer>
+    </div>
     <ChatHistory
       :messages="chatEmpty"
       class="tr-consumer-flow__chat-empty"
@@ -171,16 +190,6 @@ defineExpose({
         <p class="tr-consumer-flow__chat-empty-text">No messages yet</p>
       </template>
     </ChatHistory>
-    <MessageComposer
-      v-model="composerDraft"
-      class="tr-consumer-flow__composer"
-      v-bind="composerCopy"
-      @submit="(text) => submittedDrafts.push(text)"
-    >
-      <template #submit-icon>
-        <span class="tr-consumer-flow__composer-icon" aria-hidden="true">&#10148;</span>
-      </template>
-    </MessageComposer>
     <MessageComposer
       v-model="multilineDraft"
       class="tr-consumer-flow__composer-multiline"

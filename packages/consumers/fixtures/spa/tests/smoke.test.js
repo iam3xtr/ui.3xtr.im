@@ -157,6 +157,22 @@ describe("consumer SPA fixture", () => {
         wrapper.unmount();
     });
 
+    // Bounded chat pane: the history and the composer share one
+    // fixed-height flex column, history first, composer anchored last.
+    // jsdom does no layout; the scroll/row-height geometry itself is a
+    // `@iam3xtr/ui` style contract pinned in that package's tests.
+    it("ChatHistory and MessageComposer sit together in a bounded chat pane", async () => {
+        const wrapper = await mountApp();
+        const pane = wrapper.find(".tr-consumer-flow__chat-pane");
+        expect(pane.exists()).toBe(true);
+        expect(pane.element.style.height).toBe("240px");
+        const children = [...pane.element.children];
+        expect(children).toHaveLength(2);
+        expect(children[0].classList.contains("tr-chat-history")).toBe(true);
+        expect(children[1].classList.contains("tr-message-composer")).toBe(true);
+        wrapper.unmount();
+    });
+
     it("ChatHistory empty state renders the consumer-supplied empty slot and no built-in copy", async () => {
         const wrapper = await mountApp();
         const empty = wrapper.find(".tr-consumer-flow__chat-empty");
