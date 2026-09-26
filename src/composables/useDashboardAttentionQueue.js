@@ -52,6 +52,12 @@ function writeDismissedKeys(workspaceId, keys) {
  * `false` at the ends instead of cycling back around, so the exposed
  * position ("N из M") always matches a real linear step and never jumps.
  *
+ * Direct selection (`.todo` "Добавить прямой выбор карточки в pager"):
+ * `visibleItems` is exposed so the pager can render one numbered button per
+ * currently visible item, and `goTo(index)` jumps straight to that item.
+ * Numbers are always derived from the live visible list, so after a
+ * dismiss, restore or source update they are renumbered rather than stale.
+ *
  * @param {import("vue").Ref<Array<{ key: string }>>} itemsRef Source items,
  *   untouched — this composable never mutates or reorders it.
  * @param {import("vue").Ref<string>} workspaceIdRef
@@ -127,6 +133,15 @@ export function useDashboardAttentionQueue(itemsRef, workspaceIdRef) {
     lastIndex = targetIndex;
   }
 
+  function goTo(index) {
+    const item = visibleItems.value[index];
+    if (!item) {
+      return;
+    }
+    activeKey.value = item.key;
+    lastIndex = index;
+  }
+
   function dismissActive() {
     const item = activeItem.value;
     if (!item) {
@@ -144,6 +159,8 @@ export function useDashboardAttentionQueue(itemsRef, workspaceIdRef) {
   }
 
   return {
+    visibleItems,
+    activeIndex,
     activeItem,
     position,
     total,
@@ -152,6 +169,7 @@ export function useDashboardAttentionQueue(itemsRef, workspaceIdRef) {
     hiddenCount,
     goPrevious,
     goNext,
+    goTo,
     dismissActive,
     restoreHidden,
   };
