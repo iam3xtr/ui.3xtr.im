@@ -100,9 +100,7 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
   допустим, если он не является public contract `@iam3xtr/ui`, использует
   ровно один `<style scoped>` и перед ним документирует причину через
   `<!-- kit-style-exception: причина -->`; guard проверяет это правило.
-  Например, `.tr-sidebar__versions` в `Sidebar.vue` — provenance marker
-  конкретного приложения. Все reusable rules добавляются в
-  packages/ui/src/styles/theme.scss.
+  Все reusable rules добавляются в packages/ui/src/styles/theme.scss.
 - AuthPage (auth/) — узкий `flat` prop (Issue #9.1): по умолчанию контейнер —
   `.tr-auth__card.tr-card` (background/border/radius/padding/shadow из
   общего card-контракта, theme.scss раздел 8); `flat` убирает только класс
@@ -123,13 +121,28 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
   Блок лимитов `TariffSummaryCard` сохраняет utility-класс `tr-stack` для
   column layout, но `.tr-stack.tr-sidebar-tariff__limits` задаёт `gap: 0`
   с большей специфичностью, чтобы generic stack-gap его не переопределял.
+  Sidebar передаёт карточке компактную проекцию активного тарифа: первые три
+  доступных лимита в порядке `agents`, `conversations`, `members`, `objects`,
+  `collections`, `channels`, `extracted`. Состояния `zero`, `unknown` и `error`
+  скрыты; `unlimited` остаётся допустимым. Если доступных лимитов меньше двух,
+  показаны только они. Подписи измеренных лимитов сохраняют единицы и статус
+  исчерпания без периода, а `progress` и остальные поля берутся из полного
+  тарифа. Полные тарифные и usage-представления, как и public API
+  `TariffSummaryCard`, не меняются.
 
-- Внизу Sidebar после `TariffSummaryCard` находится компактный read-only
+- Внизу Sidebar перед `TariffSummaryCard` находится компактный read-only
   provenance `ui <version>` / `vue <version>`. Production и Pages показывают
   exact pins из корневого `package.json`; `npm run dev` дополнительно выводит
-  `workspace source`, потому что Vite исполняет исходники `packages/*/src`, а
+  `dev`, потому что Vite исполняет исходники `packages/*/src`, а
   не опубликованные пакеты. Индикатор не является навигацией, контролом
   обновления или заявлением о registry-публикации.
+
+- В полном Navbar действие «Создать агента» по умолчанию скрыто одновременно
+  в desktop actions и mobile menu. Переключатель в kit-only Demo panel
+  показывает или скрывает оба входа в `agent-wizard`; состояние сохраняется в
+  `trickster-demo-state` и сбрасывается вместе с остальными demo-настройками.
+  На минимальном Navbar действие и Demo panel отсутствуют. Кнопка открытия
+  Demo panel показывает только иконку, сохраняя доступное имя и tooltip.
 
 ### Публичные компоненты чата
 
