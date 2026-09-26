@@ -41,17 +41,6 @@ const bothModelId = ref("gpt");
 const bothByokModelId = ref("claude");
 const bothProviderModelId = ref(null);
 const bothUseOwnApiKey = ref(false);
-// Exposed so the smoke test can assert the bound `v-model:*` values.
-defineExpose({
-  inlineModelId,
-  portalModelId,
-  byokModelId,
-  byokProviderModelId,
-  bothModelId,
-  bothByokModelId,
-  bothProviderModelId,
-  bothUseOwnApiKey,
-});
 const modelSelectCopy = {
   triggerPlaceholder: "Choose a model",
   searchPlaceholder: "Search models",
@@ -97,7 +86,21 @@ const composerCopy = {
     ariaLabel: "Composer",
 };
 const submittedDrafts = ref([]);
-defineExpose({ composerDraft, multilineDraft, submittedDrafts });
+// Exposed so the smoke test can assert the bound `v-model:*` values.
+// Vue allows a single `defineExpose()` per `<script setup>`.
+defineExpose({
+  inlineModelId,
+  portalModelId,
+  byokModelId,
+  byokProviderModelId,
+  bothModelId,
+  bothByokModelId,
+  bothProviderModelId,
+  bothUseOwnApiKey,
+  composerDraft,
+  multilineDraft,
+  submittedDrafts,
+});
 </script>
 
 <template>
@@ -145,7 +148,7 @@ defineExpose({ composerDraft, multilineDraft, submittedDrafts });
     </div>
   </div>
 
-  <!-- Stage 2.2 BYOK modes from the packed tarball. -->
+  <!-- Stage 3 ChatHistory and MessageComposer from the packed tarball. -->
   <div class="tr-consumer-flow__chat">
     <ChatHistory
       :messages="chatMessages"
