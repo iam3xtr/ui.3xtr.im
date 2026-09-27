@@ -193,8 +193,8 @@ textarea начинается с высоты кнопки, растёт до 10
 viewport. Поиск и результаты находятся в одном popup; `b-autocomplete`
 сохраняет keyboard navigation и выбор. Режимы `model`/`byok`/`both`,
 controlled values и consumer-owned copy описаны в `packages/vue/README.md`.
-Root build до публикации использует прежние exact pins; `npm run dev`
-подключает исходники пакетов.
+Root build использует опубликованные exact pins из `package.json`;
+`npm run dev` подключает исходники пакетов.
 
 Выбранный пункт в открытом списке помечается классом
 `tr-model-select__option--selected` и `aria-current="true"` (через
@@ -350,17 +350,12 @@ prop-level справочником `FormDrawer`/`b-modal`/`b-sidebar`/`b-dialog
 подменяет связный сценарий выше, только документирует контракт компонента
 в изоляции.
 
-**Release-gated ограничение.** `Release.1` был dry run: `@iam3xtr/ui` и
-`@iam3xtr/vue` не опубликованы реально, установленная зависимость
-(`node_modules/@iam3xtr/vue@0.1.1-alpha`) — более ранний снимок, без
-`trVue`-плагина (`@iam3xtr/vue/plugin` не входит в `package.json#exports`)
-и без расширенной `Icon`-цепочки резолюции (`icon`-алиас, default slot,
-default-реестр `@iam3xtr/ui/icons`, Buefy MDI fallback — Issue #8.2). Application
-shell сценарий поэтому живьём резолвит только текущий установленный
-контракт `Icon` (`name`, обязательный, без fallback/slot) и показывает
-расширенную цепочку и `trVue` только как код (`CopyPre`), явно
-подписанный как неисполняемый/неопубликованный — см. компонент
-`src/components/kit/ApplicationShell.vue` и `.todo`, Handoff.2.
+`/kit/application-shell` использует опубликованный `Icon` из exact pin
+`@iam3xtr/vue`: живые примеры показывают SVG-реестр, Buefy MDI fallback и
+placeholder. Полная цепочка slot → реестр потребителя → default-реестр
+`@iam3xtr/ui/icons` → Buefy MDI → placeholder приведена рядом как копируемый
+код. Установка `trVue` через `@iam3xtr/vue/plugin` показана отдельным
+`main.js`-фрагментом; сам UI Kit использует именованные импорты.
 
 ## Проверка изменений
 
