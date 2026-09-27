@@ -54,29 +54,34 @@ npm run release:vue -- -ReleaseCurrent -Alpha -Execute
 
 ### Автоматическое обновление UI Kit после публикации
 
-Успешная команда с `-Execute` обновляет UI Kit автоматически: выставляет
-опубликованную точную версию соответствующего пакета в корневом
-`package.json`, пересобирает `package-lock.json`, фиксирует новые gitlink SHA
-`packages/ui`/`packages/vue` и создаёт/push'ит отдельный commit вида
-`chore(deps): update @iam3xtr/ui@X.Y.Z and @iam3xtr/vue@X.Y.Z`.
+Успешная команда с `-Execute` после публикации обновляет **текущий checkout**
+UI Kit: выставляет опубликованную точную версию соответствующего пакета в
+корневом `package.json` и пересобирает `package-lock.json`. Release-коммиты
+пакетов меняют также локальные gitlink SHA `packages/ui`/`packages/vue`.
+`release:all` обновляет оба exact pin после публикации пары; отдельный
+`release:ui` или `release:vue` обновляет только свой pin.
 
-Для `release:all` это один kit commit после успешной публикации обеих
-библиотек. Для отдельного `release:ui` или `release:vue` обновляется только
-соответствующий exact pin. Поэтому до release preflight должны быть чистыми и
-синхронными с `origin/main` **три** рабочие директории: UI Kit и оба
-submodule. Обычный порядок работы:
+UI Kit может оставаться на рабочей ветке с прежними опубликованными pins до
+релиза пакетов. Скрипт не требует для него `main` или синхронизации с
+`origin/main` и не коммитит/не пушит изменения UI Kit. Перед выпуском он
+проверяет, что `package.json` и `package-lock.json` не содержат локальных
+правок: эти файлы будут пересозданы после публикации. Остальные изменения
+UI Kit сохраняются. Обычный порядок работы:
 
-1. Закоммитить и запушить функциональные изменения в `packages/ui`.
-2. Закоммитить и запушить функциональные изменения в `packages/vue`.
-3. В корне UI Kit зафиксировать обновлённые gitlink SHA и интеграционную
-   разметку/документацию, затем запушить этот commit.
-4. Запустить release-команду. Она создаст только release commits в
-   библиотеках и dependency-pin commit в UI Kit.
+1. Закоммитить функциональные изменения в `packages/ui` и `packages/vue`, затем
+   перенести их на `main` соответствующих репозиториев и синхронизировать с
+   `origin/main`.
+2. Оставить UI Kit на рабочей ветке с интеграционными изменениями и прежними
+   exact pins. Запустить `release:all` сначала без `-Execute`.
+3. После полного pre-release gate запустить `release:all -- -Execute`. Скрипт
+   публикует UI, затем Vue и обновляет локальные pins/lockfile/gitlinks UI Kit.
+4. Проверить демо на опубликованных exact versions, затем отдельным коммитом
+   зафиксировать pins, lockfile и gitlinks в рабочей ветке UI Kit. Пуш и merge
+   UI Kit остаются операторскими действиями.
 
-Если approval workflow затянулся и за это время `origin/main` UI Kit получил
-новые commits, скрипт не будет автоматически смешивать их с dependency-pin
-commit. Сначала вручную reconcile UI Kit, затем обновите pins вручную или
-повторите соответствующую команду с `-Resume -Execute`.
+Если обновление UI Kit после публикации прервалось, опубликованные версии и
+теги не откатываются. Сверьте registry, закончите локальное обновление
+pins/lockfile и создайте отдельный коммит UI Kit; не запускайте новый bump.
 
 ### Доступ CLI к GitHub Packages
 
@@ -105,8 +110,9 @@ endpoint как способ настройки. GitHub Packages для npm тр
 
 По умолчанию команды используют patch; для minor или major укажите
 -Bump minor либо -Bump major. Каждая команда требует чистый и синхронный main
-только у изменяемого submodule, GitHub CLI с авторизацией и настроенный
-environment release. `release:all` выпускает UI первым; перед Vue обновляет
+у выпускаемых submodules, неизменённые root `package.json` и
+`package-lock.json`, GitHub CLI с авторизацией и настроенный environment
+release. `release:all` выпускает UI первым; перед Vue обновляет
 его peer range и закреплённый SHA. После UI publish не выполняется
 автоматический rollback: если Vue release не завершился, UI версия остаётся
 неизменяемым релизом.
@@ -130,8 +136,8 @@ Prerelease публикуется с npm dist-tag из первого идент
 
 ### Чистый main, атомарный push и восстановление
 
-Требование «чистый и синхронный `main`» — это **только preflight** перед
-созданием release-коммита. Оно не противоречит version bump: после успешного
+Требование «чистый и синхронный `main`» относится только к выпускаемым
+пакетам и действует как **preflight** перед созданием release-коммита. После успешного
 preflight скрипт меняет `package.json`/lockfile, создаёт отдельный
 `chore(release): vX.Y.Z` commit и annotated tag. Это штатная короткая фаза,
 когда локальный `main` опережает `origin/main` до push.

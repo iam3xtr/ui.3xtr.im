@@ -305,27 +305,16 @@ function Commit-ReleaseChanges {
     return $true
 }
 
-function Assert-UiKitMainAtOrigin {
-    param([string[]]$AllowedSubmodules)
-    # The package release may wait for an environment approval. Do not commit
-    # a dependency pin on top of kit commits made by somebody else while that
-    # approval was pending; leave the published package immutable and ask the
-    # operator to reconcile the kit branch before retrying/resuming.
-    Invoke-External -File git -Arguments @("fetch", "origin", "+refs/heads/main:refs/remotes/origin/main") -WorkingDirectory $root
-    $aheadBehind = (& git -C $root rev-list --left-right --count "main...refs/remotes/origin/main").Trim() -split "\s+"
-    if ($aheadBehind.Count -ne 2 -or $aheadBehind[0] -ne "0" -or $aheadBehind[1] -ne "0") {
-        throw "UI Kit main changed while the package release was pending. Reconcile the kit branch, then update its exact package pins manually or rerun the matching -Resume command."
+function Assert-UiKitSyncTarget {
+    # The kit may remain on its work branch while its source dependencies are
+    # unpublished. Preserve unrelated work, but never overwrite local edits
+    # to the two files that the post-release sync regenerates.
+    $pinChanges = @(& git -C $root status --porcelain -- package.json package-lock.json)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Cannot inspect UI Kit dependency files before release."
     }
-
-    $unexpectedChanges = @(
-        (& git -C $root status --porcelain --untracked-files=all) |
-            Where-Object {
-                $path = $_.Substring(3)
-                $AllowedSubmodules -notcontains $path
-            }
-    )
-    if ($unexpectedChanges.Count -gt 0) {
-        throw "UI Kit has changes unrelated to the released submodule pointers. Do not mix them into the dependency-pin commit."
+    if ($pinChanges.Count -gt 0) {
+        throw "UI Kit package.json or package-lock.json has local changes. Reconcile them before releasing packages; the post-release sync updates these files."
     }
 }
 
@@ -339,17 +328,7 @@ function Sync-UiKitDependencies {
         return
     }
 
-    $files = @("package.json", "package-lock.json")
-    $allowedSubmodules = @()
-    if ($UiVersion) {
-        $allowedSubmodules += "packages/ui"
-        $files += "packages/ui"
-    }
-    if ($VueVersion) {
-        $allowedSubmodules += "packages/vue"
-        $files += "packages/vue"
-    }
-    Assert-UiKitMainAtOrigin -AllowedSubmodules $allowedSubmodules
+    Assert-UiKitSyncTarget
     $packagePath = Join-Path $root "package.json"
     $package = Get-Content $packagePath -Raw | ConvertFrom-Json
     if ($UiVersion) {
@@ -365,9 +344,7 @@ function Sync-UiKitDependencies {
     $labels = @()
     if ($UiVersion) { $labels += "@iam3xtr/ui@$UiVersion" }
     if ($VueVersion) { $labels += "@iam3xtr/vue@$VueVersion" }
-    Commit-ReleaseChanges -Path $root -Message "chore(deps): update $($labels -join ' and ')" -Files $files | Out-Null
-    Invoke-External -File git -Arguments @("push", "origin", "main") -WorkingDirectory $root
-    Write-Host "Updated UI Kit exact dependency pin(s): $($labels -join ', ')."
+    Write-Host "Updated local UI Kit exact dependency pin(s): $($labels -join ', '). Review and commit package.json, package-lock.json, and the released submodule pointer(s) on the kit work branch."
 }
 
 function Set-VueCompatibility {
@@ -533,31 +510,26 @@ try {
     }
     if ($Package -eq "ui") {
         if (-not $Resume) {
-            Assert-CleanMain -Path $root -Label "UI Kit"
             Assert-CleanMain -Path $uiPath -Label "@iam3xtr/ui"
         }
+        Assert-UiKitSyncTarget
         $uiReleaseVersion = Get-RequestedReleaseVersion -Path $uiPath
         Release-Ui -Version $uiReleaseVersion
         if ($Execute) { Sync-UiKitDependencies -UiVersion $uiReleaseVersion }
     } elseif ($Package -eq "vue") {
         if (-not $Resume) {
-            Assert-CleanMain -Path $root -Label "UI Kit"
             Assert-CleanMain -Path $vuePath -Label "@iam3xtr/vue"
         }
+        Assert-UiKitSyncTarget
         $vueReleaseVersion = Get-RequestedReleaseVersion -Path $vuePath
         Release-Vue -Version $vueReleaseVersion -ContinueRelease:$Resume
         if ($Execute) { Sync-UiKitDependencies -VueVersion $vueReleaseVersion }
     } else {
         if (-not $Resume) {
-            Assert-CleanMain -Path $root -Label "UI Kit"
             Assert-CleanMain -Path $uiPath -Label "@iam3xtr/ui"
             Assert-CleanMain -Path $vuePath -Label "@iam3xtr/vue"
-        } else {
-            # The UI submodule is expected to differ after its release commit,
-            # but unrelated kit edits must not be discovered only after Vue
-            # has been published and the dependency pins are about to sync.
-            Assert-UiKitMainAtOrigin -AllowedSubmodules @("packages/ui", "packages/vue")
         }
+        Assert-UiKitSyncTarget
         $uiVersion = Get-PackageVersion -Path $uiPath
         $vueVersion = Get-PackageVersion -Path $vuePath
         if (-not $Resume -and $uiVersion -ne $vueVersion) {
