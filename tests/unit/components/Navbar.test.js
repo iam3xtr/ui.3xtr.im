@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mount, flushPromises } from "@vue/test-utils";
+import { DOMWrapper, mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { createMemoryHistory, createRouter } from "vue-router";
 import Buefy from "buefy";
@@ -42,9 +42,17 @@ beforeEach(() => {
   vi.stubGlobal("localStorage", createMemoryStorage());
 });
 
+const mountedNavbars = [];
+
 afterEach(() => {
+  mountedNavbars.splice(0).forEach((wrapper) => wrapper.unmount());
   vi.unstubAllGlobals();
 });
+
+function demoPanel() {
+  const panel = document.body.querySelector(".tr-demo-panel");
+  return panel ? new DOMWrapper(panel) : null;
+}
 
 async function mountNavbar({ minimal = false } = {}) {
   const pinia = createPinia();
@@ -62,6 +70,7 @@ async function mountNavbar({ minimal = false } = {}) {
   await router.isReady();
 
   const wrapper = mount(Navbar, {
+    attachTo: document.body,
     props: {
       workspaces,
       user,
@@ -74,6 +83,8 @@ async function mountNavbar({ minimal = false } = {}) {
     },
   });
 
+  mountedNavbars.push(wrapper);
+
   return { wrapper, pinia, router };
 }
 
@@ -81,20 +92,20 @@ describe("Navbar.vue — демо-панель (Task A7.2)", () => {
   it("панель отсутствует на минимальном (auth) navbar", async () => {
     const { wrapper } = await mountNavbar({ minimal: true });
 
-    expect(wrapper.find(".tr-demo-panel").exists()).toBe(false);
+    expect(demoPanel()).toBeNull();
   });
 
   it("панель присутствует в полном navbar кита", async () => {
     const { wrapper } = await mountNavbar();
 
-    expect(wrapper.find(".tr-demo-panel").exists()).toBe(true);
+    expect(demoPanel()).not.toBeNull();
   });
 
   it("селектор сценария двусторонне связан с useDemoStore().mode", async () => {
     const { wrapper } = await mountNavbar();
     const demoStore = useDemoStore();
 
-    const select = wrapper.find(".tr-demo-panel select");
+    const select = demoPanel().find("select");
     expect(select.exists()).toBe(true);
 
     await select.setValue("loading");
@@ -109,7 +120,7 @@ describe("Navbar.vue — демо-панель (Task A7.2)", () => {
     const { wrapper } = await mountNavbar();
     const demoStore = useDemoStore();
 
-    const switches = wrapper.findAll(".tr-demo-panel input[type=checkbox]");
+    const switches = demoPanel().findAll("input[type=checkbox]");
     expect(switches.length).toBeGreaterThanOrEqual(3);
 
     await switches[0].setValue(true);
@@ -201,7 +212,7 @@ describe("Navbar.vue — опциональное resource-меню (Task A8.1)"
     const { wrapper } = await mountNavbar();
     const demoStore = useDemoStore();
 
-    const selects = wrapper.findAll(".tr-demo-panel select");
+    const selects = demoPanel().findAll("select");
     expect(selects).toHaveLength(2);
     const select = selects[1];
 
@@ -322,7 +333,7 @@ describe("Navbar.vue — icon-only Demo trigger (этап 4)", () => {
   it("текстовая подпись «Demo» отсутствует, иконка и доступное имя сохранены", async () => {
     const { wrapper } = await mountNavbar();
 
-    const trigger = wrapper.find(".tr-demo-panel-trigger");
+    const trigger = demoPanel().find(".tr-demo-panel-trigger");
     expect(trigger.exists()).toBe(true);
     expect(trigger.attributes("aria-label")).toBe("Панель демо-режима кита");
     expect(trigger.attributes("title")).toBe("Панель демо-режима кита");
@@ -333,7 +344,7 @@ describe("Navbar.vue — icon-only Demo trigger (этап 4)", () => {
   it("icon-only Demo trigger отсутствует на минимальном (auth) navbar", async () => {
     const { wrapper } = await mountNavbar({ minimal: true });
 
-    expect(wrapper.find(".tr-demo-panel-trigger").exists()).toBe(false);
+    expect(demoPanel()).toBeNull();
   });
 });
 

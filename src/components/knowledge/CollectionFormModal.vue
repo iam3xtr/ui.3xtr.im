@@ -4,7 +4,7 @@
     has-modal-card
     @update:model-value="(value) => (value ? modalStore.open(modalKey) : modalStore.close(modalKey))"
   >
-    <form class="modal-card" @submit.prevent="submit">
+    <form class="modal-card" novalidate @submit.prevent="submit">
       <header class="modal-card-head">
         <p class="modal-card-title">Новая коллекция</p>
         <button
@@ -16,7 +16,7 @@
       </header>
 
       <section class="modal-card-body tr-form">
-        <b-field label="Название">
+        <b-field label="Название" :type="nameError ? 'is-danger' : undefined" :message="nameError">
           <b-input
             v-model="name"
             placeholder="Например, Документация продукта"
@@ -94,6 +94,9 @@ const router = useRouter();
 const collectionTypes = COLLECTION_TYPES;
 
 const name = ref("");
+const validationAttempted = ref(false);
+const nameError = computed(() =>
+  validationAttempted.value && !name.value.trim() ? "Укажите название коллекции." : undefined);
 const description = ref("");
 const type = ref("mixed");
 
@@ -107,17 +110,16 @@ watch(
     }
 
     name.value = "";
+    validationAttempted.value = false;
     description.value = "";
     type.value = "mixed";
   },
 );
 
 function submit() {
+  validationAttempted.value = true;
+  if (nameError.value) return;
   const trimmedName = name.value.trim();
-
-  if (!trimmedName) {
-    return;
-  }
 
   const collection = knowledgeStore.createCollection(activeWorkspaceId.value, {
     name: trimmedName,

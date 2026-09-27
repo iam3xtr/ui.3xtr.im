@@ -62,6 +62,10 @@
           </b-dropdown-item>
         </OverlayDropdown>
       </b-table-column>
+
+      <template #footer>
+        <span>Показано до 5 агентов на странице</span>
+      </template>
     </b-table>
 
     <p class="tr-muted mt-4 mb-2">

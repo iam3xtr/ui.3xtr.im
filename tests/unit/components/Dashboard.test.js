@@ -276,6 +276,7 @@ describe("Dashboard.vue — S2 «Требует внимания» (Task A10.4)"
     expect(buttons.length).toBe(total + 2);
     expect(buttons[0].attributes("aria-label")).toBe("Предыдущее уведомление");
     expect(buttons[buttons.length - 1].attributes("aria-label")).toBe("Следующее уведомление");
+    expect(nav.element.children[1].classList.contains("tr-dashboard-attention__pages")).toBe(true);
     const pages = attentionPageButtons(wrapper);
     expect(pages.map((page) => page.text())).toEqual(
       Array.from({ length: total }, (_, index) => String(index + 1)),
@@ -674,10 +675,10 @@ describe("Dashboard.vue — статусные tags в таблицах «Пос
       const tags = table.findAll("tbody .tag");
       expect(tags.length).toBeGreaterThan(0);
       for (const tag of tags) {
-        // The theme's `.tag.tr-status-tag` rule wraps a long status inside
-        // the cell; the full text stays rendered and is the accessible name.
+        // The visible label is ellipsized; the full value stays available.
         expect(tag.classes()).toContain("tr-status-tag");
         expect(tag.text().length).toBeGreaterThan(0);
+        expect(tag.attributes("title")).toBe(tag.text().trim());
         expect(tag.find(".icon").exists()).toBe(false);
       }
     }

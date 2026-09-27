@@ -188,10 +188,10 @@ describe("Agents.vue — S2 presentation-статус карточки (Task A9.
       .find((c) => c.text().includes("Служба поддержки корпоративных клиентов"));
     const tag = card.find(".tr-entity-card__header .tag");
 
-    // The theme's `.tag.tr-status-tag` rule wraps the long status inside the
-    // card header; the full text stays rendered as the tag's accessible name.
+    // The full status remains available when the pill is visually ellipsized.
     expect(tag.classes()).toContain("tr-status-tag");
     expect(tag.text()).toBe("Не отвечает: ошибка подключения");
+    expect(tag.attributes("title")).toBe(tag.text());
     expect(tag.find(".icon").exists()).toBe(false);
     expect(card.find(".tr-entity-card__header .tr-entity-card__icon .icon").exists()).toBe(true);
   });

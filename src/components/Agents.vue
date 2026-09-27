@@ -73,6 +73,7 @@
                 <b-tag
                   class="tr-status-tag"
                   :type="statusProjection(agent).badgeType"
+                  :title="statusProjection(agent).badgeLabel"
                   size="is-small"
                 >
                   {{ statusProjection(agent).badgeLabel }}

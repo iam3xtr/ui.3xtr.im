@@ -106,18 +106,20 @@
               aria-label="Предыдущее уведомление"
               @click="goToPreviousAttentionItem"
             />
-            <b-button
-              v-for="(item, index) in attentionVisibleItems"
-              :key="item.key"
-              size="is-small"
-              class="tr-dashboard-attention__page"
-              :type="index === attentionActiveIndex ? 'is-primary' : undefined"
-              :aria-label="`Уведомление ${index + 1} из ${attentionTotal}: ${item.title}`"
-              :aria-current="index === attentionActiveIndex ? 'true' : undefined"
-              @click="goToAttentionItem(index)"
-            >
-              {{ index + 1 }}
-            </b-button>
+            <span class="tr-dashboard-attention__pages">
+              <b-button
+                v-for="(item, index) in attentionVisibleItems"
+                :key="item.key"
+                size="is-small"
+                class="tr-dashboard-attention__page"
+                :type="index === attentionActiveIndex ? 'is-primary' : undefined"
+                :aria-label="`Уведомление ${index + 1} из ${attentionTotal}: ${item.title}`"
+                :aria-current="index === attentionActiveIndex ? 'true' : undefined"
+                @click="goToAttentionItem(index)"
+              >
+                {{ index + 1 }}
+              </b-button>
+            </span>
             <b-button
               icon-left="chevron-right"
               size="is-small"
@@ -178,7 +180,7 @@
             </b-table-column>
 
             <b-table-column field="status" label="Статус" v-slot="{ row }">
-              <b-tag class="tr-status-tag" :type="agentBadge(row).badgeType">
+              <b-tag class="tr-status-tag" :type="agentBadge(row).badgeType" :title="agentBadge(row).badgeLabel">
                 {{ agentBadge(row).badgeLabel }}
               </b-tag>
             </b-table-column>
@@ -213,6 +215,7 @@
               <b-tag
                 class="tr-status-tag"
                 :type="row.status === 'Активен' ? 'is-primary' : undefined"
+                :title="row.status"
               >
                 {{ row.status }}
               </b-tag>

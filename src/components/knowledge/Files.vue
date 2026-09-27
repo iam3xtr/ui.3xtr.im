@@ -49,50 +49,48 @@
             <span class="tr-muted">{{ formatBytes(totalSize) }}</span>
           </div>
 
-          <div class="tr-card">
-            <b-table :data="displayObjects" :row-key="(row) => row._demoKey ?? row.id" hoverable mobile-cards>
-              <b-table-column field="name" label="Название" v-slot="{ row }">
-                <span class="tr-row">
-                  <b-icon :icon="getObjectKind(row.kind).icon" size="is-small" />
-                  <span>
-                    <strong>{{ row.name }}</strong>
-                    <br v-if="row.sourceLabel" />
-                    <small v-if="row.sourceLabel" class="tr-muted">{{ row.sourceLabel }}</small>
-                  </span>
+          <b-table :data="displayObjects" :row-key="(row) => row._demoKey ?? row.id" hoverable mobile-cards>
+            <b-table-column field="name" label="Название" v-slot="{ row }">
+              <span class="tr-row">
+                <b-icon :icon="getObjectKind(row.kind).icon" size="is-small" />
+                <span>
+                  <strong>{{ row.name }}</strong>
+                  <br v-if="row.sourceLabel" />
+                  <small v-if="row.sourceLabel" class="tr-muted">{{ row.sourceLabel }}</small>
                 </span>
-              </b-table-column>
+              </span>
+            </b-table-column>
 
-              <b-table-column field="status" label="Статус" v-slot="{ row }">
-                <b-tag size="is-small" :type="getObjectStatus(row.status).tagType">
-                  {{ getObjectStatus(row.status).label }}
-                </b-tag>
-              </b-table-column>
+            <b-table-column field="status" label="Статус" v-slot="{ row }">
+              <b-tag size="is-small" :type="getObjectStatus(row.status).tagType">
+                {{ getObjectStatus(row.status).label }}
+              </b-tag>
+            </b-table-column>
 
-              <b-table-column field="size" label="Размер" v-slot="{ row }">
-                {{ formatBytes(row.size) }}
-              </b-table-column>
+            <b-table-column field="size" label="Размер" v-slot="{ row }">
+              {{ formatBytes(row.size) }}
+            </b-table-column>
 
-              <b-table-column field="updatedLabel" label="Обновлено" v-slot="{ row }">
-                {{ row.updatedLabel }}
-              </b-table-column>
+            <b-table-column field="updatedLabel" label="Обновлено" v-slot="{ row }">
+              {{ row.updatedLabel }}
+            </b-table-column>
 
-              <b-table-column v-slot="{ row }" width="56">
-                <OverlayDropdown position="is-bottom-left" aria-role="list">
-                  <template #trigger>
-                    <b-button
-                      type="is-text"
-                      icon-left="dots-horizontal"
-                      size="is-small"
-                      :aria-label="`Действия с файлом «${row.name}»`"
-                    />
-                  </template>
-                  <b-dropdown-item aria-role="listitem" @click="removeObject(row)">
-                    Удалить
-                  </b-dropdown-item>
-                </OverlayDropdown>
-              </b-table-column>
-            </b-table>
-          </div>
+            <b-table-column v-slot="{ row }" width="56">
+              <OverlayDropdown position="is-bottom-left" aria-role="list">
+                <template #trigger>
+                  <b-button
+                    type="is-text"
+                    icon-left="dots-horizontal"
+                    size="is-small"
+                    :aria-label="`Действия с файлом «${row.name}»`"
+                  />
+                </template>
+                <b-dropdown-item aria-role="listitem" @click="removeObject(row)">
+                  Удалить
+                </b-dropdown-item>
+              </OverlayDropdown>
+            </b-table-column>
+          </b-table>
 
           <p v-if="filteredObjects.length === 0 && objects.length > 0" class="tr-catalog-empty">
             По вашему запросу файлы не найдены.

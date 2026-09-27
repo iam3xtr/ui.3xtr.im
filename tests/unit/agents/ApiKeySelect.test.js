@@ -127,6 +127,19 @@ describe("ApiKeySelect.vue", () => {
     expect(wrapper.emitted("update:modelValue")).toEqual([[keys[0].id]]);
   });
 
+  it("показывает ошибки под полями без браузерной подсказки", async () => {
+    const wrapper = mountApiKeySelect({ workspaceId: "demo" });
+    await wrapper.find(".tr-api-key-select__add").trigger("click");
+
+    const form = wrapper.find(".modal-card");
+    expect(form.attributes("novalidate")).toBeDefined();
+    await form.trigger("submit");
+
+    expect(wrapper.find(".modal-card-body").text()).toContain("Укажите название ключа.");
+    expect(wrapper.find(".modal-card-body").text()).toContain("Укажите ключ API.");
+    expect(useApiKeysStore().listByWorkspace("demo")).toHaveLength(0);
+  });
+
   it("новый ключ не добавляется в другой воркспейс", async () => {
     const wrapper = mountApiKeySelect({ workspaceId: "demo" });
     const apiKeysStore = useApiKeysStore();

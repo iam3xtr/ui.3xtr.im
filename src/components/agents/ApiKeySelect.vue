@@ -58,7 +58,7 @@
       has-modal-card
       @update:model-value="(value) => (value ? modalStore.open(modalKey) : modalStore.close(modalKey))"
     >
-      <form class="modal-card" @submit.prevent="submit">
+      <form class="modal-card" novalidate @submit.prevent="submit">
         <header class="modal-card-head">
           <p class="modal-card-title">Добавить ключ OpenRouter</p>
           <button
@@ -70,7 +70,7 @@
         </header>
 
         <section class="modal-card-body tr-form">
-          <b-field label="Название">
+          <b-field label="Название" :type="newLabelError ? 'is-danger' : undefined" :message="newLabelError">
             <b-input
               v-model="newLabel"
               placeholder="Например, Личный ключ"
@@ -78,7 +78,7 @@
             />
           </b-field>
 
-          <b-field label="Ключ API">
+          <b-field label="Ключ API" :type="newSecretError ? 'is-danger' : undefined" :message="newSecretError">
             <b-input
               v-model="newSecret"
               type="password"
@@ -144,7 +144,13 @@ const { activeWorkspaceId } = storeToRefs(workspaceStore);
 
 const newLabel = ref("");
 const newSecret = ref("");
+const validationAttempted = ref(false);
 const dropdownRef = ref(null);
+
+const newLabelError = computed(() =>
+  validationAttempted.value && !newLabel.value.trim() ? "Укажите название ключа." : undefined);
+const newSecretError = computed(() =>
+  validationAttempted.value && !newSecret.value.trim() ? "Укажите ключ API." : undefined);
 
 const keys = computed(() => apiKeysStore.listByWorkspace(activeWorkspaceId.value));
 
@@ -157,6 +163,7 @@ function openCreateModal() {
   closeDropdown();
   newLabel.value = "";
   newSecret.value = "";
+  validationAttempted.value = false;
   modalStore.open(modalKey);
 }
 
@@ -167,6 +174,7 @@ function closeDropdown() {
 }
 
 function submit() {
+  validationAttempted.value = true;
   const trimmedLabel = newLabel.value.trim();
   const trimmedSecret = newSecret.value.trim();
 

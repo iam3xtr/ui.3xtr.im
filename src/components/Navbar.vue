@@ -209,125 +209,127 @@
         Создать агента
       </b-button>
 
-      <OverlayDropdown
-        class="tr-dropdown tr-demo-panel"
-        position="is-bottom-left"
-        aria-role="menu"
-      >
-        <template #trigger>
+      <Teleport to="body">
+        <OverlayDropdown
+          class="tr-dropdown tr-demo-panel"
+          position="is-top-left"
+          aria-role="menu"
+        >
+          <template #trigger>
+            <!--
+              Stage 4: the Demo panel trigger is icon-only — the "Demo" text
+              label is removed so the right side of the Navbar does not grow
+              at intermediate widths. The accessible name and the panel-name
+              tooltip are kept via `aria-label`/`title`, so assistive tech and
+              keyboard users still see what the button does.
+            -->
+            <button
+              class="tr-navbar-trigger tr-demo-panel-trigger"
+              type="button"
+              aria-label="Панель демо-режима кита"
+              title="Панель демо-режима кита"
+            >
+              <b-icon icon="tune-variant" size="is-small" />
+            </button>
+          </template>
+
+          <b-dropdown-item custom :focusable="false">
+            <p class="tr-dropdown-intro">
+              Только кит: переключает демонстрационное состояние экранов, не
+              затрагивая контракт кабинета.
+            </p>
+          </b-dropdown-item>
+
+          <b-dropdown-item separator />
+
+          <b-dropdown-item custom :focusable="false">
+            <div class="tr-demo-panel__field">
+              <label class="tr-demo-panel__label" for="tr-demo-panel-mode">
+                Сценарий
+              </label>
+              <b-select
+                id="tr-demo-panel-mode"
+                v-model="demoMode"
+                size="is-small"
+                expanded
+                aria-label="Демо-сценарий состояния"
+              >
+                <option
+                  v-for="item in demoModeOptions"
+                  :key="item.value"
+                  :value="item.value"
+                >
+                  {{ item.label }}
+                </option>
+              </b-select>
+            </div>
+          </b-dropdown-item>
+
+          <b-dropdown-item custom :focusable="false">
+            <div class="tr-dropdown-setting">
+              <span class="tr-dropdown-action">Длинные подписи</span>
+              <b-switch
+                v-model="demoLongLabels"
+                size="is-small"
+                aria-label="Длинные подписи в демо-данных"
+              />
+            </div>
+          </b-dropdown-item>
+
+          <b-dropdown-item custom :focusable="false">
+            <div class="tr-dropdown-setting">
+              <span class="tr-dropdown-action">Много данных</span>
+              <b-switch
+                v-model="demoDenseData"
+                size="is-small"
+                aria-label="Большой набор демо-данных"
+              />
+            </div>
+          </b-dropdown-item>
+
           <!--
-            Stage 4: the Demo panel trigger is icon-only — the "Demo" text
-            label is removed so the right side of the Navbar does not grow
-            at intermediate widths. The accessible name and the panel-name
-            tooltip are kept via `aria-label`/`title`, so assistive tech and
-            keyboard users still see what the button does.
+            Stage 4: kit-only visibility toggle for the "Create agent" action
+            (Task A9.2). Hidden by default in desktop actions and the mobile
+            menu so the Navbar does not grow on the right and push out the
+            tabs at intermediate widths. A single switch reveals both wizard
+            entry points at once; the minimal navbar does not show the toggle
+            because it has no such actions.
           -->
-          <button
-            class="tr-navbar-trigger tr-demo-panel-trigger"
-            type="button"
-            aria-label="Панель демо-режима кита"
-            title="Панель демо-режима кита"
-          >
-            <b-icon icon="tune-variant" size="is-small" />
-          </button>
-        </template>
+          <b-dropdown-item custom :focusable="false">
+            <div class="tr-dropdown-setting">
+              <span class="tr-dropdown-action">Создать агента</span>
+              <b-switch
+                v-model="demoShowCreateAgentAction"
+                size="is-small"
+                aria-label="Показывать действие «Создать агента» в навбаре"
+              />
+            </div>
+          </b-dropdown-item>
 
-        <b-dropdown-item custom :focusable="false">
-          <p class="tr-dropdown-intro">
-            Только кит: переключает демонстрационное состояние экранов, не
-            затрагивая контракт кабинета.
-          </p>
-        </b-dropdown-item>
-
-        <b-dropdown-item separator />
-
-        <b-dropdown-item custom :focusable="false">
-          <div class="tr-demo-panel__field">
-            <label class="tr-demo-panel__label" for="tr-demo-panel-mode">
-              Сценарий
-            </label>
-            <b-select
-              id="tr-demo-panel-mode"
-              v-model="demoMode"
-              size="is-small"
-              expanded
-              aria-label="Демо-сценарий состояния"
-            >
-              <option
-                v-for="item in demoModeOptions"
-                :key="item.value"
-                :value="item.value"
+          <b-dropdown-item custom :focusable="false">
+            <div class="tr-demo-panel__field">
+              <label class="tr-demo-panel__label" for="tr-demo-panel-resource-menu-size">
+                Resource-меню
+              </label>
+              <b-select
+                id="tr-demo-panel-resource-menu-size"
+                v-model="demoResourceMenuSize"
+                size="is-small"
+                expanded
+                aria-label="Размер resource-меню Navbar"
               >
-                {{ item.label }}
-              </option>
-            </b-select>
-          </div>
-        </b-dropdown-item>
-
-        <b-dropdown-item custom :focusable="false">
-          <div class="tr-dropdown-setting">
-            <span class="tr-dropdown-action">Длинные подписи</span>
-            <b-switch
-              v-model="demoLongLabels"
-              size="is-small"
-              aria-label="Длинные подписи в демо-данных"
-            />
-          </div>
-        </b-dropdown-item>
-
-        <b-dropdown-item custom :focusable="false">
-          <div class="tr-dropdown-setting">
-            <span class="tr-dropdown-action">Много данных</span>
-            <b-switch
-              v-model="demoDenseData"
-              size="is-small"
-              aria-label="Большой набор демо-данных"
-            />
-          </div>
-        </b-dropdown-item>
-
-        <!--
-          Stage 4: kit-only visibility toggle for the "Create agent" action
-          (Task A9.2). Hidden by default in desktop actions and the mobile
-          menu so the Navbar does not grow on the right and push out the
-          tabs at intermediate widths. A single switch reveals both wizard
-          entry points at once; the minimal navbar does not show the toggle
-          because it has no such actions.
-        -->
-        <b-dropdown-item custom :focusable="false">
-          <div class="tr-dropdown-setting">
-            <span class="tr-dropdown-action">Создать агента</span>
-            <b-switch
-              v-model="demoShowCreateAgentAction"
-              size="is-small"
-              aria-label="Показывать действие «Создать агента» в навбаре"
-            />
-          </div>
-        </b-dropdown-item>
-
-        <b-dropdown-item custom :focusable="false">
-          <div class="tr-demo-panel__field">
-            <label class="tr-demo-panel__label" for="tr-demo-panel-resource-menu-size">
-              Resource-меню
-            </label>
-            <b-select
-              id="tr-demo-panel-resource-menu-size"
-              v-model="demoResourceMenuSize"
-              size="is-small"
-              expanded
-              aria-label="Размер resource-меню Navbar"
-            >
-              <option
-                v-for="item in resourceMenuSizeOptions"
-                :key="item.value"
-                :value="item.value"
-              >
-                {{ item.label }}
-              </option>
-            </b-select>
-          </div>
-        </b-dropdown-item>
-      </OverlayDropdown>
+                <option
+                  v-for="item in resourceMenuSizeOptions"
+                  :key="item.value"
+                  :value="item.value"
+                >
+                  {{ item.label }}
+                </option>
+              </b-select>
+            </div>
+          </b-dropdown-item>
+        </OverlayDropdown>
+      </Teleport>
 
       <OverlayDropdown
         v-model="workspace"

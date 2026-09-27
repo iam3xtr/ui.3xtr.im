@@ -176,6 +176,14 @@ describe("kit/KitShell.vue — маршруты и совместимый вхо
     expect(activeLinks[0].textContent.trim()).toBe("Таблицы");
   });
 
+  it("раздел таблиц показывает информационный tfoot", async () => {
+    const { wrapper } = await mountKitShell("/kit/tables");
+    const footer = wrapper.find(".b-table tfoot th");
+
+    expect(footer.exists()).toBe(true);
+    expect(footer.text()).toContain("Показано до 5 агентов");
+  });
+
   it("переход между разделами не перезаписывает persisted demo-режим", async () => {
     const { router } = await mountKitShell("/kit/navigation-states");
     const demoStore = useDemoStore();
