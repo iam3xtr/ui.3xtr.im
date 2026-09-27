@@ -40,13 +40,9 @@ import "@mdi/font/css/materialdesignicons.css";
 // docs/design-system.md#иконки — при добавлении/удалении иконки правьте оба
 // места.
 //
-// `@iam3xtr/ui/icons` (Issue #8.1) уже публикует тот же набор как готовую
-// bundler-neutral map `name -> raw SVG markup` (без glob/alias/loader
-// contract) — кит переходит на него отдельным шагом, после того как эта
-// exact-версия `@iam3xtr/ui` окажется опубликована и установлена (см.
-// CLAUDE.md, «UI Kit и внешние приложения устанавливают опубликованные
-// exact версии»); до тех пор статические импорты ниже остаются рабочим
-// способом заполнить тот же реестр.
+// The published `@iam3xtr/ui/icons` export also provides these icons as a
+// bundler-neutral name-to-SVG map. The kit keeps its explicit asset imports
+// here to demonstrate consumer-provided registry entries.
 import anthropicIcon from "@iam3xtr/ui/assets/icons/anthropic.svg";
 import brainIcon from "@iam3xtr/ui/assets/icons/brain.svg";
 import cerebrasIcon from "@iam3xtr/ui/assets/icons/cerebras.svg";

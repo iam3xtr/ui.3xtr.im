@@ -43,10 +43,9 @@
       </b-table-column>
 
       <b-table-column v-slot="{ row }" width="80">
-        <b-dropdown
+        <OverlayDropdown
           position="is-bottom-left"
           aria-role="list"
-          append-to-body
         >
           <template #trigger>
             <b-button
@@ -61,8 +60,12 @@
           <b-dropdown-item aria-role="listitem">
             Дублировать
           </b-dropdown-item>
-        </b-dropdown>
+        </OverlayDropdown>
       </b-table-column>
+
+      <template #footer>
+        <span>Показано до 5 агентов на странице</span>
+      </template>
     </b-table>
 
     <p class="tr-muted mt-4 mb-2">
@@ -186,6 +189,7 @@ import { computed, onUnmounted, reactive, ref } from "vue";
 import { PageHeader } from "@iam3xtr/vue/navigation";
 import { FormDrawer } from "@iam3xtr/vue";
 import DirtyExitModal from "../common/DirtyExitModal.vue";
+import OverlayDropdown from "../common/OverlayDropdown.vue";
 import { useToasterStore } from "../../stores/toaster";
 
 const paginationPage = ref(1);

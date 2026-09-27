@@ -69,15 +69,22 @@
         <b-field v-if="capability.allowExpertCatalog" :label="t.catalog.title">
           <!--
             Этап 2.1 review fix: `b-field` рендерит `<label>` без `for`
-            без явного `label-for`, поэтому связь с реальным input
-            ModelSelect — только через явный `aria-label`. В BYOK-варианте
-            ниже тот же контракт — отдельный `aria-label`, чтобы
-            accessible name совпадал с label.
+            без явного `label-for`, поэтому связь с trigger публичного
+            `ModelSelect` — только через явный `trigger-aria-label` (label +
+            текущее значение). В BYOK-варианте ниже тот же контракт.
+            Внешний BYOK switch остаётся на месте: capability gating
+            (`allowExpertCatalog`/`allowByok`) независим, поэтому каждый
+            picker использует фиксированный `mode`, а не `mode="both"`.
           -->
           <ModelSelect
-            v-model="modelId"
-            :aria-label="t.catalog.title"
-            :search-placeholder="t.catalog.searchPlaceholder"
+            v-model:model-id="modelId"
+            mode="model"
+            :models="regularCatalog.models.value"
+            :recommended-models="regularCatalog.recommendedModels.value"
+            :search-results="regularCatalog.searchResults.value"
+            :trigger-aria-label="catalogTriggerAriaLabel"
+            v-bind="modelSelectCopy"
+            @update:query="regularCatalog.onQuery"
           />
         </b-field>
         <p v-else class="tr-muted">{{ t.catalog.unavailable }}</p>
@@ -94,13 +101,19 @@
         <template v-if="capability.allowByok && fields.useOwnApiKey">
           <b-field :label="t.byok.modelLabel">
             <ModelSelect
-              v-model="byokModel"
+              v-model:byok-model-id="byokModel"
               v-model:provider-model-id="providerModelId"
-              :use-own-api-key="true"
-              :aria-label="t.byok.modelLabel"
-              :search-placeholder="t.catalog.searchPlaceholder"
+              mode="byok"
+              :models="byokCatalog.models.value"
+              :recommended-models="byokCatalog.recommendedModels.value"
+              :search-results="byokCatalog.searchResults.value"
+              :trigger-aria-label="byokTriggerAriaLabel"
+              v-bind="modelSelectCopy"
+              :freeform-error-label="byokFreeformErrorLabel"
+              @update:query="byokCatalog.onQuery"
             />
           </b-field>
+          <p class="help">{{ t.byok.scopeHint }}</p>
           <b-field :label="t.byok.keyLabel">
             <ApiKeySelect v-model="apiKeyId" open-above />
           </b-field>
@@ -116,7 +129,8 @@ import { useModalStore } from "../../../stores/modal";
 import { useModelsStore } from "../../../stores/models";
 import { useWizardStore, generateInstructionTemplate, WIZARD_LOCALES } from "../../../stores/wizard";
 import { getWizardDictionary } from "../../../locales/wizard";
-import ModelSelect from "../ModelSelect.vue";
+import { ModelSelect } from "@iam3xtr/vue";
+import { useModelSelectCatalog } from "../modelSelectAdapter.js";
 import ApiKeySelect from "../ApiKeySelect.vue";
 
 // Экспертная зона мастера (Task A9.5, `.plan` "Основной и экспертный режимы,
@@ -209,6 +223,36 @@ const providerModelId = computed({
 const apiKeyId = computed({
   get: () => fields.value.apiKeyId ?? null,
   set: (value) => update({ apiKeyId: value }),
+});
+
+// Public `ModelSelect` adapters: scoped arrays from the fixture store and
+// localized consumer copy from the wizard dictionary.
+const regularCatalog = useModelSelectCatalog(false);
+const byokCatalog = useModelSelectCatalog(true);
+
+const modelSelectCopy = computed(() => ({
+  triggerPlaceholder: t.value.catalog.triggerPlaceholder,
+  searchPlaceholder: t.value.catalog.searchPlaceholder,
+  searchAriaLabel: t.value.catalog.searchPlaceholder,
+  emptyLabel: t.value.catalog.emptyLabel,
+  freeformActionLabel: t.value.byok.freeformActionLabel,
+  freeformHint: t.value.byok.freeformHint,
+}));
+const catalogTriggerAriaLabel = computed(() => `${t.value.catalog.title}: ${
+  regularCatalog.displayName(modelId.value) || t.value.catalog.triggerPlaceholder
+}`);
+const byokTriggerAriaLabel = computed(() => `${t.value.byok.modelLabel}: ${
+  byokCatalog.displayName(byokModel.value, providerModelId.value) || t.value.catalog.triggerPlaceholder
+}`);
+const byokFreeformErrorLabel = computed(() => {
+  const issue = byokCatalog.freeformIssue.value;
+  if (issue === "whitespace") {
+    return t.value.byok.freeformWhitespace;
+  }
+  if (issue === "tooLong") {
+    return t.value.byok.freeformTooLong;
+  }
+  return "";
 });
 
 const instructionMode = computed(() => fields.value.instructionMode ?? "template");

@@ -52,7 +52,17 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
   loading и skeleton используйте Buefy.
 - В стандартной `.table` заголовочные ячейки `thead th` и `tfoot th`
   используют один базовый стиль темы; правило мобильной
-  `.tr-table--stack tfoot th` сохраняет свою раскладку.
+  `.tr-table--stack tfoot th` сохраняет свою раскладку. В `/kit/tables`
+  показан `b-table` с информационной строкой `tfoot`.
+- Таблицы файлов коллекции и запусков переиндексации располагаются вне
+  `.tr-card`, чтобы рамка таблицы не дублировалась рамкой панели.
+- Текстовый статус `.tr-status-tag` остаётся однострочным и сокращается
+  через ellipsis; внутри таблицы его ширина ограничена 10rem. Полное
+  значение доступно в `title` и текстовом содержимом.
+- `NavbarTabs` использует естественную ширину ссылок. Свободная ширина
+  остаётся в полосе прокрутки; стрелки появляются только при переполнении.
+- Кнопки в `modal-card-foot` разделены общим отступом. Короткие формы
+  показывают ошибки под соответствующими полями без браузерных tooltip.
 - Для Buefy `b-tag` kit не задаёт собственных color/background overrides:
   обычные и semantic `type` (`is-primary`, `is-success`, `is-warning`,
   `is-danger`, `is-dark` и другие Bulma types) выглядят ровно как в примерах
@@ -96,6 +106,12 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
   закрепляется через `position: fixed`. Тема @iam3xtr/ui стилизует
   portal wrapper через `.tr-dropdown-overlay-portal`, сохраняя прежние
   ancestor selectors для inline меню и шкалу z-index ниже modal.
+- Демо-dropdown с собственной разметкой (`ApiKeySelect`, desktop-меню
+  `Navbar`, действия `knowledge/Files` и строк kit-таблицы) подключают тот
+  же overlay через демо-адаптер `common/OverlayDropdown.vue`: он передаёт
+  атрибуты, `v-model` и слоты в `b-dropdown`, а placement выбирает
+  `resolveDropdownPlacement`. Мобильное главное меню `Navbar` и native
+  `b-select` остаются без адаптера; Buefy mobile-modal не меняется.
 - В src/**/*.vue по умолчанию не допускаются style blocks. Kit-only override
   допустим, если он не является public contract `@iam3xtr/ui`, использует
   ровно один `<style scoped>` и перед ним документирует причину через
@@ -142,7 +158,8 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
   показывает или скрывает оба входа в `agent-wizard`; состояние сохраняется в
   `trickster-demo-state` и сбрасывается вместе с остальными demo-настройками.
   На минимальном Navbar действие и Demo panel отсутствуют. Кнопка открытия
-  Demo panel показывает только иконку, сохраняя доступное имя и tooltip.
+  Demo panel показывает только иконку, сохраняя доступное имя и tooltip;
+  она закреплена в 16 px от нижнего и правого краёв viewport поверх экрана.
 
 ### Публичные компоненты чата
 
@@ -169,41 +186,15 @@ textarea начинается с высоты кнопки, растёт до 10
 
 ### ModelSelect — жизненный цикл выбора
 
-Публичный `ModelSelect` из `@iam3xtr/vue` уже реализован в package sources:
-он использует единый `b-dropdown` и общий overlay, поэтому весь popup
-перекрывает следующий контент и меняет направление у края viewport.
-Режимы `model`/`byok`/`both`, controlled values и consumer-owned copy
-описаны в `packages/vue/README.md`. Root demo пока использует отдельный
-`src/components/agents/ModelSelect.vue`; его миграция на опубликованный
-компонент и exact pins входит в следующий этап.
-
-Текущий demo `ModelSelect.vue` показывает закрытый button-trigger с выбранной моделью.
-Раскрытый список начинается с отдельной строки поиска на Buefy
-`b-autocomplete`; его результаты, keyboard navigation и selection остаются
-внутри Buefy. Список остаётся в потоке документа и увеличивает высоту
-панели, поэтому варианты не выходят за её границы. Внешний
-`.dropdown-content` охватывает поиск и варианты, сохраняя общую рамку и
-ограничение ширины dropdown; внутренний список заполняет всю ширину этой
-оболочки и не имеет собственной рамки. Контракт разделяет два состояния:
-
-- **canonical selected display** — read-only проекция выбора
-  (`modelValue` → `modelsStore.getModel(id).name`, либо
-  `providerModelId.value` для BYOK). Используется для закрытого контрола и
-  на trigger. Не участвует в `b-autocomplete` v-model и не фильтрует каталог.
-- **transient search query** — текст, который пользователь вводит в поле;
-  v-model `b-autocomplete`. При закрытии сбрасывается.
-
-Поведение открытия и закрытия:
-
-- Клик или ArrowDown на trigger открывает список, очищает search query и
-  переводит focus на строку поиска. Пустой query показывает scoped
-  `listRecommended`. Каталожные v-models не меняются.
-- Непустой query использует только `modelsStore.search` в текущем scope;
-  его результаты не смешиваются с recommended group.
-- `focusout` / `active=false` без select закрывает список; trigger всё
-  время показывает canonical display.
-- `@select` обновляет `modelValue`, очищает `providerModelId` и закрывает
-  список с возвратом focus на trigger.
+Демо настроек агента и мастера использует публичный `ModelSelect` из
+`@iam3xtr/vue` через consumer-owned adapters каталога. Закрытый trigger
+имеет рамку в обычном и BYOK-режиме. Popup начинается у левого края
+контрола, перекрывает следующий контент и меняет направление у края
+viewport. Поиск и результаты находятся в одном popup; `b-autocomplete`
+сохраняет keyboard navigation и выбор. Режимы `model`/`byok`/`both`,
+controlled values и consumer-owned copy описаны в `packages/vue/README.md`.
+Root build использует опубликованные exact pins из `package.json`;
+`npm run dev` подключает исходники пакетов.
 
 Выбранный пункт в открытом списке помечается классом
 `tr-model-select__option--selected` и `aria-current="true"` (через
@@ -216,9 +207,8 @@ Free-form id никогда не получает marker — это не catalog
 Buefy-овский dropdown chrome, keyboard navigation, hover, scroll и
 `is-hovered` состояние остаются.
 
-Выбор ключа внутри экспертной панели раскрывается над trigger и через
-Buefy `append-to-body` располагается поверх содержимого панели. Вне
-панели `ApiKeySelect` сохраняет обычное раскрытие вниз.
+Направление и вынос в body portal при обрезающем контейнере определяет
+общий overlay (см. раздел о dropdown выше).
 
 Theme rules для marker и option layout живут в `packages/ui/src/styles/
 theme.scss` и публикуются вместе с `@iam3xtr/ui`. Component-local
@@ -317,16 +307,12 @@ package.json (Vite, webpack, plain Node, SSR), и не дублирует MDI.
 ними или между slot и `name`/`icon` даёт `console.warn`. Обычный `<b-icon>`
 где угодно ещё в разметке этим компонентом не затрагивается.
 
-Пять операторских каталогов (Users, Providers, Models, Tariffs, Requests,
-Issue #12.1) показывают единый семантический marker рядом с
-role/status/protocol-текстом ячейки — decorative-иконка через `Icon`, никогда
-не замена текста. Domain-to-icon карта и shared presentation helper лежат в
-`src/components/administration/adminMarkers.js` и `AdminMarker.vue`: `role`/
-`status` резолвятся в MDI через Buefy fallback (нет совпадения в
-`@iam3xtr/ui/icons`), `protocol` — в вендорский логотип из того же
-`@iam3xtr/ui/icons`, что уже использует `ModelSelect.vue`. Неизвестное
-значение просто не получает иконку — текст остаётся единственным и
-достаточным сигналом в обоих режимах `b-table` (desktop и mobile-cards).
+В операторских каталогах статусы внутри `b-tag` показывают только текст.
+Для роли в Users и протокола в Providers сохраняется семантический marker
+рядом с текстом: `AdminMarker.vue` использует карту
+`src/components/administration/adminMarkers.js`. Неизвестное значение
+просто не получает иконку; текст остаётся доступен на desktop и в
+`mobile-cards`.
 
 ## Экранный контракт
 
@@ -364,17 +350,12 @@ prop-level справочником `FormDrawer`/`b-modal`/`b-sidebar`/`b-dialog
 подменяет связный сценарий выше, только документирует контракт компонента
 в изоляции.
 
-**Release-gated ограничение.** `Release.1` был dry run: `@iam3xtr/ui` и
-`@iam3xtr/vue` не опубликованы реально, установленная зависимость
-(`node_modules/@iam3xtr/vue@0.1.1-alpha`) — более ранний снимок, без
-`trVue`-плагина (`@iam3xtr/vue/plugin` не входит в `package.json#exports`)
-и без расширенной `Icon`-цепочки резолюции (`icon`-алиас, default slot,
-default-реестр `@iam3xtr/ui/icons`, Buefy MDI fallback — Issue #8.2). Application
-shell сценарий поэтому живьём резолвит только текущий установленный
-контракт `Icon` (`name`, обязательный, без fallback/slot) и показывает
-расширенную цепочку и `trVue` только как код (`CopyPre`), явно
-подписанный как неисполняемый/неопубликованный — см. компонент
-`src/components/kit/ApplicationShell.vue` и `.todo`, Handoff.2.
+`/kit/application-shell` использует опубликованный `Icon` из exact pin
+`@iam3xtr/vue`: живые примеры показывают SVG-реестр, Buefy MDI fallback и
+placeholder. Полная цепочка slot → реестр потребителя → default-реестр
+`@iam3xtr/ui/icons` → Buefy MDI → placeholder приведена рядом как копируемый
+код. Установка `trVue` через `@iam3xtr/vue/plugin` показана отдельным
+`main.js`-фрагментом; сам UI Kit использует именованные импорты.
 
 ## Проверка изменений
 

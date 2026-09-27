@@ -55,26 +55,6 @@
         aria-label="Требует внимания"
       >
         <template v-if="attentionActiveItem">
-          <div v-if="attentionTotal > 1" class="tr-dashboard-attention__nav">
-            <b-button
-              icon-left="chevron-left"
-              size="is-small"
-              :disabled="!attentionHasPrevious"
-              aria-label="Предыдущее уведомление"
-              @click="goToPreviousAttentionItem"
-            />
-            <span class="tr-muted" aria-live="polite">
-              {{ attentionPosition }} из {{ attentionTotal }}
-            </span>
-            <b-button
-              icon-left="chevron-right"
-              size="is-small"
-              :disabled="!attentionHasNext"
-              aria-label="Следующее уведомление"
-              @click="goToNextAttentionItem"
-            />
-          </div>
-
           <div class="tr-card tr-dashboard-attention__item">
             <span class="tr-icon-tile tr-icon-tile--plain tr-dashboard-attention__icon">
               <b-icon :icon="attentionActiveItem.icon" size="is-medium" />
@@ -105,6 +85,52 @@
               </b-button>
             </div>
           </div>
+
+          <!--
+            Pager under the active card: previous, one numbered button per
+            currently visible item, next. Numbers come from the live visible
+            list (`attentionVisibleItems`), so a dismiss/restore/source
+            update renumbers them instead of leaving stale ones; the current
+            number is marked with `aria-current` and announced through the
+            visually hidden live position.
+          -->
+          <nav
+            v-if="attentionTotal > 1"
+            class="tr-dashboard-attention__nav"
+            aria-label="Навигация по уведомлениям"
+          >
+            <b-button
+              icon-left="chevron-left"
+              size="is-small"
+              :disabled="!attentionHasPrevious"
+              aria-label="Предыдущее уведомление"
+              @click="goToPreviousAttentionItem"
+            />
+            <span class="tr-dashboard-attention__pages">
+              <b-button
+                v-for="(item, index) in attentionVisibleItems"
+                :key="item.key"
+                size="is-small"
+                class="tr-dashboard-attention__page"
+                :type="index === attentionActiveIndex ? 'is-primary' : undefined"
+                :aria-label="`Уведомление ${index + 1} из ${attentionTotal}: ${item.title}`"
+                :aria-current="index === attentionActiveIndex ? 'true' : undefined"
+                @click="goToAttentionItem(index)"
+              >
+                {{ index + 1 }}
+              </b-button>
+            </span>
+            <b-button
+              icon-left="chevron-right"
+              size="is-small"
+              :disabled="!attentionHasNext"
+              aria-label="Следующее уведомление"
+              @click="goToNextAttentionItem"
+            />
+            <span class="is-sr-only tr-dashboard-attention__position" aria-live="polite">
+              {{ attentionPosition }} из {{ attentionTotal }}
+            </span>
+          </nav>
         </template>
 
         <p v-else class="tr-muted tr-dashboard-attention__restore">
@@ -154,7 +180,7 @@
             </b-table-column>
 
             <b-table-column field="status" label="Статус" v-slot="{ row }">
-              <b-tag :type="agentBadge(row).badgeType">
+              <b-tag class="tr-status-tag" :type="agentBadge(row).badgeType" :title="agentBadge(row).badgeLabel">
                 {{ agentBadge(row).badgeLabel }}
               </b-tag>
             </b-table-column>
@@ -186,7 +212,11 @@
             </b-table-column>
 
             <b-table-column field="status" label="Статус" v-slot="{ row }">
-              <b-tag :type="row.status === 'Активен' ? 'is-primary' : undefined">
+              <b-tag
+                class="tr-status-tag"
+                :type="row.status === 'Активен' ? 'is-primary' : undefined"
+                :title="row.status"
+              >
                 {{ row.status }}
               </b-tag>
             </b-table-column>
@@ -417,6 +447,8 @@ const attentionItems = computed(() => {
 // `composables/useDashboardAttentionQueue.js` for the session-storage
 // isolation and the key-stable active-item rule.
 const {
+  visibleItems: attentionVisibleItems,
+  activeIndex: attentionActiveIndex,
   activeItem: attentionActiveItem,
   position: attentionPosition,
   total: attentionTotal,
@@ -425,6 +457,7 @@ const {
   hiddenCount: attentionHiddenCount,
   goPrevious: goToPreviousAttentionItem,
   goNext: goToNextAttentionItem,
+  goTo: goToAttentionItem,
   dismissActive: dismissActiveAttentionItem,
   restoreHidden: restoreHiddenAttentionItems,
 } = useDashboardAttentionQueue(attentionItems, activeWorkspaceId);

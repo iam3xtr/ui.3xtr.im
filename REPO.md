@@ -229,8 +229,11 @@ releasing the version already present in manifests.
 The Vue release must not proceed until the required exact UI version is available in
 the package registry.
 
-A successful release also updates the root exact package pins, lockfile, submodule
-gitlinks, and repository dependency state through the established release workflow.
+A successful release updates the root exact package pins and lockfile in the current
+UI Kit checkout; released package commits update its submodule gitlinks. The release
+script requires clean, synchronized package `main` branches, but does not require
+UI Kit to be on `main` or synchronized with `origin/main`. Review and commit the
+UI Kit dependency changes separately after publication.
 
 For workstreams that introduce public package components or style contracts,
 plan the release as part of the deliverable. After publication, verify the demo's

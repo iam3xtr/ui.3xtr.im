@@ -9,6 +9,7 @@ import { useAgentsStore } from "../../../src/stores/agents.js";
 import { useChannelsStore } from "../../../src/stores/channels.js";
 import { useConversationsStore } from "../../../src/stores/conversations.js";
 import { useDemoStore } from "../../../src/stores/demo.js";
+import { useProfileStore } from "../../../src/stores/profile.js";
 import { useWizardStore } from "../../../src/stores/wizard.js";
 import { useWorkspaceStore } from "../../../src/stores/workspace.js";
 
@@ -134,6 +135,12 @@ describe("Dashboard.vue — demo-состояния (Task A7.5)", () => {
 function activeAttentionText(wrapper) {
   return wrapper.find(".tr-dashboard-attention__item").text();
 }
+function attentionPositionText(wrapper) {
+  return wrapper.find(".tr-dashboard-attention__position").text();
+}
+function attentionPageButtons(wrapper) {
+  return wrapper.findAll(".tr-dashboard-attention__page");
+}
 async function goNextAttentionItem(wrapper) {
   await wrapper.find("[aria-label='Следующее уведомление']").trigger("click");
   await flushPromises();
@@ -237,8 +244,8 @@ describe("Dashboard.vue — S2 «Требует внимания» (Task A10.4)"
   it("many: показывает позицию и accessible previous/next с disabled-поведением на границах", async () => {
     const { wrapper } = await mountDashboard();
 
-    const nav = wrapper.find(".tr-dashboard-attention__nav");
-    expect(nav.exists()).toBe(true);
+    const nav = wrapper.find(".tr-dashboard-attention__position");
+    expect(wrapper.find(".tr-dashboard-attention__nav").exists()).toBe(true);
     expect(nav.text()).toMatch(/^1 из \d+$/);
     expect(wrapper.find("[aria-label='Предыдущее уведомление']").attributes("disabled")).toBeDefined();
 
@@ -254,13 +261,88 @@ describe("Dashboard.vue — S2 «Требует внимания» (Task A10.4)"
     expect(activeAttentionText(wrapper)).toBe(firstCard);
   });
 
+  it("pager стоит под карточкой в порядке previous, номера, next; номер открывает карточку", async () => {
+    const { wrapper } = await mountDashboard();
+
+    const section = wrapper.find(".tr-dashboard-attention");
+    const children = section.element.querySelectorAll(":scope > *");
+    const item = section.find(".tr-dashboard-attention__item").element;
+    const nav = section.find(".tr-dashboard-attention__nav");
+    expect([...children].indexOf(nav.element)).toBeGreaterThan([...children].indexOf(item));
+
+    const buttons = nav.findAll("button");
+    const total = Number(attentionPositionText(wrapper).match(/из (\d+)/)[1]);
+    expect(total).toBeGreaterThan(2);
+    expect(buttons.length).toBe(total + 2);
+    expect(buttons[0].attributes("aria-label")).toBe("Предыдущее уведомление");
+    expect(buttons[buttons.length - 1].attributes("aria-label")).toBe("Следующее уведомление");
+    expect(nav.element.children[1].classList.contains("tr-dashboard-attention__pages")).toBe(true);
+    const pages = attentionPageButtons(wrapper);
+    expect(pages.map((page) => page.text())).toEqual(
+      Array.from({ length: total }, (_, index) => String(index + 1)),
+    );
+    expect(pages[0].attributes("aria-current")).toBe("true");
+    expect(pages[0].attributes("aria-label")).toMatch(new RegExp(`^Уведомление 1 из ${total}: .+`));
+    expect(pages.slice(1).every((page) => page.attributes("aria-current") === undefined)).toBe(true);
+
+    // Jump straight to the last card: its title matches the number's name,
+    // the current marker moves, and the boundary arrows follow.
+    const lastPage = pages[total - 1];
+    const lastTitle = lastPage.attributes("aria-label").replace(/^Уведомление \d+ из \d+: /, "");
+    await lastPage.trigger("click");
+    await flushPromises();
+
+    expect(activeAttentionText(wrapper)).toContain(lastTitle);
+    expect(attentionPositionText(wrapper)).toBe(`${total} из ${total}`);
+    expect(attentionPageButtons(wrapper)[total - 1].attributes("aria-current")).toBe("true");
+    expect(attentionPageButtons(wrapper)[0].attributes("aria-current")).toBeUndefined();
+    expect(wrapper.find("[aria-label='Следующее уведомление']").attributes("disabled")).toBeDefined();
+    expect(wrapper.find("[aria-label='Предыдущее уведомление']").attributes("disabled")).toBeUndefined();
+  });
+
+  it("номера пересчитываются после скрытия и восстановления без устаревших значений", async () => {
+    const { wrapper } = await mountDashboard();
+
+    const total = attentionPageButtons(wrapper).length;
+    // Open the second card and dismiss it: the neighbour at the same
+    // position becomes active and the numbers close the gap.
+    await attentionPageButtons(wrapper)[1].trigger("click");
+    await flushPromises();
+    const dismissedTitle = attentionPageButtons(wrapper)[1].attributes("aria-label")
+      .replace(/^Уведомление \d+ из \d+: /, "");
+    await dismissActiveAttentionItem(wrapper);
+
+    let pages = attentionPageButtons(wrapper);
+    expect(pages.map((page) => page.text())).toEqual(
+      Array.from({ length: total - 1 }, (_, index) => String(index + 1)),
+    );
+    expect(pages.every((page) => page.attributes("aria-label").includes(` из ${total - 1}: `))).toBe(true);
+    expect(pages.some((page) => page.attributes("aria-label").endsWith(`: ${dismissedTitle}`))).toBe(false);
+    expect(pages[1].attributes("aria-current")).toBe("true");
+    expect(attentionPositionText(wrapper)).toBe(`2 из ${total - 1}`);
+
+    // Restore brings every hidden card back into the numbering with a
+    // single current number (key-stable restore is covered by the
+    // composable tests).
+    while (wrapper.find(".tr-dashboard-attention__item").exists()) {
+      await dismissActiveAttentionItem(wrapper);
+    }
+    await wrapper.find(".tr-dashboard-attention__restore button").trigger("click");
+    await flushPromises();
+
+    pages = attentionPageButtons(wrapper);
+    expect(pages.length).toBe(total);
+    expect(pages.filter((page) => page.attributes("aria-current") === "true").length).toBe(1);
+    expect(pages.every((page) => page.attributes("aria-label").includes(` из ${total}: `))).toBe(true);
+  });
+
   it("ровно 1 item: карточка видна без accessible previous/next controls", async () => {
     const { wrapper } = await mountDashboard();
 
     // Reduce the default multi-item source down to exactly one remaining
     // reason by dismissing every other one — the nav (position text and
     // previous/next buttons) must disappear entirely, not just disable.
-    let total = Number(wrapper.find(".tr-dashboard-attention__nav").text().match(/из (\d+)/)[1]);
+    let total = Number(wrapper.find(".tr-dashboard-attention__position").text().match(/из (\d+)/)[1]);
     while (total > 1) {
       await dismissActiveAttentionItem(wrapper);
       total -= 1;
@@ -275,7 +357,7 @@ describe("Dashboard.vue — S2 «Требует внимания» (Task A10.4)"
   it("dismiss скрывает только активную карточку, выбирает соседнюю и восстанавливается без reload", async () => {
     const { wrapper } = await mountDashboard();
 
-    const total = Number(wrapper.find(".tr-dashboard-attention__nav").text().match(/из (\d+)/)[1]);
+    const total = Number(wrapper.find(".tr-dashboard-attention__position").text().match(/из (\d+)/)[1]);
     const firstCard = activeAttentionText(wrapper);
 
     await dismissActiveAttentionItem(wrapper);
@@ -287,7 +369,7 @@ describe("Dashboard.vue — S2 «Требует внимания» (Task A10.4)"
     expect(activeAttentionText(wrapper)).not.toBe(firstCard);
     expect(wrapper.findAll(".tr-dashboard-attention__item").length).toBe(1);
     if (total > 1) {
-      expect(wrapper.find(".tr-dashboard-attention__nav").text()).toMatch(new RegExp(`из ${total - 1}$`));
+      expect(wrapper.find(".tr-dashboard-attention__position").text()).toMatch(new RegExp(`из ${total - 1}$`));
     }
 
     // Dismiss every remaining item — the section keeps existing (source
@@ -542,5 +624,63 @@ describe("Dashboard.vue — «Последние…» сортируются п�
     expect(rowTexts).toHaveLength(5);
     expect(rowTexts[0]).toContain("Самый свежий агент");
     expect(table.text()).not.toContain("Самый старый агент");
+  });
+});
+
+describe("Dashboard.vue — длинные значения плиток остаются полными", () => {
+  const LONG_WORKSPACE = "Очень-длинное-название-рабочего-пространства-без-пробелов-для-проверки-переноса";
+  const LONG_ROLE = "Администратор с расширенными правами на управление биллингом и участниками";
+  const LONG_PROFILE = "Константин Константинович Константинопольский-Преображенский";
+
+  it("рендерит значение и роль целиком внутри wrap-контейнера плитки", async () => {
+    const { wrapper } = await mountDashboard();
+    const workspace = useWorkspaceStore().workspaces.find((item) => item.id === "demo");
+    workspace.name = LONG_WORKSPACE;
+    workspace.role = LONG_ROLE;
+    useProfileStore().profile.name = LONG_PROFILE;
+    await flushPromises();
+
+    const tiles = wrapper.findAll(".tr-dashboard-link");
+    const workspaceTile = tiles.find((tile) => tile.attributes("href") === "/workspace/settings");
+    const profileTile = tiles.find((tile) => tile.attributes("href") === "/profile");
+
+    // Theme wraps `.tr-dashboard-link__metric` children, so the full value
+    // must be rendered there as-is (no truncation) and stays part of the
+    // tile link's text, i.e. its accessible name.
+    const workspaceMetric = workspaceTile.find(".tr-dashboard-link__metric");
+    expect(workspaceMetric.find("strong").text()).toBe(LONG_WORKSPACE);
+    expect(workspaceMetric.find("span").text()).toBe(LONG_ROLE);
+    expect(workspaceTile.text()).toContain(LONG_WORKSPACE);
+    expect(workspaceTile.text()).toContain(LONG_ROLE);
+
+    expect(profileTile.find(".tr-dashboard-link__metric strong").text()).toBe(LONG_PROFILE);
+
+    // The label sits first in the header so the theme's
+    // `.tr-dashboard-link__header > :first-child` wrap rule applies to it,
+    // and the icon keeps its own fixed slot.
+    const header = workspaceTile.find(".tr-dashboard-link__header");
+    expect(header.element.firstElementChild.querySelector(".tr-card__title")).not.toBeNull();
+    expect(header.element.lastElementChild.classList.contains("tr-dashboard-icon")).toBe(true);
+  });
+});
+
+describe("Dashboard.vue — статусные tags в таблицах «Последние…» ограничены ячейкой", () => {
+  it("оба статусных tag несут .tr-status-tag, полный текст и не содержат иконок", async () => {
+    const { wrapper } = await mountDashboard({ workspaceId: "demo" });
+
+    const agentsTable = wrapper.findAll("table").find((t) => t.text().includes("Название"));
+    const conversationsTable = wrapper.findAll("table").find((t) => t.text().includes("Контакт"));
+
+    for (const table of [agentsTable, conversationsTable]) {
+      const tags = table.findAll("tbody .tag");
+      expect(tags.length).toBeGreaterThan(0);
+      for (const tag of tags) {
+        // The visible label is ellipsized; the full value stays available.
+        expect(tag.classes()).toContain("tr-status-tag");
+        expect(tag.text().length).toBeGreaterThan(0);
+        expect(tag.attributes("title")).toBe(tag.text().trim());
+        expect(tag.find(".icon").exists()).toBe(false);
+      }
+    }
   });
 });

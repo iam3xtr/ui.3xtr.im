@@ -1,19 +1,5 @@
 <template>
-  <!--
-    Application shell (Handoff.2, .todo строки 761-828, требование 3):
-    trVue-плагин собран в один исполняемый `main.js`-фрагмент отдельно от
-    шаблона, sidebar с clickable `TariffSummaryCard` показан живьём, а
-    приоритет резолюции `Icon` — частично живьём (то, что реально резолвит
-    установленная `@iam3xtr/vue@0.1.1-alpha`), частично кодом (расширенная
-    slot/registry/MDI-fallback цепочка из `packages/vue/src/components/
-    Icon.vue`, ещё не опубликованная — см. секцию ниже и `.todo`).
-    Кит-собственный `src/main.js` использует equivalent named imports (Icon +
-    `provideIconRegistry` + `app.use(Buefy)`), а не `trVue` — ни сам плагин,
-    ни его subpath-экспорт (`@iam3xtr/vue/plugin`) не входят в установленную
-    `package.json#exports`; фрагмент ниже — не executed в этом сценарии,
-    только документированный код для будущего downstream-потребителя (см.
-    Handoff.1, docs/issue-drafts/…).
-  -->
+  <!-- The plugin setup is a copyable fragment; the sidebar and Icon examples render live. -->
   <PageHeader
     title="Application shell"
     subtitle="Установка trVue, боковая навигация с тарифом и приоритет резолюции Icon — в одном маршруте."
@@ -71,11 +57,9 @@
     <article class="tr-card">
       <h2 class="tr-card__title">Приоритет резолюции `Icon`</h2>
       <p class="tr-muted mb-4">
-        Живой пример ниже — то, что реально резолвит установленная
-        <code>@iam3xtr/vue@0.1.1-alpha</code> (см. <code>node_modules</code>,
-        та же версия, что использует <code>main.js</code> этого кита):
-        <code>name</code> обязателен, реестр — только то, что передано в
-        <code>provideIconRegistry</code>, без slot и без MDI fallback.
+        Живые примеры используют установленную опубликованную версию
+        <code>@iam3xtr/vue</code>: сначала реестр SVG, затем Buefy MDI,
+        а при отсутствии имени — placeholder.
       </p>
 
       <div class="tr-stack mb-4">
@@ -89,26 +73,26 @@
         </div>
 
         <div class="tr-row">
-          <Icon name="not-registered-icon" size="32" />
+          <Icon icon="shield-account-outline" size="32" />
           <span>
-            <strong>Без совпадения</strong> — <code>aria-hidden</code>
-            placeholder текущего размера; это единственный fallback
-            установленной версии, без Buefy MDI.
+            <strong>Buefy MDI fallback</strong> —
+            <code>icon="shield-account-outline"</code> не найден в SVG-реестре.
+          </span>
+        </div>
+        <div class="tr-row">
+          <Icon size="32" />
+          <span>
+            <strong>Без имени</strong> — <code>aria-hidden</code>
+            placeholder текущего размера.
           </span>
         </div>
       </div>
 
       <p class="tr-muted mb-2">
-        Расширенная цепочка resolution — slot → реестр потребителя →
+        Опубликованная цепочка resolution — slot → реестр потребителя →
         default-реестр <code>@iam3xtr/ui/icons</code> → Buefy MDI fallback →
-        placeholder — уже реализована в
-        <code>packages/vue/src/components/Icon.vue</code> (Issue #8.2), но
-        <strong>не реализуема живьём в этом сценарии</strong>: этот
-        workspace-source ещё не опубликован под новой версией — установленная
-        <code>@iam3xtr/vue@0.1.1-alpha</code> — это более ранний снимок
-        реестра (см. Handoff.1 и «Что остаётся невыполненным» в
-        <code>.todo</code>). Ниже — код именно из будущего опубликованного
-        контракта, не выполняемый здесь.
+        placeholder. Ниже — копируемый пример всех вариантов; часть из них
+        показана живьём выше.
       </p>
       <CopyPre :text="iconPrecedenceFragment" title="Скопировать пример" />
     </article>
@@ -158,12 +142,7 @@ app.use(trVue);
 app.mount("#app");
 `;
 
-// Not-yet-published contract (`packages/vue/src/components/Icon.vue`, Issue
-// #8.2) — the resolution chain the live demo above cannot reach with the
-// installed `@iam3xtr/vue@0.1.1-alpha` (no slot, no `icon` alias, no
-// default `@iam3xtr/ui/icons` registry, no Buefy MDI fallback: only a
-// required `name` against whatever `provideIconRegistry` injected, or an
-// `aria-hidden` placeholder). Shown as text only, never imported/executed.
+// Copyable example of the published Icon resolution contract.
 const iconPrecedenceFragment = `<!-- 1. Непустой default slot — full escape hatch -->
 <Icon name="openai">
   <b-icon icon="star" type="is-warning" />
@@ -179,7 +158,7 @@ const iconPrecedenceFragment = `<!-- 1. Непустой default slot — full e
 <!-- 4. Buefy MDI fallback через глобально зарегистрированный BIcon -->
 <Icon icon="shield-account-outline" />
 
-<!-- 5. aria-hidden placeholder — нет совпадения ни на одном шаге -->
-<Icon name="not-registered-icon" />
+<!-- 5. aria-hidden placeholder — имя и содержимое отсутствуют -->
+<Icon />
 `;
 </script>

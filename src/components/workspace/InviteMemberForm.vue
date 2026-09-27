@@ -4,7 +4,7 @@
     has-modal-card
     @update:model-value="(value) => (value ? modalStore.open(modalKey) : modalStore.close(modalKey))"
   >
-    <form class="modal-card" @submit.prevent="submit">
+    <form class="modal-card" novalidate @submit.prevent="submit">
       <header class="modal-card-head">
         <p class="modal-card-title">Пригласить участника</p>
         <button
@@ -16,7 +16,7 @@
       </header>
 
       <section class="modal-card-body tr-form">
-        <b-field label="Email">
+        <b-field label="Email" :type="emailError ? 'is-danger' : undefined" :message="emailError">
           <b-input
             v-model="email"
             type="email"
@@ -48,7 +48,7 @@
 
 <script setup>
 import { storeToRefs } from "pinia";
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
 import { MEMBER_ROLES, useMembersStore } from "../../stores/members";
 import { useModalStore } from "../../stores/modal";
@@ -71,6 +71,14 @@ const { activeWorkspaceId } = storeToRefs(workspaceStore);
 
 const email = ref("");
 const role = ref(invitableRoles[invitableRoles.length - 1]);
+const validationAttempted = ref(false);
+const emailError = computed(() => {
+  if (!validationAttempted.value) return undefined;
+  if (!email.value.trim()) return "Укажите Email.";
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())
+    ? undefined
+    : "Введите корректный Email.";
+});
 
 watch(
   () => modalStore.isOpen(modalKey),
@@ -81,15 +89,14 @@ watch(
 
     email.value = "";
     role.value = invitableRoles[invitableRoles.length - 1];
+    validationAttempted.value = false;
   },
 );
 
 function submit() {
+  validationAttempted.value = true;
+  if (emailError.value) return;
   const trimmedEmail = email.value.trim();
-
-  if (!trimmedEmail) {
-    return;
-  }
 
   membersStore.inviteMember(activeWorkspaceId.value, { email: trimmedEmail, role: role.value });
   toaster.success(`Приглашение отправлено на ${trimmedEmail}`);

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { createMemoryHistory, createRouter } from "vue-router";
@@ -21,6 +21,33 @@ if (typeof window.matchMedia !== "function") {
     dispatchEvent: () => false,
   });
 }
+
+// The demo store persists its mode to the kit's `localStorage`; without
+// isolation the "permission-denied" test leaks into the following ones. As in
+// tests/unit/components/Navbar.test.js, each test gets a fresh in-memory storage.
+function createMemoryStorage() {
+  const map = new Map();
+  return {
+    getItem: (key) => (map.has(key) ? map.get(key) : null),
+    setItem: (key, value) => {
+      map.set(key, String(value));
+    },
+    removeItem: (key) => {
+      map.delete(key);
+    },
+    clear: () => {
+      map.clear();
+    },
+  };
+}
+
+beforeEach(() => {
+  vi.stubGlobal("localStorage", createMemoryStorage());
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 async function mountHistory({ demoMode, workspaceId = "demo" } = {}) {
   const pinia = createPinia();

@@ -14,7 +14,7 @@
  * `protocol` (только у Providers) переиспользует те же ключи вендорского
  * SVG registry `@iam3xtr/ui/icons` — это база `Icon.vue` независимо от
  * `provideIconRegistry`/`main.js` (см. `Icon.vue`'s doc comment), тот же
- * набор ключей, что `ModelSelect.vue`/`stores/models.js` используют
+ * набор ключей, что `ModelSelect`/`stores/models.js` используют
  * (`openai`/`anthropic`/`gemini`/...) — здесь не заводится вторая копия
  * того же mapping, только недостающее значение `google -> "gemini"` (тот же
  * выбор, что в `stores/models.js`).

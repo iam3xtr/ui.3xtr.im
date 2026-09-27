@@ -428,6 +428,9 @@ const router = createRouter({
         // Stage 3 chat components (.plan этап 3 «Публичные история чата и
         // composer»): ChatHistory и MessageComposer. Один работающий
         // диалог + пустое состояние + multiline draft + сводка API.
+        // Этап 5 дополняет раздел оставшимися публичными exports
+        // (ModelSelect, NavbarTabs, useDropdownOverlay); path и name
+        // сохранены, чтобы существующие ссылки на `/kit/chat` работали.
         {
           path: "chat",
           name: "kit-chat",

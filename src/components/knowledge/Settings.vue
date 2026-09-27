@@ -76,25 +76,25 @@
         size="is-small"
         show-value
       />
-
-      <b-table :data="collection.reindexRuns" hoverable mobile-cards>
-        <b-table-column field="startedLabel" label="Запуск" v-slot="{ row }">
-          {{ row.startedLabel }}
-        </b-table-column>
-        <b-table-column field="status" label="Статус" v-slot="{ row }">
-          <b-tag size="is-small" :type="getReindexRunStatus(row.status).tagType">
-            {{ getReindexRunStatus(row.status).label }}
-          </b-tag>
-        </b-table-column>
-        <b-table-column field="indexedObjects" label="Обработано" v-slot="{ row }">
-          {{ row.indexedObjects }} / {{ row.totalObjects }}
-        </b-table-column>
-
-        <template #empty>
-          <p class="tr-catalog-empty">Переиндексация ещё не запускалась.</p>
-        </template>
-      </b-table>
     </div>
+
+    <b-table v-if="collection" :data="collection.reindexRuns" class="mt-4" hoverable mobile-cards>
+      <b-table-column field="startedLabel" label="Запуск" v-slot="{ row }">
+        {{ row.startedLabel }}
+      </b-table-column>
+      <b-table-column field="status" label="Статус" v-slot="{ row }">
+        <b-tag size="is-small" :type="getReindexRunStatus(row.status).tagType">
+          {{ getReindexRunStatus(row.status).label }}
+        </b-tag>
+      </b-table-column>
+      <b-table-column field="indexedObjects" label="Обработано" v-slot="{ row }">
+        {{ row.indexedObjects }} / {{ row.totalObjects }}
+      </b-table-column>
+
+      <template #empty>
+        <p class="tr-catalog-empty">Переиндексация ещё не запускалась.</p>
+      </template>
+    </b-table>
   </section>
 </template>
 

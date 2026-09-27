@@ -4,7 +4,7 @@
     has-modal-card
     @update:model-value="(value) => (value ? modalStore.open(modalKey) : modalStore.close(modalKey))"
   >
-    <form class="modal-card" @submit.prevent="submit">
+    <form class="modal-card" novalidate @submit.prevent="submit">
       <header class="modal-card-head">
         <p class="modal-card-title">Добавить источник</p>
         <button
@@ -38,7 +38,7 @@
               <b-field label="Название">
                 <b-input v-model="name" placeholder="Например, Актуальные тарифы" required />
               </b-field>
-              <b-field label="URL">
+              <b-field label="URL" :type="urlError ? 'is-danger' : undefined" :message="urlError">
                 <b-input v-model="url" type="url" placeholder="https://example.com" required />
               </b-field>
             </div>
@@ -91,6 +91,18 @@ const activeTab = ref(props.initialTab);
 const name = ref("");
 const content = ref("");
 const url = ref("");
+const validationAttempted = ref(false);
+const urlError = computed(() => {
+  if (!validationAttempted.value || activeTab.value !== "url" || !url.value.trim()) return undefined;
+  try {
+    const parsed = new URL(url.value.trim());
+    return parsed.protocol === "http:" || parsed.protocol === "https:"
+      ? undefined
+      : "Укажите корректный HTTP или HTTPS URL.";
+  } catch {
+    return "Укажите корректный HTTP или HTTPS URL.";
+  }
+});
 
 const canSave = computed(() => {
   if (activeTab.value === "text") return Boolean(name.value.trim() && content.value.trim());
@@ -108,11 +120,13 @@ watch(
     name.value = "";
     content.value = "";
     url.value = "";
+    validationAttempted.value = false;
   },
 );
 
 function submit() {
-  if (!canSave.value) {
+  validationAttempted.value = true;
+  if (!canSave.value || urlError.value) {
     return;
   }
 

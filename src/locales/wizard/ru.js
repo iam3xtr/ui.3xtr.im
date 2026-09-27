@@ -46,6 +46,8 @@ export default {
   catalog: {
     title: "Точная модель (каталог)",
     searchPlaceholder: "Поиск модели",
+    triggerPlaceholder: "Выберите модель",
+    emptyLabel: "Ничего не найдено.",
     unavailable: "Точный выбор модели недоступен на вашем тарифе — "
       + "используется рекомендованный класс.",
   },
@@ -71,6 +73,11 @@ export default {
     unavailable: "Собственный ключ недоступен на вашем тарифе.",
     modelLabel: "Модель (OpenRouter, собственный ключ)",
     keyLabel: "Ключ API",
+    scopeHint: "Список ограничен моделями OpenRouter — так работает собственный ключ (BYOK).",
+    freeformActionLabel: "Использовать «{id}» как идентификатор модели",
+    freeformHint: "Формат: vendor/model",
+    freeformWhitespace: "Идентификатор не должен содержать пробелов.",
+    freeformTooLong: "Не более 255 символов.",
   },
   capability: {
     downgradeWarning: "Текущий выбор недоступен на этом тарифе. Он сохранён в "

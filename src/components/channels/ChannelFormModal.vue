@@ -4,7 +4,7 @@
     has-modal-card
     @update:model-value="(value) => (value ? modalStore.open(modalKey) : modalStore.close(modalKey))"
   >
-    <form class="modal-card" @submit.prevent="submit">
+    <form class="modal-card" novalidate @submit.prevent="submit">
       <header class="modal-card-head">
         <p class="modal-card-title">
           {{ isEdit ? "Изменить канал" : "Новый канал" }}
@@ -32,7 +32,7 @@
           </b-select>
         </b-field>
 
-        <b-field label="Название">
+        <b-field label="Название" :type="nameError ? 'is-danger' : undefined" :message="nameError">
           <b-input
             v-model="name"
             placeholder="Например, Основной бот поддержки"
@@ -42,7 +42,8 @@
 
         <b-field
           label="Токен бота"
-          :message="isEdit ? 'Оставьте пустым, чтобы не менять текущий токен.' : undefined"
+          :type="tokenError ? 'is-danger' : undefined"
+          :message="tokenError || (isEdit ? 'Оставьте пустым, чтобы не менять текущий токен.' : undefined)"
         >
           <b-input
             v-model="token"
@@ -96,6 +97,13 @@ const { activeWorkspaceId } = storeToRefs(workspaceStore);
 const isEdit = computed(() => Boolean(props.channel));
 const name = ref("");
 const token = ref("");
+const validationAttempted = ref(false);
+const nameError = computed(() =>
+  validationAttempted.value && !name.value.trim() ? "Укажите название канала." : undefined);
+const tokenError = computed(() =>
+  validationAttempted.value && !isEdit.value && !token.value.trim()
+    ? "Укажите токен бота."
+    : undefined);
 
 watch(
   () => [props.channel, modalStore.isOpen(modalKey)],
@@ -106,15 +114,14 @@ watch(
 
     name.value = channel?.name ?? "";
     token.value = "";
+    validationAttempted.value = false;
   },
 );
 
 function submit() {
+  validationAttempted.value = true;
+  if (nameError.value || tokenError.value) return;
   const trimmedName = name.value.trim();
-
-  if (!trimmedName) {
-    return;
-  }
 
   if (isEdit.value) {
     const trimmedToken = token.value.trim();

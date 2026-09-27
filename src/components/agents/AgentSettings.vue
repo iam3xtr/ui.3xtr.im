@@ -158,14 +158,24 @@
             Этап 2.1 review fix: `b-field` не получает `label-for` без
             явного prop, поэтому `<label>` и `<input>` не связаны по
             `for=` программно. Чтобы accessible name всё равно был,
-            `ModelSelect` принимает опциональный `aria-label` — для
-            обычной модели это короткое «Модель» (тот же текст, что и
-            `<label>`). BYOK-поле ниже НЕ передаёт `aria-label`, потому
-            что у него есть собственный нативный `<label for="model">` с
-            полным описанием «OpenRouter, собственный ключ», и aria-label
+            публичный `ModelSelect` получает `trigger-aria-label` — для
+            обычной модели это «Модель» (тот же текст, что и `<label>`) плюс
+            текущее значение. BYOK-поле ниже НЕ передаёт `trigger-aria-label`,
+            потому что у него есть собственный нативный `<label for="model">`
+            с полным описанием «OpenRouter, собственный ключ», и aria-label
             перебил бы этот контекст.
           -->
-          <ModelSelect v-model="draft.model" aria-label="Модель" input-id="model" />
+          <ModelSelect
+            v-model:model-id="draft.model"
+            mode="model"
+            input-id="model"
+            :models="regularCatalog.models.value"
+            :recommended-models="regularCatalog.recommendedModels.value"
+            :search-results="regularCatalog.searchResults.value"
+            :trigger-aria-label="regularTriggerAriaLabel"
+            v-bind="MODEL_SELECT_COPY"
+            @update:query="regularCatalog.onQuery"
+          />
         </b-field>
 
         <!--
@@ -206,13 +216,22 @@
             class="tr-agent-settings__byok-bfield"
           >
             <ModelSelect
-              v-model="draft.byokModel"
+              v-model:byok-model-id="byokModelBinding"
               v-model:provider-model-id="draft.providerModelId"
-              :use-own-api-key="true"
+              mode="byok"
               input-id="model"
               :invalid="Boolean(fieldErrors.model)"
+              :models="byokCatalog.models.value"
+              :recommended-models="byokCatalog.recommendedModels.value"
+              :search-results="byokCatalog.searchResults.value"
+              v-bind="MODEL_SELECT_COPY"
+              :freeform-error-label="byokFreeformErrorLabel"
+              @update:query="byokCatalog.onQuery"
             />
           </b-field>
+          <p class="help">
+            Список ограничен моделями OpenRouter — так работает собственный ключ (BYOK).
+          </p>
         </div>
 
         <!--
@@ -291,7 +310,8 @@ import DirtyExitModal from "../common/DirtyExitModal.vue";
 import FormErrorSummary from "../common/FormErrorSummary.vue";
 import { PageHeader } from "@iam3xtr/vue/navigation";
 import ApiKeySelect from "./ApiKeySelect.vue";
-import ModelSelect from "./ModelSelect.vue";
+import { ModelSelect } from "@iam3xtr/vue";
+import { useModelSelectCatalog } from "./modelSelectAdapter.js";
 
 // Agent settings tab (Task A5.4), routed at `/agents/:id/settings`. Scoped
 // to fields that do not affect an in-progress sandbox session — temperature
@@ -375,7 +395,7 @@ const {
 
 // Stage A10 review fix: `FormErrorSummary`'s "jump to field" is a plain
 // `document.getElementById("name")?.focus()`, but Buefy's `b-input` (like
-// `b-autocomplete` in `ModelSelect.vue`, see its own comment on this) routes
+// other Buefy inputs wrapped in `b-field`) routes
 // a bare `id` attr to its own outer `.control` wrapper `<div>` via its
 // `CompatFallthroughMixin`, never to the actual `<input>` that can take
 // focus — so the id is set imperatively on the real input element instead.
@@ -527,6 +547,43 @@ const {
     );
 
     return { ok: true };
+  },
+});
+
+// Public `ModelSelect` adapters: the package receives plain scoped arrays
+// and consumer copy; the fixture store, drafts and validation stay here.
+// Regular and BYOK pickers are separate instances (only one is mounted at a
+// time), each with its own catalog scope and query.
+const MODEL_SELECT_COPY = {
+  triggerPlaceholder: "Выберите модель",
+  searchPlaceholder: "Поиск модели",
+  searchAriaLabel: "Поиск модели",
+  emptyLabel: "Ничего не найдено.",
+  freeformActionLabel: "Использовать «{id}» как идентификатор модели",
+  freeformHint: "Формат: vendor/model",
+};
+const FREEFORM_ERROR_COPY = {
+  whitespace: "Идентификатор не должен содержать пробелов.",
+  tooLong: "Не более 255 символов.",
+};
+
+const regularCatalog = useModelSelectCatalog(false);
+const byokCatalog = useModelSelectCatalog(true);
+
+const regularTriggerAriaLabel = computed(
+  () => `Модель: ${regularCatalog.displayName(draft.value.model) || MODEL_SELECT_COPY.triggerPlaceholder}`,
+);
+const byokFreeformErrorLabel = computed(
+  () => FREEFORM_ERROR_COPY[byokCatalog.freeformIssue.value] ?? "",
+);
+
+// The draft keeps an empty BYOK model as "" (see `toDraft`); the package
+// clears it with `null` when a free-form id is committed. Normalise both
+// directions so re-committing the saved value does not look like a change.
+const byokModelBinding = computed({
+  get: () => draft.value.byokModel || null,
+  set: (value) => {
+    draft.value.byokModel = value ?? "";
   },
 });
 

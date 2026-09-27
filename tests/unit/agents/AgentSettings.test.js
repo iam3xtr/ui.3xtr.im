@@ -685,3 +685,83 @@ describe("AgentSettings.vue — название и статус (Stage A10 revi
     expect(findNameSaveButton(wrapper).attributes("disabled")).toBeDefined();
   });
 });
+
+// Stage 5: settings consume the public `@iam3xtr/vue` `ModelSelect` through
+// the demo adapter (`modelSelectAdapter.js`) — fixed `mode` per picker, the
+// external BYOK switch, OpenRouter scope and consumer copy stay in the demo.
+describe("AgentSettings.vue — публичный ModelSelect", () => {
+  function optionNames(wrapper) {
+    return wrapper.findAll(".tr-model-select__option-name").map((el) => el.text());
+  }
+
+  it("обычная модель: mode=model, trigger с id и значением в accessible name", async () => {
+    const { wrapper } = await mountSettings({ workspaceId: "demo", agentId: "1" });
+
+    const select = wrapper.find(".tr-model-select");
+    expect(select.classes()).toContain("tr-model-select--mode-model");
+
+    const trigger = select.find(".tr-model-select__trigger");
+    expect(trigger.attributes("id")).toBe("model");
+    expect(trigger.attributes("aria-label")).toBe("Модель: GPT-4.1 mini");
+    expect(trigger.find(".tr-model-select__trigger-value").text()).toBe("GPT-4.1 mini");
+    expect(select.find("input").attributes("placeholder")).toBe("Поиск модели");
+  });
+
+  it("BYOK: mode=byok, только OpenRouter и подсказка про scope", async () => {
+    const { wrapper } = await mountSettings({ workspaceId: "demo", agentId: "1" });
+
+    await wrapper.find("input[type='checkbox']").setValue(true);
+
+    const select = wrapper.find(".tr-model-select");
+    expect(select.classes()).toContain("tr-model-select--mode-byok");
+    expect(select.find(".tr-model-select__trigger-value").text()).toBe("Выберите модель");
+    expect(optionNames(wrapper)).toEqual(["GPT-OSS 120B (OpenRouter)"]);
+    expect(wrapper.find(".tr-agent-settings__byok-field").text())
+      .toContain("Список ограничен моделями OpenRouter");
+
+    await wrapper.find(".tr-model-select__trigger").trigger("click");
+    await wrapper.find(".tr-model-select input").setValue("gemini");
+    expect(optionNames(wrapper)).toEqual([]);
+    expect(wrapper.find(".tr-model-select__freeform-action").exists()).toBe(true);
+  });
+
+  it("BYOK free-form: consumer copy валидации и взаимоисключение с каталогом", async () => {
+    const { wrapper } = await mountSettings({ workspaceId: "demo", agentId: "1" });
+
+    await wrapper.find("input[type='checkbox']").setValue(true);
+    await wrapper.find(".tr-model-select__trigger").trigger("click");
+    const input = wrapper.find(".tr-model-select input");
+
+    await input.setValue("vendor model");
+    expect(wrapper.find(".tr-model-select__freeform-action").attributes("disabled")).toBeDefined();
+    expect(wrapper.text()).toContain("Идентификатор не должен содержать пробелов.");
+
+    await input.setValue(`vendor/${"a".repeat(250)}`);
+    expect(wrapper.text()).toContain("Не более 255 символов.");
+
+    await input.setValue("vendor/my-model");
+    const action = wrapper.find(".tr-model-select__freeform-action");
+    expect(action.attributes("disabled")).toBeUndefined();
+    expect(action.text()).toBe("Использовать «vendor/my-model» как идентификатор модели");
+    await action.trigger("mousedown");
+    await flushPromises();
+
+    const triggerValue = () => wrapper.find(".tr-model-select__trigger-value").text();
+    expect(triggerValue()).toBe("vendor/my-model");
+
+    // Выбор каталожной BYOK-модели очищает free-form id.
+    await wrapper.find(".tr-model-select__trigger").trigger("click");
+    await selectRecommendedByokModel(wrapper);
+    await flushPromises();
+    expect(triggerValue()).toBe("GPT-OSS 120B (OpenRouter)");
+  });
+
+  it("сохранённый free-form BYOK id выигрывает у каталожного на trigger", async () => {
+    const { wrapper } = await mountSettings({ workspaceId: "trickster", agentId: "1" });
+
+    const select = wrapper.find(".tr-model-select");
+    expect(select.classes()).toContain("tr-model-select--mode-byok");
+    expect(select.find(".tr-model-select__trigger-value").text())
+      .toBe("meta-llama/llama-3.1-405b-instruct");
+  });
+});

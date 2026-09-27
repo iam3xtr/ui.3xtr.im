@@ -208,3 +208,75 @@ describe("RulesStep.vue — «Расширенные параметры» (Task 
     expect(wizardStore.getDraft("empty").fields.modelClassId).toBe("power");
   });
 });
+
+// Stage 5: the expert zone consumes the public `@iam3xtr/vue` `ModelSelect`
+// through the demo adapter — fixed `mode` per picker, capability-gated
+// external BYOK switch, wizard-dictionary copy and draft writes via `update`.
+describe("RulesStep.vue — «Расширенные параметры», публичный ModelSelect", () => {
+  async function openExpert(workspaceId = "trickster") {
+    const mounted = await mountWizardAtRules(workspaceId);
+    await expertToggle(mounted.wrapper).trigger("click");
+    await flushPromises();
+    return mounted;
+  }
+
+  function optionNames(node) {
+    return node.findAll(".tr-model-select__option-name").map((el) => el.text());
+  }
+
+  it("каталог: mode=model, выбор пишет modelId в draft", async () => {
+    const { wrapper, wizardStore } = await openExpert();
+
+    const selects = wrapper.findAll(".tr-wizard-expert__panel .tr-model-select");
+    expect(selects).toHaveLength(1);
+    const select = selects[0];
+    expect(select.classes()).toContain("tr-model-select--mode-model");
+    expect(select.find(".tr-model-select__trigger").attributes("aria-label"))
+      .toBe("Точная модель (каталог): Выберите модель");
+
+    await select.find(".tr-model-select__trigger").trigger("click");
+    await select.find("input").setValue("haiku");
+    expect(optionNames(select)).toEqual(["Claude Haiku 4.5"]);
+    await select.find("a.dropdown-item").trigger("click");
+    await flushPromises();
+
+    expect(wizardStore.getDraft("trickster").fields.modelId).toBe("claude-haiku-4.5");
+  });
+
+  it("BYOK: mode=byok, OpenRouter scope, free-form пишет providerModelId", async () => {
+    const { wrapper, wizardStore } = await openExpert();
+
+    await wrapper.find(".tr-wizard-expert__panel input[type='checkbox']").setValue(true);
+    await flushPromises();
+
+    const byokSelect = wrapper.find(".tr-model-select--mode-byok");
+    expect(byokSelect.exists()).toBe(true);
+    expect(optionNames(byokSelect)).toEqual(["GPT-OSS 120B (OpenRouter)"]);
+    expect(wrapper.find(".tr-wizard-expert__panel").text())
+      .toContain("Список ограничен моделями OpenRouter");
+
+    await byokSelect.find(".tr-model-select__trigger").trigger("click");
+    await byokSelect.find("input").setValue("vendor model");
+    expect(byokSelect.text()).toContain("Идентификатор не должен содержать пробелов.");
+
+    await byokSelect.find("input").setValue("vendor/my-model");
+    await byokSelect.find(".tr-model-select__freeform-action").trigger("mousedown");
+    await flushPromises();
+
+    const fields = wizardStore.getDraft("trickster").fields;
+    expect(fields.providerModelId).toBe("vendor/my-model");
+    expect(fields.byokModel ?? null).toBeNull();
+    expect(byokSelect.find(".tr-model-select__trigger-value").text()).toBe("vendor/my-model");
+  });
+
+  it("copy picker следует locale мастера", async () => {
+    const { wrapper } = await openExpert();
+
+    await wrapper.find(".tr-wizard-expert__locale select").setValue("en");
+    await flushPromises();
+
+    const select = wrapper.find(".tr-wizard-expert__panel .tr-model-select");
+    expect(select.find(".tr-model-select__trigger-value").text()).toBe("Select a model");
+    expect(select.find("input").attributes("placeholder")).toBe("Search models");
+  });
+});

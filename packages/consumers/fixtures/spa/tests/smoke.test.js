@@ -125,6 +125,23 @@ describe("consumer SPA fixture", () => {
     wrapper.unmount();
   });
 
+  // Stage 5 `NavbarTabs` overflow contract from the packed tarball: route
+  // links inside the scroll viewport, consumer-set nav name. jsdom has no
+  // layout, so nothing overflows and no arrows (or reserved space) render;
+  // arrow scrolling is covered by focused tests inside `@iam3xtr/vue`.
+  it("NavbarTabs renders route links in its viewport without arrows when nothing overflows", async () => {
+    const wrapper = await mountApp();
+    const nav = wrapper.find(".tr-consumer-flow__tabs-bar nav.tr-navbar-tabs");
+    expect(nav.exists()).toBe(true);
+    expect(nav.attributes("aria-label")).toBe("Fixture sections");
+    const links = nav.findAll(".tr-navbar-tabs__viewport a.tr-navbar-tabs__link");
+    expect(links.map((link) => link.attributes("href")))
+      .toEqual(["/", "/?tab=usage", "/?tab=members", "/?tab=billing"]);
+    expect(links[0].attributes("aria-current")).toBe("page");
+    expect(nav.find(".tr-navbar-tabs__arrow").exists()).toBe(false);
+    wrapper.unmount();
+  });
+
   // Stage 2.1 `ModelSelect` from the packed tarball, run by
   // run-matrix.mjs against each supported Buefy version.
   it("ModelSelect opens, focuses search, selects and closes inline", async () => {

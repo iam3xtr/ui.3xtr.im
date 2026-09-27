@@ -9,7 +9,7 @@
           </a>
         </b-upload>
 
-        <b-dropdown position="is-bottom-left" aria-role="list">
+        <OverlayDropdown position="is-bottom-left" aria-role="list">
           <template #trigger>
             <b-button icon-left="plus" size="is-small" type="is-primary">
               Добавить
@@ -21,7 +21,7 @@
           <b-dropdown-item aria-role="listitem" @click="openObjectForm('url')">
             Добавить ссылку
           </b-dropdown-item>
-        </b-dropdown>
+        </OverlayDropdown>
       </template>
     </Toolbar>
 
@@ -49,50 +49,48 @@
             <span class="tr-muted">{{ formatBytes(totalSize) }}</span>
           </div>
 
-          <div class="tr-card">
-            <b-table :data="displayObjects" :row-key="(row) => row._demoKey ?? row.id" hoverable mobile-cards>
-              <b-table-column field="name" label="Название" v-slot="{ row }">
-                <span class="tr-row">
-                  <b-icon :icon="getObjectKind(row.kind).icon" size="is-small" />
-                  <span>
-                    <strong>{{ row.name }}</strong>
-                    <br v-if="row.sourceLabel" />
-                    <small v-if="row.sourceLabel" class="tr-muted">{{ row.sourceLabel }}</small>
-                  </span>
+          <b-table :data="displayObjects" :row-key="(row) => row._demoKey ?? row.id" hoverable mobile-cards>
+            <b-table-column field="name" label="Название" v-slot="{ row }">
+              <span class="tr-row">
+                <b-icon :icon="getObjectKind(row.kind).icon" size="is-small" />
+                <span>
+                  <strong>{{ row.name }}</strong>
+                  <br v-if="row.sourceLabel" />
+                  <small v-if="row.sourceLabel" class="tr-muted">{{ row.sourceLabel }}</small>
                 </span>
-              </b-table-column>
+              </span>
+            </b-table-column>
 
-              <b-table-column field="status" label="Статус" v-slot="{ row }">
-                <b-tag size="is-small" :type="getObjectStatus(row.status).tagType">
-                  {{ getObjectStatus(row.status).label }}
-                </b-tag>
-              </b-table-column>
+            <b-table-column field="status" label="Статус" v-slot="{ row }">
+              <b-tag size="is-small" :type="getObjectStatus(row.status).tagType">
+                {{ getObjectStatus(row.status).label }}
+              </b-tag>
+            </b-table-column>
 
-              <b-table-column field="size" label="Размер" v-slot="{ row }">
-                {{ formatBytes(row.size) }}
-              </b-table-column>
+            <b-table-column field="size" label="Размер" v-slot="{ row }">
+              {{ formatBytes(row.size) }}
+            </b-table-column>
 
-              <b-table-column field="updatedLabel" label="Обновлено" v-slot="{ row }">
-                {{ row.updatedLabel }}
-              </b-table-column>
+            <b-table-column field="updatedLabel" label="Обновлено" v-slot="{ row }">
+              {{ row.updatedLabel }}
+            </b-table-column>
 
-              <b-table-column v-slot="{ row }" width="56">
-                <b-dropdown position="is-bottom-left" aria-role="list" append-to-body>
-                  <template #trigger>
-                    <b-button
-                      type="is-text"
-                      icon-left="dots-horizontal"
-                      size="is-small"
-                      :aria-label="`Действия с файлом «${row.name}»`"
-                    />
-                  </template>
-                  <b-dropdown-item aria-role="listitem" @click="removeObject(row)">
-                    Удалить
-                  </b-dropdown-item>
-                </b-dropdown>
-              </b-table-column>
-            </b-table>
-          </div>
+            <b-table-column v-slot="{ row }" width="56">
+              <OverlayDropdown position="is-bottom-left" aria-role="list">
+                <template #trigger>
+                  <b-button
+                    type="is-text"
+                    icon-left="dots-horizontal"
+                    size="is-small"
+                    :aria-label="`Действия с файлом «${row.name}»`"
+                  />
+                </template>
+                <b-dropdown-item aria-role="listitem" @click="removeObject(row)">
+                  Удалить
+                </b-dropdown-item>
+              </OverlayDropdown>
+            </b-table-column>
+          </b-table>
 
           <p v-if="filteredObjects.length === 0 && objects.length > 0" class="tr-catalog-empty">
             По вашему запросу файлы не найдены.
@@ -118,6 +116,7 @@ import { useKnowledgeStore } from "../../stores/knowledge";
 import { useModalStore } from "../../stores/modal";
 import { useWorkspaceStore } from "../../stores/workspace";
 import { Loader, ListAsyncState, Toolbar, FileDropTarget } from "@iam3xtr/vue";
+import OverlayDropdown from "../common/OverlayDropdown.vue";
 import KnowledgeFileFormModal from "./KnowledgeFileFormModal.vue";
 
 // Files tab (Task A5.6), routed at `/knowledge/:id`. Adding a file has two

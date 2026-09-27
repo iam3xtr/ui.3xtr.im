@@ -8,7 +8,7 @@
       <span class="tr-icon-tile tr-icon-tile--plain tr-entity-card__icon">
         <b-icon icon="send-outline" size="is-medium" />
       </span>
-      <b-tag :type="statusTagType" size="is-small">
+      <b-tag class="tr-status-tag" :type="statusTagType" :title="statusLabel" size="is-small">
         {{ statusLabel }}
       </b-tag>
     </header>

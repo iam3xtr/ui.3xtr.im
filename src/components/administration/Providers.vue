@@ -59,7 +59,7 @@
 
           <b-table-column field="status" label="Статус" v-slot="{ row }">
             <b-tag :type="row.status === 'Подключён' ? 'is-primary' : undefined" size="is-small">
-              <AdminMarker domain="status" :value="row.status" />
+              {{ row.status }}
             </b-tag>
           </b-table-column>
 

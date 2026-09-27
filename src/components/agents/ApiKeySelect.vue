@@ -1,12 +1,11 @@
 <template>
   <div class="tr-api-key-select">
-    <b-dropdown
+    <OverlayDropdown
       ref="dropdownRef"
       v-model="localValue"
       aria-role="list"
       expanded
-      :position="openAbove ? 'is-top-right' : undefined"
-      :append-to-body="openAbove"
+      :position="openAbove ? 'is-top-right' : 'is-bottom-right'"
     >
       <template #trigger>
         <button :id="inputId" type="button" class="button tr-api-key-select__trigger">
@@ -52,14 +51,14 @@
           Добавить ключ…
         </button>
       </b-dropdown-item>
-    </b-dropdown>
+    </OverlayDropdown>
 
     <b-modal
       :model-value="modalStore.isOpen(modalKey)"
       has-modal-card
       @update:model-value="(value) => (value ? modalStore.open(modalKey) : modalStore.close(modalKey))"
     >
-      <form class="modal-card" @submit.prevent="submit">
+      <form class="modal-card" novalidate @submit.prevent="submit">
         <header class="modal-card-head">
           <p class="modal-card-title">Добавить ключ OpenRouter</p>
           <button
@@ -71,7 +70,7 @@
         </header>
 
         <section class="modal-card-body tr-form">
-          <b-field label="Название">
+          <b-field label="Название" :type="newLabelError ? 'is-danger' : undefined" :message="newLabelError">
             <b-input
               v-model="newLabel"
               placeholder="Например, Личный ключ"
@@ -79,7 +78,7 @@
             />
           </b-field>
 
-          <b-field label="Ключ API">
+          <b-field label="Ключ API" :type="newSecretError ? 'is-danger' : undefined" :message="newSecretError">
             <b-input
               v-model="newSecret"
               type="password"
@@ -108,6 +107,7 @@
 import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
 
+import OverlayDropdown from "../common/OverlayDropdown.vue";
 import { useAgentsStore } from "../../stores/agents.js";
 import { useApiKeysStore } from "../../stores/apiKeys.js";
 import { useModalStore } from "../../stores/modal.js";
@@ -126,6 +126,9 @@ const modalKey = "agent-byok-key-create";
 // so `FormErrorSummary`'s `document.getElementById(field)?.focus()` jump
 // (Task A10.1) has a real focusable target — omitted by every consumer that
 // doesn't need one (e.g. the wizard's `ExpertParameters.vue`).
+// `openAbove` only seeds the preferred direction: the shared overlay flips
+// the menu at the viewport edge and moves it to a body portal only when an
+// ancestor clips overflow (see `common/OverlayDropdown.vue`).
 defineProps({
   inputId: { type: String, default: null },
   openAbove: { type: Boolean, default: false },
@@ -141,7 +144,13 @@ const { activeWorkspaceId } = storeToRefs(workspaceStore);
 
 const newLabel = ref("");
 const newSecret = ref("");
+const validationAttempted = ref(false);
 const dropdownRef = ref(null);
+
+const newLabelError = computed(() =>
+  validationAttempted.value && !newLabel.value.trim() ? "Укажите название ключа." : undefined);
+const newSecretError = computed(() =>
+  validationAttempted.value && !newSecret.value.trim() ? "Укажите ключ API." : undefined);
 
 const keys = computed(() => apiKeysStore.listByWorkspace(activeWorkspaceId.value));
 
@@ -154,18 +163,18 @@ function openCreateModal() {
   closeDropdown();
   newLabel.value = "";
   newSecret.value = "";
+  validationAttempted.value = false;
   modalStore.open(modalKey);
 }
 
 function closeDropdown() {
-  // Buefy does not close custom items; an active body-appended menu would
-  // otherwise remain above the modal opened by Add or Delete.
-  if (dropdownRef.value?.isActive) {
-    dropdownRef.value.isActive = false;
-  }
+  // Buefy does not close custom items; an active menu would otherwise
+  // remain open behind the modal opened by Add or Delete.
+  dropdownRef.value?.close();
 }
 
 function submit() {
+  validationAttempted.value = true;
   const trimmedLabel = newLabel.value.trim();
   const trimmedSecret = newSecret.value.trim();
 
