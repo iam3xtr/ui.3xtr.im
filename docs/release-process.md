@@ -207,8 +207,8 @@ package-релиза. Он требует: clean `main`, локальный anno
 
 ## Совместимость и рекомендуемая пара
 
-Текущая опубликованная пара — `@iam3xtr/ui@0.1.3-alpha` и
-`@iam3xtr/vue@0.1.3-alpha`. UI Kit закрепляет именно эти exact версии в
+Текущая опубликованная пара — `@iam3xtr/ui@0.1.3` и
+`@iam3xtr/vue@0.1.3`. UI Kit закрепляет именно эти exact версии в
 `package.json` и lockfile. Registry-установка, unit tests, production/Pages
 builds и packed consumer matrix подтверждены; ручной post-release browser
 smoke остаётся отдельным gate перед рекомендацией внешним потребителям.
@@ -223,9 +223,9 @@ smoke остаётся отдельным gate перед рекомендаци
 
 | Диапазон `@iam3xtr/ui` | Диапазон `@iam3xtr/vue` | Статус |
 | --- | --- | --- |
-| `0.1.3-alpha` | `0.1.3-alpha` | Опубликованная exact-пара; UI Kit устанавливает её из registry. |
-| `^0.1.3-alpha` | `^0.1.3-alpha` | Допустимый peer-диапазон Vue, но не спецификация consumer-зависимости. |
-| `<0.1.3-alpha` | `^0.1.3-alpha` | Несовместимо: peerDependencies Vue требуют UI из текущей полосы. |
+| `0.1.3` | `0.1.3` | Опубликованная exact-пара; UI Kit устанавливает её из registry. |
+| `^0.1.3` | `^0.1.3` | Допустимый peer-диапазон Vue, но не спецификация consumer-зависимости. |
+| `<0.1.3` | `^0.1.3` | Несовместимо: peerDependencies Vue требуют UI из текущей полосы. |
 
 В любой момент действует ровно одна поддерживаемая полоса: диапазон
 `@iam3xtr/vue`'s `peerDependencies["@iam3xtr/ui"]` *и есть* эта матрица
