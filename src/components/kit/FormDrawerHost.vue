@@ -297,6 +297,7 @@ function confirmDiscard() {
 }
 
 async function confirmSave() {
+  if (isBusy.value || isDisabled.value) return;
   settleConfirm(false);
   if (mode.value === "shell") {
     const { valid } = (await formRef.value?.validate()) ?? { valid: false };
@@ -309,7 +310,7 @@ async function confirmSave() {
 let saveTimerId = null;
 
 function save() {
-  if (saveTimerId) return;
+  if (isBusy.value || isDisabled.value || saveTimerId) return;
   isBusy.value = true;
   saveTimerId = setTimeout(() => {
     saveTimerId = null;

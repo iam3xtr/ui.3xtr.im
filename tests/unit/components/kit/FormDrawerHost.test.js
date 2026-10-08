@@ -181,6 +181,50 @@ describe.skipIf(!hasHostContract)("kit/FormDrawerHost.vue", () => {
     }
   });
 
+  it.each([
+    ["native", "busy"],
+    ["native", "disabled"],
+    ["shell + vee-validate", "busy"],
+    ["shell + vee-validate", "disabled"],
+  ])("preserves the dirty %s draft when Save is blocked by %s", async (mode, state) => {
+    vi.useFakeTimers();
+    try {
+      mountHost();
+      await choose(mode);
+      await toggle(state);
+      await openHost();
+      await typeName("Борис");
+      await pressEscape();
+      expect(confirmModal()).not.toBeNull();
+
+      await clickModalButton("Сохранить");
+      await vi.advanceTimersByTimeAsync(600);
+      await flushPromises();
+      expect(status()).toContain("Отправок: 0");
+      expect(isOpen()).toBe(true);
+      expect(confirmModal()).not.toBeNull();
+      expect(drawer().find("input").element.value).toBe("Борис");
+
+      // A direct form event must obey the same gate as the confirmation.
+      await drawer().find("form").trigger("submit");
+      await flushPromises();
+      await vi.advanceTimersByTimeAsync(600);
+      await flushPromises();
+      expect(status()).toContain("Отправок: 0");
+      expect(isOpen()).toBe(true);
+
+      await toggle(state);
+      await clickModalButton("Сохранить");
+      await vi.advanceTimersByTimeAsync(600);
+      await flushPromises();
+      expect(status()).toContain("Отправок: 1");
+      expect(isOpen()).toBe(false);
+      expect(wrapper.findComponent({ name: "DirtyExitModal" }).props("active")).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("validates once in shell mode with a single vee-validate form", async () => {
     vi.useFakeTimers();
     try {
