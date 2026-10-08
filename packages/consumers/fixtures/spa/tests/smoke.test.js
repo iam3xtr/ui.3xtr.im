@@ -386,3 +386,17 @@ describe("consumer SPA fixture: document overflow vs overlay scroll lock", () =>
     );
   });
 });
+
+describe("consumer SPA fixture: transferred style primitives", () => {
+  it("packed theme.css carries field markers and the borderless table modifier", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { createRequire } = await import("node:module");
+    const css = readFileSync(
+      createRequire(import.meta.url).resolve("@iam3xtr/ui/styles/theme.css"),
+      "utf8",
+    );
+    expect(css).toMatch(/\.tr-field__required,\s*\.tr-field__error\s*\{[^}]*color:\s*var\(--tr-danger\)/);
+    expect(css).toMatch(/\.tr-field__error\s*\{[^}]*margin:\s*0/);
+    expect(css).toMatch(/\.table\.is-borderless\s*:is\(th,\s*td\)\s*\{[^}]*border:\s*0/);
+  });
+});

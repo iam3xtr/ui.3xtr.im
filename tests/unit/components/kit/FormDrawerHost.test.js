@@ -185,3 +185,13 @@ describe.skipIf(!hasHostContract)("kit/FormDrawerHost.vue", () => {
     }
   });
 });
+
+describe("kit/FormDrawerHost.vue style primitives", () => {
+  it("demonstrates the shared field markers and the borderless table", () => {
+    mountHost();
+    const section = wrapper.find('[data-testid="host-style-primitives"]');
+    expect(section.find(".tr-field__required").exists()).toBe(true);
+    expect(section.find(".tr-field__error").text()).toBe("Укажите имя");
+    expect(section.find("table.table.is-borderless").exists()).toBe(true);
+  });
+});

@@ -51,6 +51,35 @@
       {{ lastCloseReason ?? "—" }}
     </p>
 
+    <div class="mt-5" data-testid="host-style-primitives">
+      <h3 class="tr-card__subtitle">Совместимость стилей host-форм</h3>
+      <p class="tr-muted mb-3">
+        Для форм со своей разметкой подписи и ошибки (например,
+        <code>ErrorMessage</code> из vee-validate) и для сводных таблиц внутри
+        панели: <code>tr-field__required</code>, <code>tr-field__error</code>,
+        <code>table is-borderless</code>.
+      </p>
+      <div class="tr-stack mb-3">
+        <label class="label" for="host-style-name">
+          {{ copy.name }} <span class="tr-field__required" aria-hidden="true">*</span>
+        </label>
+        <input id="host-style-name" class="input" type="text" value="" />
+        <p class="tr-field__error" role="alert">{{ copy.required }}</p>
+      </div>
+      <table class="table is-fullwidth is-borderless" data-testid="host-style-table">
+        <tbody>
+          <tr>
+            <th scope="row">{{ copy.name }}</th>
+            <td>{{ initialValues.name }}</td>
+          </tr>
+          <tr>
+            <th scope="row">{{ copy.note }}</th>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
     <FormDrawer
       ref="drawerRef"
       v-model="isOpen"
