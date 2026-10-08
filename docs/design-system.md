@@ -75,24 +75,7 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
   File[] в один и тот же fixture-only enqueue helper экрана. FileDropTarget не
   знает про upload, progress, retry, cancel или API — accept — только
   клиентская подсказка, не security boundary.
-- Единый каркас правой формы — FormDrawer из @iam3xtr/vue, поверх штатного
-  b-sidebar (right, overlay, fullheight); пакет не подменяет Escape,
-  backdrop и scroll lock самодельным overlay. Header — title и доступная
-  close-кнопка, default slot — scrollable form body, footer slot — fixed
-  действия; submit эмитится один раз и не эмитится во время busy/disabled.
-  FormDrawer не реализует validation, dirty guard, API или draft model —
-  это остаётся за конкретным экраном. b-sidebar не реализует focus trap и
-  возврат фокуса при закрытии (в отличие от b-modal) — известное
-  ограничение Buefy, не компенсируемое собственной реализацией. Theme-
-  контракт (`.tr-form-drawer` в theme.scss) владеет только панелью, overlay,
-  header/body/footer и layering (общий overlay/z-index scale с modal/dialog);
-  на <=768px панель разворачивается на весь viewport вместо фиксированной
-  ширины. Правило применения (эталон — `/kit`, раздел «Диалоги и оверлеи»):
-  FormDrawer — редактирование в правой панели с длинным body и фиксированным
-  footer; прямой `b-sidebar` — неформовая панель (свойства/details), не
-  форма; `b-modal` — короткая форма без длинного body и без отдельного
-  fixed footer; `b-dialog` — только подтверждение действия, не форма любой
-  длины.
+- FormDrawer над Buefy Sidebar предоставляет async beforeClose, встроенный focus entry/trap/return, native и shell режимы формы, width с viewport clamp. Validation, dirty state и API принадлежат consumer. Подробный контракт — в package README; рабочий host с vee-validate и dirty confirmation находится на `/kit/dialogs-overlays`. Вложенный modal требует сохранения scroll lock со стороны общего host. Эти расширения реализованы в sources и требуют нового выпуска после 0.1.3.
 - Toolbar (@iam3xtr/vue) рендерит слот filters дважды — inline pills и копию
   в mobile-filters trigger/panel (<=768px) — так что theme скрывает inline
   копию через `.tr-page-toolbar__filters .tr-page-toolbar__filter`, а не
@@ -367,3 +350,11 @@ placeholder. Полная цепочка slot → реестр потребит�
 Для изменения пакетов дополнительно используйте их собственные test/pack
 проверки и consumer matrix. Поставка и точные registry pins описаны в
 [release process](release-process.md).
+
+### Общие стили форм и сообщений
+
+В package sources полной темы добавлены `tr-field__required` и `tr-field__error` (danger token, компактная ошибка), `table.is-borderless` (без рамок, vertical-align middle) и `tr-message-markdown` для consumer-rendered Markdown в body slot ChatHistory. Последний задаёт spacing блоков/списков, перенос длинного текста и горизонтальную прокрутку pre; parsing и sanitization остаются у consumer.
+
+Document overflow по умолчанию `auto`: короткая страница не требует scrollbar, длинная доступна для прокрутки. Overlay lock действует через Buefy/Bulma `is-clipped`/`is-noscroll`; тема не координирует lifecycles нескольких overlays. Sidebar scrollbar gutter сохраняется.
+
+До удаления consumer compat правил подтвердите покрытие установленной новой registry-версией. `tr-table--stack` уже входит в тему; growing composer следует заменить публичным MessageComposer, который управляет высотой сам. `has-border-danger-light` имеет публичный путь через `tr-destructive-zone`. Product-specific provider/Knowledge toolbar/menu selectors, secret toggle и max-w-sm не стали shared contract автоматически; marker `--tr-compat-contract` не является визуальным покрытием. Их решение остаётся у потребителя.

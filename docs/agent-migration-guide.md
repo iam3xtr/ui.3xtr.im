@@ -45,7 +45,7 @@ Vite aliases из самого UI Kit не являются частью downstr
 | Каталог карточек | tr-catalog-grid и единая карточка, ссылка ведёт на detail route. |
 | Табличные данные | b-table с явными empty/loading/error состояниями. |
 | Загрузка файлов | Явный b-upload picker и FileDropTarget над таблицей/готовой поверхностью как два равноправных входа в один enqueue-путь; FileDropTarget не переносит upload/transport логику. |
-| Редактирование в правой форме | FormDrawer над штатным b-sidebar (right/overlay/fullheight); header — title и close, default slot — scrollable body, footer slot — fixed действия. Submit не дублируется во время busy/disabled; FormDrawer не переносит validation, dirty guard или API — это остаётся за экраном. Focus trap/return при закрытии не реализован Buefy для b-sidebar (в отличие от b-modal) — известное ограничение, не компенсируется собственным overlay. |
+| Редактирование в правой форме | FormDrawer: async beforeClose для пользовательского закрытия, встроенный focus entry/trap/return, shell для одной consumer-owned vee-validate Form и width для размера панели. Прямой modelValue не guarded. Busy/disabled блокируют native submit; shell validation/submit и upload close denial принадлежат экрану. Общий host координирует scroll lock вложенного confirmation. |
 | Границы оверлеев (эталон — kit `/kit/dialogs-overlays`) | FormDrawer — только редактирование в правой панели с длинным body и fixed footer, не general-purpose панель. Прямой b-sidebar — неформовые панели без формы (свойства, details). b-modal — короткая форма без длинного body и без выделенного fixed footer. b-dialog — только подтверждение действия; не подменяет форму любой длины. |
 | Поиск и фильтры | Toolbar family над списком; фильтры не дублируют navigation. |
 | Master-detail | Список и detail сохраняют общий workbench; на узком экране есть путь назад. |
@@ -92,3 +92,39 @@ API. Внедрение в `get.3xtr.im` — отдельная задача con
 При изменении потребляемого пакета обновляйте обе exact зависимости и lockfile
 одним PR. Полная процедура выпуска и registry validation — в
 [release process](release-process.md).
+
+### FormDrawer: guard, фокус и внешняя форма
+
+Контракт ниже реализован в package sources; опубликованная пара 0.1.3 ещё не содержит этих расширений. Для registry-потребителя сначала требуется новый выпуск.
+
+Панель использует Buefy Sidebar для поверхности и scroll lock. Каждый пользовательский запрос закрытия — Escape, собственный backdrop, header close или публичный `requestClose(reason?)` через ref/scoped slot — проходит `beforeClose(reason)`. Причины: `escape`, `backdrop`, `close-button`, `programmatic`. Callback может вернуть boolean/Promise; только false, throw или rejection отклоняют запрос. Пока callback ожидается, повторные запросы объединяются; draft и видимость сохраняются. Изменение `modelValue` родителем не проходит guard; устаревший результат после close/reopen/unmount игнорируется. `busy` и `disabled` блокируют native submit, но не закрытие: запрет при загрузке задаёт consumer в guard.
+
+Фокус входит в панель при открытии, Tab/Shift+Tab удерживаются внутри, после фактического закрытия фокус возвращается к существующему trigger. Внешний Buefy modal/sidebar/dropdown overlay, получивший фокус, обслуживает собственную клавиатуру. `useFocusTrap` поддерживает opt-in `immediate` и `contain`; прежние значения по умолчанию сохранены. Вложенные Buefy overlays независимо снимают scroll lock: общий host должен сохранять его, пока нижняя панель открыта. Рабочий пример в UI Kit восстанавливает `html.is-clipped` после закрытия dirty confirmation; это не глобальный lock manager пакета.
+
+Native режим по умолчанию сохраняет один HTML form и событие `submit`, подавляемое при busy/disabled. `shell` включает оболочку для consumer-owned формы (например, vee-validate): package form отсутствует, событие submit пакета не эмитится. Slot `shell` получает `content` — компонент body/footer — и `busy`, `disabled`, `requestClose`. Default/footer slots сохраняются и получают тот же scope. Внешняя форма должна быть прямым ребёнком shell slot; дополнительная обёртка нарушит flex/scroll layout. Validation, блокировка submit в shell, dirty state и API принадлежат consumer. Пакет не зависит от vee-validate.
+
+`width` — CSS length, например `42rem`, передаваемый через `--tr-form-drawer-width`. По умолчанию 420px; тема ограничивает ширину viewport и сохраняет mobile fullscreen. Body прокручивается отдельно от header/footer. Передавайте локализованный `closeAriaLabel`; старый default сохранён для совместимости.
+
+Пример шаблона (`Form` импортируется consumer из vee-validate, `FormDrawer` — из `@iam3xtr/vue`):
+
+```vue
+<FormDrawer v-model="open" shell width="42rem" :before-close="beforeClose"
+  :close-aria-label="copy.close">
+  <template #shell="{ content }">
+    <Form @submit="save"><component :is="content" /></Form>
+  </template>
+  <Field name="name" :rules="required" />
+  <template #footer="{ requestClose }">
+    <button type="button" @click="requestClose()">{{ copy.cancel }}</button>
+    <button type="submit">{{ copy.save }}</button>
+  </template>
+</FormDrawer>
+```
+
+### Общие стили форм и сообщений
+
+В package sources полной темы добавлены `tr-field__required` и `tr-field__error` (danger token, компактная ошибка), `table.is-borderless` (без рамок, vertical-align middle) и `tr-message-markdown` для consumer-rendered Markdown в body slot ChatHistory. Последний задаёт spacing блоков/списков, перенос длинного текста и горизонтальную прокрутку pre; parsing и sanitization остаются у consumer.
+
+Document overflow по умолчанию `auto`: короткая страница не требует scrollbar, длинная доступна для прокрутки. Overlay lock действует через Buefy/Bulma `is-clipped`/`is-noscroll`; тема не координирует lifecycles нескольких overlays. Sidebar scrollbar gutter сохраняется.
+
+До удаления consumer compat правил подтвердите покрытие установленной новой registry-версией. `tr-table--stack` уже входит в тему; growing composer следует заменить публичным MessageComposer, который управляет высотой сам. `has-border-danger-light` имеет публичный путь через `tr-destructive-zone`. Product-specific provider/Knowledge toolbar/menu selectors, secret toggle и max-w-sm не стали shared contract автоматически; marker `--tr-compat-contract` не является визуальным покрытием. Их решение остаётся у потребителя.
