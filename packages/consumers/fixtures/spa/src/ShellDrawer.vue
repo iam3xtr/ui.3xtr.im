@@ -6,14 +6,26 @@ import { ref } from "vue";
 import { Form, Field } from "vee-validate";
 import { FormDrawer } from "@iam3xtr/vue";
 
-const props = defineProps({ onSave: { type: Function, required: true } });
+const props = defineProps({
+  onSave: { type: Function, required: true },
+  beforeClose: { type: Function, default: null },
+  width: { type: String, default: null },
+});
 const open = ref(true);
+defineExpose({ open });
 
 const requiredName = (value) => (value && value.trim() ? true : "Name is required");
 </script>
 
 <template>
-  <FormDrawer v-model="open" shell title="Add member" close-aria-label="Close">
+  <FormDrawer
+    v-model="open"
+    shell
+    title="Add member"
+    close-aria-label="Close"
+    :before-close="props.beforeClose"
+    :width="props.width"
+  >
     <template #shell="{ content: DrawerContent }">
       <Form class="tr-consumer-shell__form" @submit="props.onSave">
         <component :is="DrawerContent" />

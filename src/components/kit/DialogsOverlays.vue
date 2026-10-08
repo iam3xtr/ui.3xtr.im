@@ -157,6 +157,8 @@
     </FormDrawer>
   </section>
 
+  <FormDrawerHost />
+
   <section class="tr-card mb-5">
     <h2 class="tr-card__title">Модальное окно</h2>
     <p class="tr-muted mb-4">
@@ -214,6 +216,7 @@ import { useModalStore } from "../../stores/modal";
 import { useToasterStore } from "../../stores/toaster";
 import { PageHeader } from "@iam3xtr/vue/navigation";
 import { FormDrawer } from "@iam3xtr/vue";
+import FormDrawerHost from "./FormDrawerHost.vue";
 
 const modalStore = useModalStore();
 const toaster = useToasterStore();
