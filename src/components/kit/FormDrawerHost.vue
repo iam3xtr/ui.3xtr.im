@@ -159,7 +159,7 @@
 </template>
 
 <script setup>
-import { computed, onUnmounted, reactive, ref } from "vue";
+import { computed, onUnmounted, reactive, ref, watch } from "vue";
 import { Field, Form } from "vee-validate";
 
 import { FormDrawer } from "@iam3xtr/vue";
@@ -275,6 +275,18 @@ function settleConfirm(allowed) {
   resolveConfirm = null;
   resolve?.(allowed);
 }
+
+// Buefy Modal drops `html.is-clipped` when it closes, even though the
+// FormDrawer underneath still holds the page scroll lock. Restore it once the
+// confirmation is gone while the drawer stays open; the drawer removes the
+// class itself when it closes.
+watch(
+  [isConfirmActive, isOpen],
+  ([confirming, open]) => {
+    if (open && !confirming) document.documentElement.classList.add("is-clipped");
+  },
+  { flush: "post" },
+);
 
 function confirmStay() {
   settleConfirm(false);

@@ -101,6 +101,28 @@ describe.skipIf(!hasHostContract)("kit/FormDrawerHost.vue", () => {
     expect(drawer().find("input").element.value).toBe("Борис");
   });
 
+  it("keeps the page scroll lock after staying and releases it when the drawer closes", async () => {
+    const clipped = () => document.documentElement.classList.contains("is-clipped");
+    mountHost();
+    await openHost();
+    expect(clipped()).toBe(true);
+    await typeName("Борис");
+
+    await pressEscape();
+    expect(confirmModal()).not.toBeNull();
+    await clickModalButton("Остаться");
+    await flushPromises();
+    expect(isOpen()).toBe(true);
+    expect(clipped()).toBe(true);
+
+    drawer().find(".tr-form-drawer__close").element.click();
+    await flushPromises();
+    await clickModalButton("Выйти без сохранения");
+    await flushPromises();
+    expect(isOpen()).toBe(false);
+    expect(clipped()).toBe(false);
+  });
+
   it("closes after the draft is discarded", async () => {
     mountHost();
     await openHost();
