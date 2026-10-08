@@ -190,6 +190,20 @@ describe("consumer SPA fixture", () => {
         wrapper.unmount();
     });
 
+    // `.tr-message-markdown` ships in the `@iam3xtr/ui` theme; jsdom does no
+    // layout, so wrapping/scroll geometry is pinned by that package's
+    // compiled-CSS tests. Here only the public markup path is asserted.
+    it("ChatHistory body slot hosts a consumer-rendered .tr-message-markdown block", async () => {
+        const wrapper = await mountApp();
+        const root = wrapper.find(".tr-consumer-flow__chat-markdown");
+        const md = root.find(".tr-chat-history__body > .tr-message-markdown");
+        expect(md.exists()).toBe(true);
+        expect(md.find("ul").exists()).toBe(true);
+        expect(md.find("pre code").exists()).toBe(true);
+        expect(root.find(".tr-chat-history__text").exists()).toBe(false);
+        wrapper.unmount();
+    });
+
     it("ChatHistory empty state renders the consumer-supplied empty slot and no built-in copy", async () => {
         const wrapper = await mountApp();
         const empty = wrapper.find(".tr-consumer-flow__chat-empty");

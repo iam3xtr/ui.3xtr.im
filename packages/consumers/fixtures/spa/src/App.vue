@@ -80,6 +80,20 @@ const chatMessages = [
 ];
 const chatEmpty = [];
 
+// Rendered CommonMark HTML for the `body` slot. The string is a static
+// fixture; real consumers sanitize their own renderer output. It carries a
+// list, a long URL and a wide fenced code block so a browser smoke run can
+// check wrapping and horizontal code scroll of `.tr-message-markdown`.
+const markdownMessages = [
+  {
+    id: "m1",
+    html:
+      "<p>First paragraph</p><ul><li>one</li><li>two</li></ul>" +
+      "<p>https://example.com/a/very/long/path/without/any/break/points/that/must/wrap/inside/the/bubble</p>" +
+      "<pre><code>const veryLongLine = 'x'.repeat(200); // keeps scrolling horizontally instead of widening the bubble</code></pre>",
+  },
+];
+
 // Stage 3 MessageComposer from the packed tarball. The fixture proves
 // that the controlled draft round-trips through v-model, that Enter /
 // button submit produce the same submit event, and that consumer-owned
@@ -200,6 +214,15 @@ defineExpose({
         </template>
       </MessageComposer>
     </div>
+    <ChatHistory
+      :messages="markdownMessages"
+      class="tr-consumer-flow__chat-markdown"
+      aria-label="Rendered markdown history"
+    >
+      <template #body="{ message }">
+        <div class="tr-message-markdown" v-html="message.html" />
+      </template>
+    </ChatHistory>
     <ChatHistory
       :messages="chatEmpty"
       class="tr-consumer-flow__chat-empty"
