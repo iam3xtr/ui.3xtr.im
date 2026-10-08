@@ -369,3 +369,20 @@ describe("consumer SPA fixture: ModelSelect BYOK modes", () => {
     wrapper.unmount();
   });
 });
+
+describe("consumer SPA fixture: document overflow vs overlay scroll lock", () => {
+  it("packed theme.css sets body overflow to auto before Buefy's !important lock classes win", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { createRequire } = await import("node:module");
+    const css = readFileSync(
+      createRequire(import.meta.url).resolve("@iam3xtr/ui/styles/theme.css"),
+      "utf8",
+    );
+    expect(css).toMatch(/--bulma-body-overflow-y:\s*auto/);
+    expect(css).toMatch(/\.is-clipped\s*\{\s*overflow:\s*hidden\s*!important/);
+    expect(css).toMatch(/html\.is-clipped-touch\s*\{\s*overflow:\s*hidden\s*!important/);
+    expect(css.lastIndexOf("--bulma-body-overflow-y:")).toBe(
+      css.search(/--bulma-body-overflow-y:\s*auto/),
+    );
+  });
+});
