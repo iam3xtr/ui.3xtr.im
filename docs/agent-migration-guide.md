@@ -95,7 +95,7 @@ API. Внедрение в `get.3xtr.im` — отдельная задача con
 
 ### FormDrawer: guard, фокус и внешняя форма
 
-Контракт ниже реализован в package sources; опубликованная пара 0.1.3 ещё не содержит этих расширений. Для registry-потребителя сначала требуется новый выпуск.
+Контракт ниже доступен в опубликованной паре 0.1.4. Registry-потребитель должен обновить оба пакета до этих точных версий.
 
 Панель использует Buefy Sidebar для поверхности и scroll lock. Каждый пользовательский запрос закрытия — Escape, собственный backdrop, header close или публичный `requestClose(reason?)` через ref/scoped slot — проходит `beforeClose(reason)`. Причины: `escape`, `backdrop`, `close-button`, `programmatic`. Callback может вернуть boolean/Promise; только false, throw или rejection отклоняют запрос. Пока callback ожидается, повторные запросы объединяются; draft и видимость сохраняются. Изменение `modelValue` родителем не проходит guard; устаревший результат после close/reopen/unmount игнорируется. `busy` и `disabled` блокируют native submit, но не закрытие: запрет при загрузке задаёт consumer в guard.
 

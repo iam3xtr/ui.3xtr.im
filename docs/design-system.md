@@ -75,7 +75,7 @@ sidebar 232px, topbar 64px. Brand colour — #8E64CE; success/warning/danger
   File[] в один и тот же fixture-only enqueue helper экрана. FileDropTarget не
   знает про upload, progress, retry, cancel или API — accept — только
   клиентская подсказка, не security boundary.
-- FormDrawer над Buefy Sidebar предоставляет async beforeClose, встроенный focus entry/trap/return, native и shell режимы формы, width с viewport clamp. Validation, dirty state и API принадлежат consumer. Подробный контракт — в package README; рабочий host с vee-validate и dirty confirmation находится на `/kit/dialogs-overlays`. Вложенный modal требует сохранения scroll lock со стороны общего host. Эти расширения реализованы в sources и требуют нового выпуска после 0.1.3.
+- FormDrawer над Buefy Sidebar предоставляет async beforeClose, встроенный focus entry/trap/return, native и shell режимы формы, width с viewport clamp. Validation, dirty state и API принадлежат consumer. Подробный контракт — в package README; рабочий host с vee-validate и dirty confirmation находится на `/kit/dialogs-overlays`. Вложенный modal требует сохранения scroll lock со стороны общего host. Эти расширения доступны в опубликованной паре 0.1.4.
 - Toolbar (@iam3xtr/vue) рендерит слот filters дважды — inline pills и копию
   в mobile-filters trigger/panel (<=768px) — так что theme скрывает inline
   копию через `.tr-page-toolbar__filters .tr-page-toolbar__filter`, а не
