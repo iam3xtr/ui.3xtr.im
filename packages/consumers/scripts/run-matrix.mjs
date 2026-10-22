@@ -100,16 +100,28 @@ const fixturesDir = path.join(consumersRoot, "fixtures");
 // isolated install instead of whatever `^3.0.8` resolves to today.
 const BUEFY_VERSIONS = ["3.0.8", "3.0.11", "3.1.0"];
 
-function prepareFixture(name, { buefy, label = name } = {}) {
+// Vue Router majors `@iam3xtr/vue/navigation` advertises beyond the default 4.x
+// fixture pin. Router 5 requires Vite 7.3+/8 (its own optional peer), so each
+// scenario carries the bundler pair it needs instead of loosening the peer
+// interval or forcing the install. 5.0.0 is the advertised lower bound of the
+// 5.x interval; 5.4.0 is the latest stable at selection time.
+const ROUTER_SCENARIOS = [
+  { router: "5.0.0", buefy: "3.1.0", dev: { vite: "8.3.5", "@vitejs/plugin-vue": "6.0.10" } },
+  { router: "5.4.0", buefy: "3.1.0", dev: { vite: "8.3.5", "@vitejs/plugin-vue": "6.0.10" } },
+];
+
+function prepareFixture(name, { buefy, router, dev, label = name } = {}) {
   const src = path.join(fixturesDir, name);
   const dest = path.join(workRoot, label);
   cpSync(src, dest, { recursive: true });
   const pkgJsonPath = path.join(dest, "package.json");
   let pkgJson = readFileSync(pkgJsonPath, "utf8");
   pkgJson = pkgJson.replace(/__UI_TARBALL__/g, toFileSpec(uiTarball)).replace(/__VUE_TARBALL__/g, toFileSpec(vueTarball));
-  if (buefy) {
+  if (buefy || router) {
     const parsed = JSON.parse(pkgJson);
-    parsed.dependencies.buefy = buefy;
+    if (buefy) parsed.dependencies.buefy = buefy;
+    if (router) parsed.dependencies["vue-router"] = router;
+    Object.assign(parsed.devDependencies, dev);
     pkgJson = JSON.stringify(parsed, null, 2) + "\n";
   }
   writeFileSync(pkgJsonPath, pkgJson);
@@ -147,10 +159,21 @@ function assertNoSymlinkOrLocalSource(fixtureDir) {
   }
 }
 
-function runFixture(name, verify, { buefy } = {}) {
-  const label = buefy ? `${name}-buefy-${buefy}` : name;
-  const title = buefy ? `consumer: ${name} (buefy ${buefy})` : `consumer: ${name}`;
-  const dir = prepareFixture(name, { buefy, label });
+function assertInstalledVersion(fixtureDir, pkgName, expected) {
+  const installed = JSON.parse(readFileSync(path.join(fixtureDir, "node_modules", ...pkgName.split("/"), "package.json"), "utf8")).version;
+  if (installed !== expected) {
+    throw new Error(`expected ${pkgName} ${expected} to be installed, found ${installed}`);
+  }
+}
+
+function runFixture(name, verify, { buefy, router, dev } = {}) {
+  const label = router ? `${name}-router-${router}` : buefy ? `${name}-buefy-${buefy}` : name;
+  const title = router
+    ? `consumer: ${name} (vue-router ${router}, buefy ${buefy})`
+    : buefy
+      ? `consumer: ${name} (buefy ${buefy})`
+      : `consumer: ${name}`;
+  const dir = prepareFixture(name, { buefy, router, dev, label });
   const install = run("npm", ["install", "--no-audit", "--no-fund"], dir);
   if (install.status !== 0) {
     record(title, false, "npm install failed:\n" + install.stdout + install.stderr);
@@ -159,6 +182,7 @@ function runFixture(name, verify, { buefy } = {}) {
   try {
     assertNoSymlinkOrLocalSource(dir);
     if (buefy) assertInstalledBuefy(dir, buefy);
+    if (router) assertInstalledVersion(dir, "vue-router", router);
   } catch (err) {
     record(title, false, err.message);
     return;
@@ -195,6 +219,9 @@ function verifyCheckScript(dir) {
 
 for (const buefy of BUEFY_VERSIONS) {
   runFixture("spa", verifySpa, { buefy });
+}
+for (const scenario of ROUTER_SCENARIOS) {
+  runFixture("spa", verifySpa, scenario);
 }
 runFixture("tokens-only", verifyCheckScript);
 runFixture("ssr-hydration", verifyCheckScript);
