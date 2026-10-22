@@ -12,10 +12,10 @@
     "buefy": "^3.0.8"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.2.1",
+    "@vitejs/plugin-vue": "^6.0.10",
     "@vue/server-renderer": "^3.5.39",
-    "jsdom": "^30.0.1",
-    "vite": "^6.0.5",
-    "vitest": "^4.1.11"
+    "jsdom": "^30.1.3",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
   }
 }
