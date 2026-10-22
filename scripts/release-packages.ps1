@@ -8,6 +8,13 @@
 #   npm run release:ui -- -ReleaseCurrent -Execute
 #   npm run release:vue -- -ReleaseCurrent -Execute
 #   npm run release:all -- -Alpha -Execute
+#   npm run release:vue -- -UiVersion 0.1.6 -Execute
+#
+# release:vue selects an already published UI version with -UiVersion (default:
+# the version in packages/ui). It must satisfy the Vue peer interval for
+# @iam3xtr/ui; -RaisePeerFloor raises that interval's minimum to the selected
+# UI version and is only for a proven new UI contract. release:ui never
+# touches the Vue package.
 #
 # The script never rolls back an already published UI package. If Vue fails
 # after UI has published, it stops with the UI version intact.
@@ -27,6 +34,10 @@ param(
     [switch]$ReleaseCurrent,
 
     [switch]$Resume,
+
+    [string]$UiVersion,
+
+    [switch]$RaisePeerFloor,
 
     [switch]$Execute
 )
@@ -58,6 +69,120 @@ function Get-PackageVersion {
     param([string]$Path)
 
     return (Get-Content (Join-Path $Path "package.json") -Raw | ConvertFrom-Json).version
+}
+
+function ConvertTo-SemVer {
+    param([string]$Version)
+
+    if ($Version -notmatch "^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$") {
+        throw "'$Version' is not a valid semantic version (expected X.Y.Z or X.Y.Z-prerelease)."
+    }
+    $pre = @()
+    if ($Matches[4]) { $pre = $Matches[4].Split(".") }
+    return [pscustomobject]@{
+        Major = [int64]$Matches[1]
+        Minor = [int64]$Matches[2]
+        Patch = [int64]$Matches[3]
+        Pre   = $pre
+    }
+}
+
+function Compare-SemVer {
+    param($Left, $Right)
+
+    foreach ($part in @("Major", "Minor", "Patch")) {
+        if ($Left.$part -ne $Right.$part) {
+            return [Math]::Sign($Left.$part - $Right.$part)
+        }
+    }
+    # A version without prerelease identifiers is greater than one with them.
+    if ($Left.Pre.Count -eq 0 -and $Right.Pre.Count -eq 0) { return 0 }
+    if ($Left.Pre.Count -eq 0) { return 1 }
+    if ($Right.Pre.Count -eq 0) { return -1 }
+
+    $length = [Math]::Min($Left.Pre.Count, $Right.Pre.Count)
+    for ($i = 0; $i -lt $length; $i++) {
+        $a = $Left.Pre[$i]
+        $b = $Right.Pre[$i]
+        $aNumeric = $a -match "^\d+$"
+        $bNumeric = $b -match "^\d+$"
+        if ($aNumeric -and $bNumeric) {
+            $diff = [int64]$a - [int64]$b
+            if ($diff -ne 0) { return [Math]::Sign($diff) }
+        } elseif ($aNumeric) {
+            return -1
+        } elseif ($bNumeric) {
+            return 1
+        } else {
+            $diff = [string]::CompareOrdinal($a, $b)
+            if ($diff -ne 0) { return [Math]::Sign($diff) }
+        }
+    }
+    return [Math]::Sign($Left.Pre.Count - $Right.Pre.Count)
+}
+
+function Test-CaretRange {
+    param(
+        [string]$Range,
+        [string]$Version
+    )
+
+    # Only the single caret range the Vue manifest uses for @iam3xtr/ui is
+    # supported, with node-semver semantics: ^0.1.4 means >=0.1.4 <0.2.0, and
+    # a prerelease only satisfies a range whose floor has the same X.Y.Z tuple
+    # and its own prerelease tag.
+    if ($Range -notmatch "^\^(\S+)$") {
+        throw "Unsupported @iam3xtr/ui peer range '$Range'; only a single caret range is supported."
+    }
+    $floor = ConvertTo-SemVer -Version $Matches[1]
+    $candidate = ConvertTo-SemVer -Version $Version
+
+    if ($floor.Major -gt 0) {
+        $upper = [pscustomobject]@{ Major = $floor.Major + 1; Minor = 0; Patch = 0; Pre = @() }
+    } elseif ($floor.Minor -gt 0) {
+        $upper = [pscustomobject]@{ Major = 0; Minor = $floor.Minor + 1; Patch = 0; Pre = @() }
+    } else {
+        $upper = [pscustomobject]@{ Major = 0; Minor = 0; Patch = $floor.Patch + 1; Pre = @() }
+    }
+
+    if ((Compare-SemVer -Left $candidate -Right $floor) -lt 0) { return $false }
+    if ((Compare-SemVer -Left $candidate -Right $upper) -ge 0) { return $false }
+    if ($candidate.Pre.Count -gt 0) {
+        $sameTuple = $candidate.Major -eq $floor.Major -and $candidate.Minor -eq $floor.Minor -and $candidate.Patch -eq $floor.Patch
+        if (-not ($sameTuple -and $floor.Pre.Count -gt 0)) { return $false }
+    }
+    return $true
+}
+
+function Get-VueUiPeerRange {
+    $package = Get-Content (Join-Path $vuePath "package.json") -Raw | ConvertFrom-Json
+    return [string]$package.peerDependencies.'@iam3xtr/ui'
+}
+
+function Resolve-VuePeerRange {
+    param(
+        [string]$SelectedUiVersion,
+        [switch]$RaiseFloor
+    )
+
+    # Pure validation, run before any file, tag or commit changes. Returns the
+    # @iam3xtr/ui peer range the Vue release will carry.
+    $current = Get-VueUiPeerRange
+    if ($RaiseFloor) {
+        if ($current -notmatch "^\^(\S+)$") {
+            throw "Unsupported @iam3xtr/ui peer range '$current'; only a single caret range is supported."
+        }
+        $currentFloor = ConvertTo-SemVer -Version $Matches[1]
+        $selected = ConvertTo-SemVer -Version $SelectedUiVersion
+        if ((Compare-SemVer -Left $selected -Right $currentFloor) -lt 0) {
+            throw "Selected @iam3xtr/ui@$SelectedUiVersion is below the current Vue peer minimum $current; -RaisePeerFloor never lowers the minimum."
+        }
+        return "^$SelectedUiVersion"
+    }
+    if (-not (Test-CaretRange -Range $current -Version $SelectedUiVersion)) {
+        throw "@iam3xtr/ui@$SelectedUiVersion is outside the Vue peer interval $current. Select a version inside it, or pass -RaisePeerFloor only when the Vue release needs a new UI contract."
+    }
+    return $current
 }
 
 function Get-NextVersion {
@@ -349,27 +474,57 @@ function Sync-UiKitDependencies {
 
 function Set-VueCompatibility {
     param(
-        [string]$UiVersion,
+        [string]$PeerRange,
         [string]$UiSha
     )
 
+    # The peer minimum changes only when the caller proved a new UI contract;
+    # .ui-compat-ref always records the immutable UI commit the release was
+    # tested against.
     $packagePath = Join-Path $vuePath "package.json"
     $package = Get-Content $packagePath -Raw | ConvertFrom-Json
-    $package.peerDependencies.'@iam3xtr/ui' = "^$UiVersion"
-    $json = $package | ConvertTo-Json -Depth 100
-    [System.IO.File]::WriteAllText($packagePath, $json + [Environment]::NewLine, [System.Text.UTF8Encoding]::new($false))
+    $peerChanged = $package.peerDependencies.'@iam3xtr/ui' -ne $PeerRange
+    if ($peerChanged) {
+        $package.peerDependencies.'@iam3xtr/ui' = $PeerRange
+        $json = $package | ConvertTo-Json -Depth 100
+        [System.IO.File]::WriteAllText($packagePath, $json + [Environment]::NewLine, [System.Text.UTF8Encoding]::new($false))
+    }
     [System.IO.File]::WriteAllText((Join-Path $vuePath ".ui-compat-ref"), $UiSha + [Environment]::NewLine, [System.Text.UTF8Encoding]::new($false))
 
-    Invoke-External -File npm -Arguments @("install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund") -WorkingDirectory $vuePath
+    if ($peerChanged) {
+        Invoke-External -File npm -Arguments @("install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund") -WorkingDirectory $vuePath
+    }
+}
+
+function Get-RemoteUiTagCommit {
+    param([string]$Tag)
+
+    # Read-only: no fetch, so a dry run leaves refs untouched.
+    $commit = Get-RemoteTagCommit -Path $uiPath -Tag $Tag
+    if (-not $commit) {
+        throw "UI release tag $Tag does not exist on origin of packages/ui. Vue records an immutable UI tag commit as .ui-compat-ref; select a released UI version."
+    }
+    return $commit
 }
 
 function Get-UiReleaseSha {
-    param([string]$Tag)
+    param(
+        [string]$Tag,
+        [string]$Version
+    )
 
+    $remoteSha = Get-RemoteUiTagCommit -Tag $Tag
     Invoke-External -File git -Arguments @("fetch", "origin", "tag", $Tag) -WorkingDirectory $uiPath
     $sha = (& git -C $uiPath rev-parse "$Tag^{commit}").Trim()
     if ($LASTEXITCODE -ne 0 -or -not $sha) {
         throw "Cannot resolve UI release tag $Tag to a commit."
+    }
+    if ($sha -ne $remoteSha) {
+        throw "Local UI tag $Tag ($sha) differs from origin ($remoteSha). Published tags are immutable; reconcile packages/ui manually."
+    }
+    $taggedManifest = (& git -C $uiPath show "${sha}:package.json") -join "`n"
+    if ($LASTEXITCODE -ne 0 -or ($taggedManifest | ConvertFrom-Json).version -ne $Version) {
+        throw "UI tag $Tag does not contain package version $Version. Refusing to record it as the compatibility ref."
     }
     return $sha
 }
@@ -462,31 +617,49 @@ function Release-Ui {
 function Release-Vue {
     param(
         [string]$Version,
+        [string]$SelectedUiVersion,
+        [switch]$RaiseFloor,
         [switch]$ContinueRelease
     )
 
     $tag = "v$Version"
+    $uiTag = "v$SelectedUiVersion"
     if ($ContinueRelease) {
-        Assert-UiPublished -Version $Version
+        Assert-UiPublished -Version $SelectedUiVersion
         Assert-ResumeRelease -Path $vuePath -Label "@iam3xtr/vue" -Tag $tag
+        $committedRange = Get-VueUiPeerRange
+        if (-not (Test-CaretRange -Range $committedRange -Version $SelectedUiVersion)) {
+            throw "@iam3xtr/ui@$SelectedUiVersion is outside the committed Vue peer interval $committedRange. Pass the -UiVersion used by the interrupted release."
+        }
+        $recordedRef = (Get-Content (Join-Path $vuePath ".ui-compat-ref") -Raw).Trim()
+        if ($recordedRef -ne (Get-RemoteUiTagCommit -Tag $uiTag)) {
+            throw "Committed .ui-compat-ref does not match UI tag $uiTag. Pass the -UiVersion used by the interrupted release."
+        }
         Push-ReleaseRefs -Path $vuePath -Label "@iam3xtr/vue" -Tag $tag
         Write-Host "Waiting for the Vue release workflow and its environment approval."
         Wait-ForRelease -Repository "iam3xtr/vue" -Commit ((& git -C $vuePath rev-parse HEAD).Trim())
         return
     }
     Assert-TagAvailable -Path $vuePath -Tag $tag
+    $currentRange = Get-VueUiPeerRange
+    $peerRange = Resolve-VuePeerRange -SelectedUiVersion $SelectedUiVersion -RaiseFloor:$RaiseFloor
     if (-not $Execute) {
         if ($Package -eq "vue") {
-            Assert-UiPublished -Version $Version
+            Assert-UiPublished -Version $SelectedUiVersion
+            $plannedUiSha = Get-RemoteUiTagCommit -Tag $uiTag
+            Write-Host "UI $uiTag resolves to $plannedUiSha; it would be recorded in .ui-compat-ref."
         }
-        Write-Host "Planned Vue release: @iam3xtr/vue@$Version against @iam3xtr/ui@$Version."
+        $rangeNote = if ($peerRange -eq $currentRange) { " (unchanged)" } else { "" }
+        Write-Host "Planned Vue release: @iam3xtr/vue@$Version against @iam3xtr/ui@$SelectedUiVersion."
+        Write-Host "Vue peer @iam3xtr/ui: $currentRange -> $peerRange$rangeNote."
+        Write-Host "Prerequisite: @iam3xtr/ui@$SelectedUiVersion must already be published to npm.pkg.github.com."
         return
     }
 
-    Assert-UiPublished -Version $Version
-    $uiSha = Get-UiReleaseSha -Tag $tag
-    Write-Host "Planned Vue release: @iam3xtr/vue@$Version against published @iam3xtr/ui@$Version."
-    Set-VueCompatibility -UiVersion $Version -UiSha $uiSha
+    Assert-UiPublished -Version $SelectedUiVersion
+    $uiSha = Get-UiReleaseSha -Tag $uiTag -Version $SelectedUiVersion
+    Write-Host "Planned Vue release: @iam3xtr/vue@$Version against published @iam3xtr/ui@$SelectedUiVersion (peer $peerRange)."
+    Set-VueCompatibility -PeerRange $peerRange -UiSha $uiSha
     if ((Get-PackageVersion -Path $vuePath) -ne $Version) {
         Invoke-External -File npm -Arguments @("version", $Version, "--no-git-tag-version", "--ignore-scripts") -WorkingDirectory $vuePath
     }
@@ -508,6 +681,12 @@ try {
     if ($Resume -and -not $Execute) {
         throw "-Resume only performs the pending push/workflow verification; pass -Execute to confirm it."
     }
+    if (($UiVersion -or $RaisePeerFloor) -and $Package -ne "vue") {
+        throw "-UiVersion and -RaisePeerFloor apply only to -Package vue."
+    }
+    if ($UiVersion) {
+        ConvertTo-SemVer -Version $UiVersion | Out-Null
+    }
     if ($Package -eq "ui") {
         if (-not $Resume) {
             Assert-CleanMain -Path $uiPath -Label "@iam3xtr/ui"
@@ -522,7 +701,8 @@ try {
         }
         Assert-UiKitSyncTarget
         $vueReleaseVersion = Get-RequestedReleaseVersion -Path $vuePath
-        Release-Vue -Version $vueReleaseVersion -ContinueRelease:$Resume
+        $selectedUiVersion = if ($UiVersion) { $UiVersion } else { Get-PackageVersion -Path $uiPath }
+        Release-Vue -Version $vueReleaseVersion -SelectedUiVersion $selectedUiVersion -RaiseFloor:$RaisePeerFloor -ContinueRelease:$Resume
         if ($Execute) { Sync-UiKitDependencies -VueVersion $vueReleaseVersion }
     } else {
         if (-not $Resume) {
@@ -530,10 +710,10 @@ try {
             Assert-CleanMain -Path $vuePath -Label "@iam3xtr/vue"
         }
         Assert-UiKitSyncTarget
-        $uiVersion = Get-PackageVersion -Path $uiPath
+        $currentUiVersion = Get-PackageVersion -Path $uiPath
         $vueVersion = Get-PackageVersion -Path $vuePath
-        if (-not $Resume -and $uiVersion -ne $vueVersion) {
-            throw "Package versions differ ($uiVersion vs $vueVersion). Align them before releasing a paired version."
+        if (-not $Resume -and $currentUiVersion -ne $vueVersion) {
+            throw "Package versions differ ($currentUiVersion vs $vueVersion). Align them before releasing a paired version."
         }
         $nextVersion = Get-RequestedReleaseVersion -Path $uiPath
         Write-Host "Planned paired release: @iam3xtr/ui@$nextVersion, then @iam3xtr/vue@$nextVersion."
@@ -543,7 +723,7 @@ try {
             Write-Host "Vue has no local release tag v$nextVersion; starting its pending release after the published UI package."
             Assert-CleanMain -Path $vuePath -Label "@iam3xtr/vue"
         }
-        Release-Vue -Version $nextVersion -ContinueRelease:$continueVueRelease
+        Release-Vue -Version $nextVersion -SelectedUiVersion $nextVersion -RaiseFloor -ContinueRelease:$continueVueRelease
         if ($Execute) {
             Sync-UiKitDependencies -UiVersion $nextVersion -VueVersion $nextVersion
             Write-Host "Published pair v$nextVersion. Run the documented exact-version registry gate before declaring it recommended for consumers."
