@@ -16,6 +16,13 @@
 # UI version and is only for a proven new UI contract. release:ui never
 # touches the Vue package.
 #
+# release:all gives each package its own target version, computed from its own
+# manifest with the same bump/prerelease flags; the versions need not match.
+# UI is published first and Vue then carries the new UI as its peer minimum.
+# After an interruption, re-run the same command with -Resume -Execute: each
+# package continues from its own release commit and tag, and a Vue release that
+# was never started is begun after the already published UI.
+#
 # The script never rolls back an already published UI package. If Vue fails
 # after UI has published, it stops with the UI version intact.
 
@@ -430,13 +437,32 @@ function Commit-ReleaseChanges {
     return $true
 }
 
+function Test-PinOnlyChange {
+    # True when package.json differs from HEAD only in the two exact
+    # @iam3xtr pins, i.e. the state an earlier partial release sync leaves.
+    $headJson = (& git -C $root show "HEAD:package.json") -join "`n"
+    if ($LASTEXITCODE -ne 0) { return $false }
+    $head = $headJson | ConvertFrom-Json
+    $work = Get-Content (Join-Path $root "package.json") -Raw | ConvertFrom-Json
+    foreach ($name in @("@iam3xtr/ui", "@iam3xtr/vue")) {
+        if ($work.dependencies.$name) { $head.dependencies.$name = $work.dependencies.$name }
+    }
+    return ($head | ConvertTo-Json -Depth 100 -Compress) -eq ($work | ConvertTo-Json -Depth 100 -Compress)
+}
+
 function Assert-UiKitSyncTarget {
+    param([switch]$AllowPinOnly)
+
     # The kit may remain on its work branch while its source dependencies are
     # unpublished. Preserve unrelated work, but never overwrite local edits
-    # to the two files that the post-release sync regenerates.
+    # to the two files that the post-release sync regenerates. A resumed or
+    # second-step sync may find only our own earlier pin update there.
     $pinChanges = @(& git -C $root status --porcelain -- package.json package-lock.json)
     if ($LASTEXITCODE -ne 0) {
         throw "Cannot inspect UI Kit dependency files before release."
+    }
+    if ($AllowPinOnly -and @($pinChanges | Where-Object { $_ -match "package\.json$" -and $_ -notmatch "package-lock\.json$" }).Count -gt 0 -and (Test-PinOnlyChange)) {
+        return
     }
     if ($pinChanges.Count -gt 0) {
         throw "UI Kit package.json or package-lock.json has local changes. Reconcile them before releasing packages; the post-release sync updates these files."
@@ -453,7 +479,7 @@ function Sync-UiKitDependencies {
         return
     }
 
-    Assert-UiKitSyncTarget
+    Assert-UiKitSyncTarget -AllowPinOnly
     $packagePath = Join-Path $root "package.json"
     $package = Get-Content $packagePath -Raw | ConvertFrom-Json
     if ($UiVersion) {
@@ -556,6 +582,25 @@ function Assert-UiPublished {
     if ($publishedVersion -ne $Version) {
         throw "npm.pkg.github.com returned UI version '$publishedVersion' instead of '$Version'. Do not release Vue."
     }
+}
+
+function Test-VueReleaseInProgress {
+    param([string]$UiVersion)
+
+    # A Vue release started by an interrupted paired run has a local tag on
+    # HEAD whose committed compatibility ref is the UI tag of this run. A
+    # finished earlier Vue release recorded another UI commit, so it does not
+    # qualify and a new Vue release is started instead.
+    $manifestVersion = Get-PackageVersion -Path $vuePath
+    $tag = "v$manifestVersion"
+    if (-not (Test-LocalReleaseTag -Path $vuePath -Tag $tag)) { return $false }
+    $head = (& git -C $vuePath rev-parse HEAD).Trim()
+    $tagCommit = (& git -C $vuePath rev-parse "$tag^{commit}").Trim()
+    if ($tagCommit -ne $head) { return $false }
+    $refPath = Join-Path $vuePath ".ui-compat-ref"
+    if (-not (Test-Path $refPath)) { return $false }
+    $uiCommit = Get-RemoteTagCommit -Path $uiPath -Tag "v$UiVersion"
+    return [bool]$uiCommit -and ((Get-Content $refPath -Raw).Trim() -eq $uiCommit)
 }
 
 function Wait-ForRelease {
@@ -709,24 +754,30 @@ try {
             Assert-CleanMain -Path $uiPath -Label "@iam3xtr/ui"
             Assert-CleanMain -Path $vuePath -Label "@iam3xtr/vue"
         }
-        Assert-UiKitSyncTarget
-        $currentUiVersion = Get-PackageVersion -Path $uiPath
-        $vueVersion = Get-PackageVersion -Path $vuePath
-        if (-not $Resume -and $currentUiVersion -ne $vueVersion) {
-            throw "Package versions differ ($currentUiVersion vs $vueVersion). Align them before releasing a paired version."
+        Assert-UiKitSyncTarget -AllowPinOnly:$Resume
+        $nextUiVersion = Get-RequestedReleaseVersion -Path $uiPath
+        $continueVueRelease = $Resume -and (Test-VueReleaseInProgress -UiVersion $nextUiVersion)
+        if ($continueVueRelease) {
+            $nextVueVersion = Get-PackageVersion -Path $vuePath
+        } else {
+            if ($Resume) {
+                Write-Host "Vue has no pending release for UI v$nextUiVersion; it will start after the published UI package."
+                Assert-CleanMain -Path $vuePath -Label "@iam3xtr/vue"
+            }
+            $nextVueVersion = Get-ReleaseVersion -Path $vuePath
+            if (-not $Resume) {
+                # Reject predictable Vue failures before the irreversible UI publication.
+                Assert-TagAvailable -Path $vuePath -Tag "v$nextVueVersion"
+                Resolve-VuePeerRange -SelectedUiVersion $nextUiVersion -RaiseFloor | Out-Null
+            }
         }
-        $nextVersion = Get-RequestedReleaseVersion -Path $uiPath
-        Write-Host "Planned paired release: @iam3xtr/ui@$nextVersion, then @iam3xtr/vue@$nextVersion."
-        Release-Ui -Version $nextVersion
-        $continueVueRelease = $Resume -and (Test-LocalReleaseTag -Path $vuePath -Tag "v$nextVersion")
-        if ($Resume -and -not $continueVueRelease) {
-            Write-Host "Vue has no local release tag v$nextVersion; starting its pending release after the published UI package."
-            Assert-CleanMain -Path $vuePath -Label "@iam3xtr/vue"
-        }
-        Release-Vue -Version $nextVersion -SelectedUiVersion $nextVersion -RaiseFloor -ContinueRelease:$continueVueRelease
+        Write-Host "Planned release: @iam3xtr/ui@$nextUiVersion, then @iam3xtr/vue@$nextVueVersion."
+        Release-Ui -Version $nextUiVersion
+        if ($Execute) { Sync-UiKitDependencies -UiVersion $nextUiVersion }
+        Release-Vue -Version $nextVueVersion -SelectedUiVersion $nextUiVersion -RaiseFloor -ContinueRelease:$continueVueRelease
         if ($Execute) {
-            Sync-UiKitDependencies -UiVersion $nextVersion -VueVersion $nextVersion
-            Write-Host "Published pair v$nextVersion. Run the documented exact-version registry gate before declaring it recommended for consumers."
+            Sync-UiKitDependencies -VueVersion $nextVueVersion
+            Write-Host "Published @iam3xtr/ui@$nextUiVersion and @iam3xtr/vue@$nextVueVersion. Run the documented exact-version registry gate before declaring them recommended for consumers."
         }
     }
 
@@ -735,8 +786,8 @@ try {
     }
 } catch {
     Write-Error ("Release failed: {0}" -f $_.Exception.Message)
-    if ($Package -eq "all" -and $nextVersion -and (& git -C $uiPath tag --list "v$nextVersion")) {
-        Write-Error "UI tag v$nextVersion may already be pushed or published. Do not delete or reuse it; release Vue separately after confirming the UI package is available."
+    if ($Package -eq "all" -and $nextUiVersion -and (& git -C $uiPath tag --list "v$nextUiVersion")) {
+        Write-Error "UI tag v$nextUiVersion may already be pushed or published. Do not delete or reuse it; re-run the same command with -Resume -Execute to finish the remaining steps."
     }
     exit 1
 }

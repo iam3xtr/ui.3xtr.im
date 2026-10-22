@@ -1,7 +1,8 @@
 // @vitest-environment node
 //
 // Regression tests for scripts/release-packages.ps1 (S1-06: Vue releases are
-// decoupled from same-number UI versions).
+// decoupled from same-number UI versions; S1-07: release:all with unequal
+// targets and safe resume).
 //
 // The script runs against a throwaway copy of the repository layout: temporary
 // git repositories whose "origin" remotes are local bare repositories, and
@@ -68,6 +69,11 @@ import { appendFileSync } from "node:fs";
 const args = process.argv.slice(2);
 appendFileSync(process.env.MOCK_LOG, "gh " + args.join(" ") + "\\n");
 if (args[0] === "run" && args[1] === "list") console.log('[{"databaseId":1}]');
+if (args[0] === "run" && args[1] === "watch" && process.env.MOCK_GH_FAIL_WATCH &&
+    args.join(" ").includes("--repo " + process.env.MOCK_GH_FAIL_WATCH)) {
+    console.error("workflow failed");
+    process.exit(1);
+}
 `;
 
 let workDir;
@@ -344,5 +350,196 @@ describe.skipIf(!hasPowerShell)("release-packages.ps1 independent Vue/UI selecti
         expect(readVue(fx).version).toBe("0.1.5");
         expect(readVue(fx).peerDependencies["@iam3xtr/ui"]).toBe("^0.1.5");
         expect(readFileSync(join(fx.vue, ".ui-compat-ref"), "utf8").trim()).toBe(git(fx.ui, "rev-parse", "v0.1.5^{commit}"));
+    });
+
+    describe("release:all with unequal package targets", () => {
+        const rootPins = () => JSON.parse(readFileSync(join(fx.root, "package.json"), "utf8")).dependencies;
+        const remoteTags = (repo) => git(repo, "ls-remote", "--tags", "origin");
+        // State left by an interrupted run: release commit and tag exist locally only.
+        const stageLocalUiRelease = (version) => {
+            writeJson(join(fx.ui, "package.json"), { name: "@iam3xtr/ui", version });
+            git(fx.ui, "commit", "-am", `chore(release): v${version}`);
+            git(fx.ui, "tag", "-a", `v${version}`, "-m", `release: v${version}`);
+        };
+
+        it("dry run prints independent targets and the peer decision without mutating anything", () => {
+            const before = { ui: snapshot(fx.ui), vue: snapshot(fx.vue), root: readFileSync(join(fx.root, "package.json"), "utf8") };
+
+            const result = runScript(fx, ["-Package", "all"]);
+
+            expect(result.status).toBe(0);
+            expect(result.output).toContain("@iam3xtr/ui@0.1.7, then @iam3xtr/vue@0.1.5");
+            expect(result.output).toContain("Vue peer @iam3xtr/ui: ^0.1.4 -> ^0.1.7");
+            expect(result.output).toContain("Dry run only");
+            expect(snapshot(fx.ui)).toEqual(before.ui);
+            expect(snapshot(fx.vue)).toEqual(before.vue);
+            expect(readFileSync(join(fx.root, "package.json"), "utf8")).toBe(before.root);
+            expect(result.commands).not.toContain("npm version");
+        });
+
+        it("releases UI and Vue to different versions without a dummy bump", () => {
+            const result = runScript(fx, ["-Package", "all", "-Execute"], { MOCK_UI_PUBLISHED: "0.1.7" });
+
+            expect(result.status).toBe(0);
+            expect(git(fx.ui, "ls-remote", "origin", "refs/tags/v0.1.7")).not.toBe("");
+            expect(git(fx.vue, "ls-remote", "origin", "refs/tags/v0.1.5")).not.toBe("");
+            expect(git(fx.vue, "ls-remote", "origin", "refs/tags/v0.1.7")).toBe("");
+            expect(readVue(fx).version).toBe("0.1.5");
+            expect(readVue(fx).peerDependencies["@iam3xtr/ui"]).toBe("^0.1.7");
+            expect(readFileSync(join(fx.vue, ".ui-compat-ref"), "utf8").trim()).toBe(git(fx.ui, "rev-parse", "v0.1.7^{commit}"));
+            expect(rootPins()).toMatchObject({ "@iam3xtr/ui": "0.1.7", "@iam3xtr/vue": "0.1.5" });
+        });
+
+        it("rejects a published Vue tag before publishing UI", () => {
+            git(fx.vue, "tag", "-a", "v0.1.5", "-m", "x");
+            git(fx.vue, "push", "origin", "refs/tags/v0.1.5");
+            const before = snapshot(fx.ui);
+
+            const result = runScript(fx, ["-Package", "all", "-Execute"], { MOCK_UI_PUBLISHED: "0.1.7" });
+
+            expect(result.status).not.toBe(0);
+            expect(result.output).toContain("Tag v0.1.5 already exists");
+            expect(snapshot(fx.ui)).toEqual(before);
+        });
+
+        it("rejects an already published UI version without touching Vue", () => {
+            const before = snapshot(fx.vue);
+            const result = runScript(fx, ["-Package", "all", "-ReleaseCurrent", "-Execute"]);
+            expect(result.status).not.toBe(0);
+            expect(result.output).toContain("already exists");
+            expect(snapshot(fx.vue)).toEqual(before);
+            expect(rootPins()).toMatchObject({ "@iam3xtr/ui": "0.1.4", "@iam3xtr/vue": "0.1.4" });
+        });
+
+        it("refuses to start over unrelated root dependency edits and keeps them", () => {
+            const edited = JSON.parse(readFileSync(join(fx.root, "package.json"), "utf8"));
+            edited.dependencies.vue = "^3.5.0";
+            writeJson(join(fx.root, "package.json"), edited);
+            const before = snapshot(fx.ui);
+
+            const result = runScript(fx, ["-Package", "all", "-Execute"], { MOCK_UI_PUBLISHED: "0.1.7" });
+
+            expect(result.status).not.toBe(0);
+            expect(result.output).toContain("UI Kit package.json or package-lock.json has local changes");
+            expect(snapshot(fx.ui)).toEqual(before);
+            expect(rootPins().vue).toBe("^3.5.0");
+        });
+
+        it("resumes after UI succeeded and the Vue workflow failed without extra bumps", () => {
+            const failed = runScript(fx, ["-Package", "all", "-Execute"], {
+                MOCK_UI_PUBLISHED: "0.1.7",
+                MOCK_GH_FAIL_WATCH: "iam3xtr/vue",
+            });
+            expect(failed.status).not.toBe(0);
+            // Only the verified UI package is pinned.
+            expect(rootPins()).toMatchObject({ "@iam3xtr/ui": "0.1.7", "@iam3xtr/vue": "0.1.4" });
+            const uiAfter = snapshot(fx.ui);
+            const vueAfter = snapshot(fx.vue);
+
+            const resumed = runScript(fx, ["-Package", "all", "-Resume", "-Execute"], { MOCK_UI_PUBLISHED: "0.1.7" });
+
+            expect(resumed.status).toBe(0);
+            expect(snapshot(fx.ui)).toEqual(uiAfter);
+            expect(snapshot(fx.vue)).toEqual(vueAfter);
+            expect(resumed.commands).not.toContain("npm version");
+            expect(rootPins()).toMatchObject({ "@iam3xtr/ui": "0.1.7", "@iam3xtr/vue": "0.1.5" });
+        });
+
+        it("starts the missing Vue release when resuming after the UI workflow failed", () => {
+            const failed = runScript(fx, ["-Package", "all", "-Execute"], {
+                MOCK_UI_PUBLISHED: "0.1.7",
+                MOCK_GH_FAIL_WATCH: "iam3xtr/ui",
+            });
+            expect(failed.status).not.toBe(0);
+            expect(git(fx.ui, "ls-remote", "origin", "refs/tags/v0.1.7")).not.toBe("");
+            expect(readVue(fx).version).toBe("0.1.4");
+            expect(git(fx.vue, "tag", "--list")).toBe("");
+            const uiAfter = snapshot(fx.ui);
+
+            const resumed = runScript(fx, ["-Package", "all", "-Resume", "-Execute"], { MOCK_UI_PUBLISHED: "0.1.7" });
+
+            expect(resumed.status).toBe(0);
+            expect(snapshot(fx.ui)).toEqual(uiAfter);
+            expect(readVue(fx).version).toBe("0.1.5");
+            expect(readVue(fx).peerDependencies["@iam3xtr/ui"]).toBe("^0.1.7");
+            expect(git(fx.vue, "ls-remote", "origin", "refs/tags/v0.1.5")).not.toBe("");
+            expect(rootPins()).toMatchObject({ "@iam3xtr/ui": "0.1.7", "@iam3xtr/vue": "0.1.5" });
+        });
+
+        it("pushes a local release commit and tag that never reached origin", () => {
+            stageLocalUiRelease("0.1.7");
+            const tagCommit = git(fx.ui, "rev-parse", "v0.1.7^{commit}");
+
+            const result = runScript(fx, ["-Package", "all", "-Resume", "-Execute"], { MOCK_UI_PUBLISHED: "0.1.7" });
+
+            expect(result.status).toBe(0);
+            expect(git(fx.ui, "ls-remote", "origin", "refs/tags/v0.1.7^{}")).toContain(tagCommit);
+            expect(git(fx.ui, "tag", "--list", "v0.1.8")).toBe("");
+            expect(readVue(fx).version).toBe("0.1.5");
+        });
+
+        it("never overwrites a divergent remote tag during resume", () => {
+            stageLocalUiRelease("0.1.7");
+            git(fx.ui, "tag", "-a", "other", "-m", "other", fx.uiShas["0.1.4"]);
+            git(fx.ui, "push", "origin", "refs/tags/other:refs/tags/v0.1.7");
+            git(fx.ui, "tag", "-d", "other");
+            const remoteBefore = remoteTags(fx.ui);
+            const vueBefore = snapshot(fx.vue);
+
+            const result = runScript(fx, ["-Package", "all", "-Resume", "-Execute"], { MOCK_UI_PUBLISHED: "0.1.7" });
+
+            expect(result.status).not.toBe(0);
+            expect(remoteTags(fx.ui)).toBe(remoteBefore);
+            expect(snapshot(fx.vue)).toEqual(vueBefore);
+        });
+
+        it("never overwrites a remote main that moved past the release commit", () => {
+            stageLocalUiRelease("0.1.7");
+            const clone = join(workDir, "ui-clone");
+            git(workDir, "clone", join(workDir, "ui-origin.git"), clone);
+            writeFileSync(join(clone, "extra.txt"), "x\n");
+            git(clone, "add", ".");
+            git(clone, "commit", "-m", "remote work");
+            git(clone, "push", "origin", "main");
+            const mainBefore = git(fx.ui, "ls-remote", "origin", "refs/heads/main");
+            const vueBefore = snapshot(fx.vue);
+
+            const result = runScript(fx, ["-Package", "all", "-Resume", "-Execute"], { MOCK_UI_PUBLISHED: "0.1.7" });
+
+            expect(result.status).not.toBe(0);
+            expect(result.output).toContain("origin/main contains commits");
+            expect(git(fx.ui, "ls-remote", "origin", "refs/heads/main")).toBe(mainBefore);
+            expect(snapshot(fx.vue)).toEqual(vueBefore);
+        });
+
+        it("is idempotent when rerun after everything was released and synced", () => {
+            const first = runScript(fx, ["-Package", "all", "-Execute"], { MOCK_UI_PUBLISHED: "0.1.7" });
+            expect(first.status).toBe(0);
+            const uiAfter = snapshot(fx.ui);
+            const vueAfter = snapshot(fx.vue);
+            const pins = readFileSync(join(fx.root, "package.json"), "utf8");
+
+            const again = runScript(fx, ["-Package", "all", "-Resume", "-Execute"], { MOCK_UI_PUBLISHED: "0.1.7" });
+
+            expect(again.status).toBe(0);
+            expect(snapshot(fx.ui)).toEqual(uiAfter);
+            expect(snapshot(fx.vue)).toEqual(vueAfter);
+            expect(readFileSync(join(fx.root, "package.json"), "utf8")).toBe(pins);
+        });
+
+        it("refuses to resume over unrelated root dependency edits", () => {
+            stageLocalUiRelease("0.1.7");
+            const edited = JSON.parse(readFileSync(join(fx.root, "package.json"), "utf8"));
+            edited.dependencies["@iam3xtr/ui"] = "0.1.7";
+            edited.dependencies.vue = "^3.5.0";
+            writeJson(join(fx.root, "package.json"), edited);
+            const before = snapshot(fx.ui);
+
+            const result = runScript(fx, ["-Package", "all", "-Resume", "-Execute"], { MOCK_UI_PUBLISHED: "0.1.7" });
+
+            expect(result.status).not.toBe(0);
+            expect(snapshot(fx.ui)).toEqual(before);
+            expect(rootPins().vue).toBe("^3.5.0");
+        });
     });
 });
