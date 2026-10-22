@@ -1,0 +1,12 @@
+{
+  "name": "consumer-ui-peer-mismatch-fixture",
+  "private": true,
+  "type": "module",
+  "description": "Negative fixture: installs a @iam3xtr/ui whose version lies outside the @iam3xtr/vue peer interval (synthetic re-packed metadata, dependency-resolution test only). `npm install` here is expected to fail with ERESOLVE.",
+  "dependencies": {
+    "@iam3xtr/ui": "__UI_TARBALL__",
+    "@iam3xtr/vue": "__VUE_TARBALL__",
+    "vue": "^3.5.39",
+    "buefy": "^3.0.8"
+  }
+}

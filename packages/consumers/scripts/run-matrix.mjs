@@ -31,17 +31,36 @@ const uiPkgDir = path.join(kitRoot, "packages", "ui");
 const vuePkgDir = path.join(kitRoot, "packages", "vue");
 
 const results = [];
-function record(name, ok, detail) {
-  results.push({ name, ok, detail });
-  console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? " — " + detail : ""}`);
+
+// Matrix output is shared in CI logs: never echo registry credentials that
+// npm may print back in an error (".npmrc" lines, bearer tokens, GitHub PATs).
+function redact(text) {
+  return String(text)
+    .replace(/(_authToken\s*=\s*)\S+/gi, "$1[redacted]")
+    .replace(/(Bearer\s+)[A-Za-z0-9._~+/=-]+/gi, "$1[redacted]")
+    .replace(/(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]+/g, "[redacted]");
 }
+
+function record(name, ok, detail) {
+  const safeDetail = detail ? redact(detail) : detail;
+  results.push({ name, ok, detail: safeDetail });
+  console.log(`${ok ? "PASS" : "FAIL"}  ${name}${safeDetail ? " — " + safeDetail : ""}`);
+}
+
+// Peer conflicts must surface as ERESOLVE exactly as a consumer would see them:
+// neutralize user/CI npm settings that would hide or bypass them.
+const STRICT_NPM_ENV = {
+  npm_config_force: "false",
+  npm_config_legacy_peer_deps: "false",
+  npm_config_strict_peer_deps: "false",
+};
 
 function run(cmd, args, cwd, env) {
   return spawnSync(cmd, args, {
     cwd,
     encoding: "utf8",
     shell: process.platform === "win32",
-    env: env ? { ...process.env, ...env } : process.env,
+    env: { ...process.env, ...STRICT_NPM_ENV, ...env },
   });
 }
 
@@ -58,6 +77,13 @@ function toFileSpec(absTarballPath) {
 const workRoot = mkdtempSync(path.join(tmpdir(), "trickster-consumer-matrix-"));
 const packCache = path.join(workRoot, "pack-cache");
 mkdirSync(packCache, { recursive: true });
+process.on("exit", () => {
+  try {
+    rmSync(workRoot, { recursive: true, force: true, maxRetries: 3 });
+  } catch {
+    // Best-effort: the directory lives under the OS temp root, outside the repository.
+  }
+});
 
 function packOne(pkgDir, label) {
   const buildRes = run("npm", ["run", "build", "--if-present"], pkgDir);
@@ -81,10 +107,36 @@ function packOne(pkgDir, label) {
   return path.join(packCache, info.filename);
 }
 
-const uiTarball = packOne(uiPkgDir, "@iam3xtr/ui");
-const vueTarball = packOne(vuePkgDir, "@iam3xtr/vue");
-record("pack @iam3xtr/ui", true, path.basename(uiTarball));
-record("pack @iam3xtr/vue", true, path.basename(vueTarball));
+// The primary artifacts are packed from the checked-out sources unless known
+// artifacts are supplied (absolute .tgz paths), e.g. to exercise a pair that was
+// packed or downloaded elsewhere. Supplied artifacts are used verbatim.
+function resolveArtifact(envName, pkgDir, label) {
+  const supplied = process.env[envName];
+  if (!supplied) return packOne(pkgDir, label);
+  if (!path.isAbsolute(supplied) || !supplied.endsWith(".tgz")) {
+    throw new Error(`${envName} must be an absolute path to a .tgz tarball`);
+  }
+  return supplied;
+}
+
+const uiTarball = resolveArtifact("MATRIX_UI_TARBALL", uiPkgDir, "@iam3xtr/ui");
+const vueTarball = resolveArtifact("MATRIX_VUE_TARBALL", vuePkgDir, "@iam3xtr/vue");
+
+function readTarballManifest(tarball) {
+  const label = path.basename(tarball, ".tgz");
+  const dir = path.join(workRoot, "inspect", label);
+  mkdirSync(dir, { recursive: true });
+  // Relative paths + cwd: a drive-letter path would be read as a remote host by GNU tar.
+  const res = run("tar", ["-xzf", path.relative(dir, tarball), "package/package.json"], dir);
+  if (res.status !== 0) throw new Error(`cannot read manifest of ${path.basename(tarball)}:
+${res.stdout}${res.stderr}`);
+  return JSON.parse(readFileSync(path.join(dir, "package", "package.json"), "utf8"));
+}
+
+const uiManifest = readTarballManifest(uiTarball);
+const vueManifest = readTarballManifest(vueTarball);
+record("pack @iam3xtr/ui", true, `${uiManifest.name}@${uiManifest.version} (${path.basename(uiTarball)})`);
+record("pack @iam3xtr/vue", true, `${vueManifest.name}@${vueManifest.version} (${path.basename(vueTarball)})`);
 
 // ---------------------------------------------------------------------
 // 2. Install each fixture, from the tarballs only, into its own isolated
@@ -103,20 +155,22 @@ const BUEFY_VERSIONS = ["3.0.8", "3.0.11", "3.1.0"];
 // Vue Router majors `@iam3xtr/vue/navigation` advertises beyond the default 4.x
 // fixture pin. Router 5 requires Vite 7.3+/8 (its own optional peer), so each
 // scenario carries the bundler pair it needs instead of loosening the peer
-// interval or forcing the install. 5.0.0 is the advertised lower bound of the
+// interval or forcing the install. 4.6.0 is the advertised lower bound of the
+// 4.x interval (the default fixture pin otherwise floats to the latest 4.x). 5.0.0 is the advertised lower bound of the
 // 5.x interval; 5.4.0 is the latest stable at selection time.
 const ROUTER_SCENARIOS = [
+  { router: "4.6.0", buefy: "3.1.0", dev: {} },
   { router: "5.0.0", buefy: "3.1.0", dev: { vite: "8.3.5", "@vitejs/plugin-vue": "6.0.10" } },
   { router: "5.4.0", buefy: "3.1.0", dev: { vite: "8.3.5", "@vitejs/plugin-vue": "6.0.10" } },
 ];
 
-function prepareFixture(name, { buefy, router, dev, label = name } = {}) {
+function prepareFixture(name, { buefy, router, dev, label = name, ui = uiTarball, vue = vueTarball } = {}) {
   const src = path.join(fixturesDir, name);
   const dest = path.join(workRoot, label);
   cpSync(src, dest, { recursive: true });
   const pkgJsonPath = path.join(dest, "package.json");
   let pkgJson = readFileSync(pkgJsonPath, "utf8");
-  pkgJson = pkgJson.replace(/__UI_TARBALL__/g, toFileSpec(uiTarball)).replace(/__VUE_TARBALL__/g, toFileSpec(vueTarball));
+  pkgJson = pkgJson.replace(/__UI_TARBALL__/g, toFileSpec(ui)).replace(/__VUE_TARBALL__/g, toFileSpec(vue));
   if (buefy || router) {
     const parsed = JSON.parse(pkgJson);
     if (buefy) parsed.dependencies.buefy = buefy;
@@ -166,14 +220,91 @@ function assertInstalledVersion(fixtureDir, pkgName, expected) {
   }
 }
 
-function runFixture(name, verify, { buefy, router, dev } = {}) {
-  const label = router ? `${name}-router-${router}` : buefy ? `${name}-buefy-${buefy}` : name;
-  const title = router
-    ? `consumer: ${name} (vue-router ${router}, buefy ${buefy})`
-    : buefy
-      ? `consumer: ${name} (buefy ${buefy})`
-      : `consumer: ${name}`;
-  const dir = prepareFixture(name, { buefy, router, dev, label });
+// Every physical copy of a package in the installed tree (top level and nested
+// node_modules). A second copy of a runtime package is a second runtime instance.
+function findInstalledCopies(fixtureDir, pkgName) {
+  const copies = [];
+  const walk = (nodeModulesDir) => {
+    let entries;
+    try {
+      entries = readdirSync(nodeModulesDir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name.startsWith(".")) continue;
+      const rels = entry.name.startsWith("@")
+        ? readdirSync(path.join(nodeModulesDir, entry.name)).map((n) => `${entry.name}/${n}`)
+        : [entry.name];
+      for (const rel of rels) {
+        const dir = path.join(nodeModulesDir, ...rel.split("/"));
+        if (rel === pkgName) {
+          try {
+            copies.push({ dir, version: JSON.parse(readFileSync(path.join(dir, "package.json"), "utf8")).version });
+          } catch {
+            // not a package directory
+          }
+        }
+        walk(path.join(dir, "node_modules"));
+      }
+    }
+  };
+  walk(path.join(fixtureDir, "node_modules"));
+  return copies;
+}
+
+const RUNTIME_PACKAGES = ["vue", "vue-router", "buefy", "@iam3xtr/ui", "@iam3xtr/vue"];
+
+// Exactly one installed copy of every declared runtime package, in addition to
+// (not instead of) the bundle banner heuristic in verifySpa.
+function assertSingleRuntime(fixtureDir) {
+  const pkgJson = JSON.parse(readFileSync(path.join(fixtureDir, "package.json"), "utf8"));
+  const declared = { ...pkgJson.dependencies, ...pkgJson.devDependencies };
+  for (const name of RUNTIME_PACKAGES.filter((n) => n in declared)) {
+    const copies = findInstalledCopies(fixtureDir, name);
+    if (copies.length !== 1) {
+      throw new Error(`expected exactly one installed ${name}, found ${copies.length}: ${copies.map((c) => c.version).join(", ") || "none"}`);
+    }
+  }
+}
+
+function assertNotInstalled(fixtureDir, names) {
+  for (const name of names) {
+    const copies = findInstalledCopies(fixtureDir, name);
+    if (copies.length > 0) throw new Error(`${name} must not be installed for this scenario, found ${copies[0].version}`);
+  }
+}
+
+// Synthetic mixed-version artifact: the real tarball re-packed with only the
+// manifest `version` changed, in an isolated directory. This exercises npm
+// dependency resolution for a version pair; it is NOT evidence that such a
+// version exists in the registry or that historical package code behaves so.
+function makeSyntheticTarball(srcTarball, version, label) {
+  const dir = path.join(workRoot, "synthetic", label);
+  mkdirSync(dir, { recursive: true });
+  // Relative paths + cwd: a drive-letter path would be read as a remote host by GNU tar.
+  const extract = run("tar", ["-xzf", path.relative(dir, srcTarball)], dir);
+  if (extract.status !== 0) throw new Error(`cannot extract ${path.basename(srcTarball)}:\n${extract.stdout}${extract.stderr}`);
+  const manifestPath = path.join(dir, "package", "package.json");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  manifest.version = version;
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+  const out = path.join(workRoot, "synthetic-out", label);
+  mkdirSync(out, { recursive: true });
+  const pack = run("npm", ["pack", "--ignore-scripts", "--pack-destination", out, "--json"], path.join(dir, "package"));
+  if (pack.status !== 0) throw new Error(`synthetic pack failed:\n${pack.stdout}${pack.stderr}`);
+  const [info] = JSON.parse(pack.stdout);
+  return path.join(out, info.filename);
+}
+
+function runFixture(name, verify, { buefy, router, dev, ui, vue, tag, expectUi = uiManifest.version, expectVue = vueManifest.version, absent } = {}) {
+  const label = tag ?? (router ? `${name}-router-${router}` : buefy ? `${name}-buefy-${buefy}` : name);
+  const axes = [];
+  if (router) axes.push(`vue-router ${router}`);
+  if (buefy) axes.push(`buefy ${buefy}`);
+  if (tag) axes.push(`ui ${expectUi}`, `vue ${expectVue}`);
+  const title = `consumer: ${name}${axes.length ? ` (${axes.join(", ")})` : ""}`;
+  const dir = prepareFixture(name, { buefy, router, dev, label, ui, vue });
   const install = run("npm", ["install", "--no-audit", "--no-fund"], dir);
   if (install.status !== 0) {
     record(title, false, "npm install failed:\n" + install.stdout + install.stderr);
@@ -183,6 +314,11 @@ function runFixture(name, verify, { buefy, router, dev } = {}) {
     assertNoSymlinkOrLocalSource(dir);
     if (buefy) assertInstalledBuefy(dir, buefy);
     if (router) assertInstalledVersion(dir, "vue-router", router);
+    const declared = JSON.parse(readFileSync(path.join(dir, "package.json"), "utf8")).dependencies;
+    if ("@iam3xtr/ui" in declared) assertInstalledVersion(dir, "@iam3xtr/ui", expectUi);
+    if ("@iam3xtr/vue" in declared) assertInstalledVersion(dir, "@iam3xtr/vue", expectVue);
+    assertSingleRuntime(dir);
+    if (absent) assertNotInstalled(dir, absent);
   } catch (err) {
     record(title, false, err.message);
     return;
@@ -223,22 +359,88 @@ for (const buefy of BUEFY_VERSIONS) {
 for (const scenario of ROUTER_SCENARIOS) {
   runFixture("spa", verifySpa, scenario);
 }
-runFixture("tokens-only", verifyCheckScript);
-runFixture("ssr-hydration", verifyCheckScript);
+// Tokens/icons carry no transitive Vue/Bulma/Buefy/Router runtime requirement.
+runFixture("tokens-only", verifyCheckScript, { absent: ["vue", "buefy", "bulma", "vue-router"] });
+// Core + generic library SSR/hydration needs no Router (optional peer).
+runFixture("ssr-hydration", verifyCheckScript, { absent: ["vue-router"] });
+
+// Negative scenarios: npm install must fail with a genuine ERESOLVE peer
+// conflict (not an auth/network failure) and must not succeed via fallbacks.
+function expectPeerConflict(title, install, peerPattern) {
+  const combined = install.stdout + install.stderr;
+  if (install.status === 0) {
+    record(title, false, "npm install unexpectedly succeeded with an incompatible pair");
+  } else if (/E401|E403|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNREFUSED|ECONNRESET/.test(combined)) {
+    record(title, false, "install failed for an auth/network reason, not a peer conflict:\n" + combined);
+  } else if (!/ERESOLVE/.test(combined) || (peerPattern && !peerPattern.test(combined))) {
+    record(title, false, "install failed but not with the expected ERESOLVE peer conflict:\n" + combined);
+  } else {
+    record(title, true, "npm install correctly refused the incompatible pair (ERESOLVE)");
+  }
+}
 
 // Peer-mismatch is a *negative* fixture: npm install must fail with
 // ERESOLVE, and it must not leave a broken @iam3xtr/vue install behind.
 {
   const dir = prepareFixture("peer-mismatch");
   const install = run("npm", ["install", "--no-audit", "--no-fund"], dir);
-  const combined = install.stdout + install.stderr;
-  if (install.status === 0) {
-    record("consumer: peer-mismatch (negative)", false, "npm install unexpectedly succeeded with an incompatible vue major");
-  } else if (!/ERESOLVE/.test(combined)) {
-    record("consumer: peer-mismatch (negative)", false, "install failed but not with the expected ERESOLVE peer conflict:\n" + combined);
+  expectPeerConflict("consumer: peer-mismatch (negative)", install);
+}
+
+// Mixed UI/Vue versions. Real tarballs are one pair, so the other versions are
+// synthetic re-packs (dependency-resolution tests only, see makeSyntheticTarball).
+// The version arithmetic below assumes a 0.x caret peer; fail loudly if the
+// real peer interval changes shape so the expectations get revisited.
+{
+  const uiPeer = vueManifest.peerDependencies?.["@iam3xtr/ui"];
+  const [major, minor, patch] = uiManifest.version.split(".").map(Number);
+  const peerMatch = /^\^0\.(\d+)\.(\d+)$/.exec(uiPeer ?? "");
+  if (!peerMatch || major !== 0 || Number(peerMatch[1]) !== minor) {
+    record("mixed-version matrix: UI peer shape", false, `unsupported @iam3xtr/ui peer ${uiPeer} for ui ${uiManifest.version}; update the mixed-version scenarios`);
   } else {
-    record("consumer: peer-mismatch (negative)", true, "npm install correctly refused the incompatible pair (ERESOLVE)");
+    const newer = `0.${minor}.${patch + 1}`;
+    const outsideAbove = `0.${minor + 1}.0`;
+    const floorPatch = Number(peerMatch[2]);
+    const belowFloor = floorPatch > 0 ? `0.${minor}.${floorPatch - 1}` : null;
+
+    // UI newer than Vue, inside the peer interval (synthetic).
+    const uiNewer = makeSyntheticTarball(uiTarball, newer, "ui-newer");
+    runFixture("spa", verifySpa, { buefy: "3.1.0", ui: uiNewer, tag: "spa-mixed-ui-newer", expectUi: newer });
+    // Vue newer than UI: allowed because the peer is a minimum interval, not an equality (synthetic).
+    const vueNewer = makeSyntheticTarball(vueTarball, newer, "vue-newer");
+    runFixture("spa", verifySpa, { buefy: "3.1.0", vue: vueNewer, tag: "spa-mixed-vue-newer", expectVue: newer });
+
+    // UI outside the Vue peer interval must be refused with a peer conflict.
+    const outside = [["above", outsideAbove, "ui-above"]];
+    if (belowFloor) outside.push(["below", belowFloor, "ui-below"]);
+    for (const [kind, version, label] of outside) {
+      const uiOutside = makeSyntheticTarball(uiTarball, version, label);
+      const dir = prepareFixture("ui-peer-mismatch", { label: `ui-peer-mismatch-${kind}`, ui: uiOutside });
+      const install = run("npm", ["install", "--no-audit", "--no-fund"], dir);
+      expectPeerConflict(`consumer: ui-peer-mismatch (negative, synthetic ui ${version} ${kind} peer ${uiPeer})`, install, /peer @iam3xtr\/ui/);
+    }
   }
+}
+
+// Advertised peer lower bounds must be covered by an actual scenario; bounds the
+// matrix does not exercise are reported instead of being silently advertised.
+{
+  const peers = vueManifest.peerDependencies ?? {};
+  const floors = (range) => [...range.matchAll(/\^(\d+\.\d+\.\d+)/g)].map((m) => m[1]);
+  const testedRouters = new Set(ROUTER_SCENARIOS.map((s) => s.router));
+  const untestedRouters = floors(peers["vue-router"] ?? "").filter((v) => !testedRouters.has(v));
+  record(
+    "ledger: vue-router peer lower bounds exercised",
+    untestedRouters.length === 0,
+    untestedRouters.length ? `not covered: ${untestedRouters.join(", ")}` : `peer ${peers["vue-router"]}`,
+  );
+  const buefyFloor = floors(peers.buefy ?? "")[0];
+  record(
+    "ledger: buefy peer floor",
+    true,
+    `advertised ${peers.buefy}; exercised from ${BUEFY_VERSIONS[0]}` +
+      (buefyFloor && buefyFloor !== BUEFY_VERSIONS[0] ? ` (${buefyFloor} up to below ${BUEFY_VERSIONS[0]} advertised but not exercised)` : ""),
+  );
 }
 
 // ---------------------------------------------------------------------
