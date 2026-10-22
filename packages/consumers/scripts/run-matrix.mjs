@@ -348,6 +348,35 @@ function verifySpa(dir) {
   if (test.status !== 0) throw new Error("vitest smoke test failed:\n" + test.stdout + test.stderr);
 }
 
+// Chat-target SPA: one Vue/Buefy app built for standalone and iframe use, with
+// no Router and no Nuxt. Static output only; browser geometry/focus/first-paint
+// checks are NOT performed here (jsdom cannot prove them).
+function verifyChatSpa(dir) {
+  const build = run("npm", ["run", "build"], dir);
+  if (build.status !== 0) throw new Error("vite build failed:\n" + build.stdout + build.stderr);
+  for (const page of ["index.html", "host.html"]) {
+    if (!readdirSync(path.join(dir, "dist")).includes(page)) throw new Error(`build did not emit ${page}`);
+  }
+  const host = readFileSync(path.join(dir, "dist", "host.html"), "utf8");
+  if (!/<iframe\b/.test(host)) throw new Error("host.html lost its iframe element");
+  const distDir = path.join(dir, "dist", "assets");
+  const assets = readdirSync(distDir);
+  const bundled = assets
+    .filter((f) => f.endsWith(".js"))
+    .map((f) => readFileSync(path.join(distDir, f), "utf8"))
+    .join("\n");
+  const vueRuntimeHits = (bundled.match(/Vue\.js v3\.\d/g) || []).length;
+  if (vueRuntimeHits > 1) throw new Error(`expected at most one bundled Vue runtime banner, found ${vueRuntimeHits}`);
+  const css = assets
+    .filter((f) => f.endsWith(".css"))
+    .map((f) => readFileSync(path.join(distDir, f), "utf8"))
+    .join("\n");
+  if (!/data-theme/.test(css)) throw new Error("bundled CSS does not carry the @iam3xtr/ui theme selectors");
+  if (!/materialdesignicons/i.test(css)) throw new Error("bundled CSS does not carry the MDI font stylesheet");
+  const test = run("npm", ["test"], dir);
+  if (test.status !== 0) throw new Error("vitest smoke test failed:\n" + test.stdout + test.stderr);
+}
+
 function verifyCheckScript(dir) {
   const check = run("npm", ["run", "check"], dir);
   if (check.status !== 0) throw new Error("check script failed:\n" + check.stdout + check.stderr);
@@ -358,6 +387,10 @@ for (const buefy of BUEFY_VERSIONS) {
 }
 for (const scenario of ROUTER_SCENARIOS) {
   runFixture("spa", verifySpa, scenario);
+}
+// Chat-target standalone/iframe SPA: core exports only, so Router is not installed.
+for (const buefy of BUEFY_VERSIONS) {
+  runFixture("chat-spa", verifyChatSpa, { buefy, absent: ["vue-router"] });
 }
 // Tokens/icons carry no transitive Vue/Bulma/Buefy/Router runtime requirement.
 runFixture("tokens-only", verifyCheckScript, { absent: ["vue", "buefy", "bulma", "vue-router"] });

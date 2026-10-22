@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>consumer-chat-spa-host</title>
+    <link rel="stylesheet" href="./src/fixture.css" />
+  </head>
+  <body class="host">
+    <!-- Host page with its own theme (data-host-theme), independent from the
+         framed app. Query: ?theme=light|dark|auto&host=light|dark. -->
+    <h1 class="host__title">Host page</h1>
+    <iframe id="chat-frame" class="host__frame" title="Chat" width="360" height="480"></iframe>
+    <script type="module" src="./src/host.js"></script>
+  </body>
+</html>

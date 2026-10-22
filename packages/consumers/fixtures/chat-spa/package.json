@@ -1,0 +1,24 @@
+{
+  "name": "consumer-chat-spa-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@iam3xtr/ui": "__UI_TARBALL__",
+    "@iam3xtr/vue": "__VUE_TARBALL__",
+    "@mdi/font": "^7.4.47",
+    "vue": "^3.5.39",
+    "buefy": "^3.1.0",
+    "bulma": "^1.0.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.10",
+    "@vue/test-utils": "^2.5.1",
+    "jsdom": "^30.1.3",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}
