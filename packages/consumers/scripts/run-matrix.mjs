@@ -17,6 +17,13 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+// Build/test tooling policy: Node 24 LTS (see devEngines in the root package.json).
+// Fail early instead of producing results from an unsupported toolchain.
+if (Number(process.versions.node.split(".")[0]) !== 24) {
+  console.error(`Consumer matrix requires Node 24 (found ${process.versions.node}).`);
+  process.exit(1);
+}
+
 const here = path.dirname(fileURLToPath(import.meta.url));
 const consumersRoot = path.dirname(here);
 const kitRoot = path.dirname(path.dirname(consumersRoot));
