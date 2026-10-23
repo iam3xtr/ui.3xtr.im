@@ -132,6 +132,24 @@ describe.skipIf(!SOURCE_MODE)("kit/KitSettingsFamilies.vue (source mode)", () =>
     expect(family("knowledge").text()).toContain("Verified");
   });
 
+  it("blocks Save after the unknown timeout and ignores a stale save after an entity switch", async () => {
+    await mountReference();
+    await choose("unknown");
+    await family("knowledge").get('[data-testid="family-edit"]').trigger("click");
+    await type(family("knowledge").get("#knowledge-inline-name"), "Stale draft");
+    await family("knowledge").get('[data-testid="family-save"]').trigger("click");
+    await settle(500);
+    expect(family("knowledge").get('[data-testid="family-unknown"]').exists()).toBe(true);
+    expect(family("knowledge").get('[data-testid="family-save"]').attributes("disabled")).toBeDefined();
+    await family("knowledge").get('[data-testid="family-save"]').trigger("click");
+    await choose("b");
+    await settle(1400);
+    expect(wrapper.get('[data-testid="families-status"]').text()).toContain("Сохранений: 0");
+    expect(family("knowledge").text()).not.toContain("Stale draft");
+    await choose("a");
+    expect(family("knowledge").text()).not.toContain("Stale draft");
+  });
+
   const drawerEl = () => document.body.querySelector('[data-testid="family-knowledge-drawer"]');
   const openKnowledgeDrawer = async () => {
     await family("knowledge").get('[data-testid="family-open-drawer"]').trigger("click");

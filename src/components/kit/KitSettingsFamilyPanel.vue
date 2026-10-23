@@ -54,7 +54,7 @@
             <b-button
               type="is-primary"
               :loading="form.isPending.value"
-              :disabled="form.isPending.value || form.isConflict.value || !form.hasChanges.value"
+              :disabled="saveBlocked"
               data-testid="family-save"
               @click="submit"
             >
@@ -110,7 +110,7 @@
           type="is-primary"
           native-type="submit"
           :loading="busy"
-          :disabled="busy || form.isConflict.value || !form.hasChanges.value"
+          :disabled="busy || saveBlocked"
         >
           {{ copy.save }}
         </b-button>
@@ -144,6 +144,14 @@ const dangerRequested = ref(false);
 
 const canEdit = computed(() => props.family.canEdit !== false);
 const record = computed(() => props.records[props.entityKey]);
+// An `unknown` outcome is resolved only through Verify; Save stays blocked so
+// the possibly-applied command is never resubmitted.
+const saveBlocked = computed(
+  () => form.isPending.value || form.isUnknown.value || form.isConflict.value || !form.hasChanges.value,
+);
+// Bumped on every entity switch: a deferred save from an earlier entity must
+// not write into the record that is current when it finally settles.
+let entityGeneration = 0;
 
 function validate(draft) {
   const errors = {};
@@ -165,8 +173,11 @@ const form = useSavableForm({
     if (props.scenario === "conflict") {
       return { ok: false, conflict: true, remote: { ...draft, [props.family.fields[0].key]: `${draft[props.family.fields[0].key]} *` } };
     }
+    const target = record.value;
+    const generation = entityGeneration;
     const apply = () => {
-      Object.assign(record.value, draft);
+      if (generation !== entityGeneration) return { ok: false, stale: true };
+      Object.assign(target, draft);
       emit("saved", props.family.id);
       return { ok: true };
     };
@@ -188,6 +199,7 @@ function openDrawer() {
 }
 
 async function submit() {
+  if (saveBlocked.value) return;
   const result = await form.save();
   if (result?.ok) {
     editing.value = false;
@@ -222,6 +234,7 @@ function requestDanger() {
 watch(
   () => props.entityKey,
   () => {
+    entityGeneration += 1;
     form.reset();
     editing.value = false;
     drawerOpen.value = false;
