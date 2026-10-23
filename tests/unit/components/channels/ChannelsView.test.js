@@ -28,6 +28,8 @@ if (typeof window.matchMedia !== "function") {
 // (`useDemoStore()`, Task A7.1) — тот же контракт, что и `Agents.vue`:
 // loading/empty/error через `ListAsyncState`, permission-denied прямым
 // `AsyncState`, partial — `b-message`-баннером поверх доступных каналов.
+const telegramCards = (wrapper) => wrapper.findAll(".tr-entity-card").filter((c) => !c.text().includes("Веб-чат"));
+
 async function mountChannelsView({ agentId = "1", demoMode } = {}) {
   const pinia = createPinia();
   setActivePinia(pinia);
@@ -74,14 +76,24 @@ describe("ChannelsView.vue — demo-состояния (Task A7.3)", () => {
     const { wrapper } = await mountChannelsView({ demoMode: "error" });
 
     expect(wrapper.find(".tr-async-state--error").exists()).toBe(true);
-    expect(wrapper.findAll(".tr-entity-card").length).toBe(0);
+    expect(telegramCards(wrapper)).toHaveLength(0);
   });
 
   it("empty: показывает пустое состояние даже когда у агента реально есть каналы", async () => {
     const { wrapper } = await mountChannelsView({ demoMode: "empty" });
 
     expect(wrapper.find(".tr-async-state--empty").exists()).toBe(true);
-    expect(wrapper.findAll(".tr-entity-card").length).toBe(0);
+    expect(telegramCards(wrapper)).toHaveLength(0);
+  });
+
+  it("empty/error: Web-публикация агента остаётся с переключателем", async () => {
+    for (const demoMode of ["empty", "error"]) {
+      const { wrapper } = await mountChannelsView({ agentId: "3", demoMode });
+
+      const web = wrapper.findAll(".tr-entity-card").find((c) => c.text().includes("Веб-чат"));
+      expect(web, demoMode).toBeTruthy();
+      expect(web.find("input[type=checkbox]").exists()).toBe(true);
+    }
   });
 
   it("permission-denied: показывает отказ в доступе через AsyncState", async () => {

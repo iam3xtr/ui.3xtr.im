@@ -33,7 +33,7 @@
         одноимённое поле объекта осталось бы мёртвым и вводящим в заблуждение
         (структурно недостижимым в этой позиции).
       -->
-      <div v-if="!demoStore.isError && !demoStore.isEmpty" class="tr-catalog">
+      <div class="tr-catalog">
         <div class="tr-catalog-grid">
           <WebPublicationCard
             :publication="webPublication"
