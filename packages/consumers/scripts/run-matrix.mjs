@@ -455,24 +455,46 @@ function expectPeerConflict(title, install, peerPattern) {
   }
 }
 
-// Advertised peer lower bounds must be covered by an actual scenario; bounds the
-// matrix does not exercise are reported instead of being silently advertised.
+// Every advertised peer floor (vue, buefy, vue-router) must be exercised by a
+// matrix scenario or be listed here as a named known gap with a rationale.
+// Keys are "<peer>@<floor>", so widening a peer range yields an uncovered floor
+// that fails the ledger until a scenario or a new known-gap entry is added.
+// A known gap that is now covered or no longer advertised also fails (stale).
+const KNOWN_PEER_FLOOR_GAPS = {
+  "vue@3.5.0": "fixtures resolve vue to the latest ^3.5.x; the 3.5.0 minimum is not pinned or installed in any scenario",
+  "buefy@3.0.0": "spa/chat-spa scenarios start at buefy 3.0.8; 3.0.0 through 3.0.7 are advertised but not exercised",
+};
 {
   const peers = vueManifest.peerDependencies ?? {};
   const floors = (range) => [...range.matchAll(/\^(\d+\.\d+\.\d+)/g)].map((m) => m[1]);
-  const testedRouters = new Set(ROUTER_SCENARIOS.map((s) => s.router));
-  const untestedRouters = floors(peers["vue-router"] ?? "").filter((v) => !testedRouters.has(v));
+  const exercised = {
+    // No scenario pins the vue version today.
+    vue: new Set(),
+    buefy: new Set(BUEFY_VERSIONS),
+    "vue-router": new Set(ROUTER_SCENARIOS.map((s) => s.router)),
+  };
+  const advertised = new Set();
+  const uncovered = [];
+  const knownGaps = [];
+  for (const peer of ["vue", "buefy", "vue-router"]) {
+    for (const floor of floors(peers[peer] ?? "")) {
+      const key = `${peer}@${floor}`;
+      advertised.add(key);
+      if (exercised[peer].has(floor)) continue;
+      if (KNOWN_PEER_FLOOR_GAPS[key]) knownGaps.push(`${key} (${KNOWN_PEER_FLOOR_GAPS[key]})`);
+      else uncovered.push(key);
+    }
+  }
+  const stale = Object.keys(KNOWN_PEER_FLOOR_GAPS).filter((key) => {
+    const [peer, floor] = [key.slice(0, key.lastIndexOf("@")), key.slice(key.lastIndexOf("@") + 1)];
+    return !advertised.has(key) || exercised[peer]?.has(floor);
+  });
   record(
-    "ledger: vue-router peer lower bounds exercised",
-    untestedRouters.length === 0,
-    untestedRouters.length ? `not covered: ${untestedRouters.join(", ")}` : `peer ${peers["vue-router"]}`,
-  );
-  const buefyFloor = floors(peers.buefy ?? "")[0];
-  record(
-    "ledger: buefy peer floor",
-    true,
-    `advertised ${peers.buefy}; exercised from ${BUEFY_VERSIONS[0]}` +
-      (buefyFloor && buefyFloor !== BUEFY_VERSIONS[0] ? ` (${buefyFloor} up to below ${BUEFY_VERSIONS[0]} advertised but not exercised)` : ""),
+    "ledger: advertised peer floors exercised or named known gaps",
+    uncovered.length === 0 && stale.length === 0,
+    (uncovered.length ? `not covered and not a known gap: ${uncovered.join(", ")}; ` : "") +
+      (stale.length ? `stale known-gap entries: ${stale.join(", ")}; ` : "") +
+      (knownGaps.length ? `known gaps: ${knownGaps.join("; ")}` : "all floors exercised"),
   );
 }
 
