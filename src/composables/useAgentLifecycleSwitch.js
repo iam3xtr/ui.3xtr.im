@@ -75,8 +75,14 @@ export function useAgentLifecycleSwitch({ workspaceId, delayMs = COMMAND_DELAY_M
     };
   }
 
-  async function runCommand(agent, active) {
+  async function runCommand(agent, active, requestWorkspaceId) {
     const state = stateOf(agent);
+
+    // The confirm dialog may outlive a workspace switch: drop the stale request.
+    if (workspaceId.value !== requestWorkspaceId) {
+      state.syncKey += 1;
+      return false;
+    }
     const expectedRevision = state.revision;
 
     state.pending = true;
@@ -84,6 +90,14 @@ export function useAgentLifecycleSwitch({ workspaceId, delayMs = COMMAND_DELAY_M
     state.error = null;
 
     await new Promise((resolve) => { setTimeout(resolve, delayMs); });
+
+    // Workspace changed while pending: the result belongs to another workspace, discard it.
+    if (workspaceId.value !== requestWorkspaceId) {
+      state.pending = false;
+      state.target = null;
+      state.syncKey += 1;
+      return false;
+    }
 
     let error = null;
     if (agent.lifecycleFixture === "failure") {
@@ -96,7 +110,7 @@ export function useAgentLifecycleSwitch({ workspaceId, delayMs = COMMAND_DELAY_M
     }
 
     if (!error) {
-      agentsStore.setAgentStatus(workspaceId.value, agent.id, active ? "Активен" : "Приостановлен");
+      agentsStore.setAgentStatus(requestWorkspaceId, agent.id, active ? "Активен" : "Приостановлен");
       state.revision += 1;
     }
 
@@ -118,6 +132,7 @@ export function useAgentLifecycleSwitch({ workspaceId, delayMs = COMMAND_DELAY_M
    */
   function requestToggle(agent, active) {
     const state = stateOf(agent);
+    const requestWorkspaceId = workspaceId.value;
 
     if (state.pending || !decideLifecycleToggle(agent).canToggle) {
       state.syncKey += 1;
@@ -128,7 +143,7 @@ export function useAgentLifecycleSwitch({ workspaceId, delayMs = COMMAND_DELAY_M
     }
 
     if (active) {
-      runCommand(agent, true);
+      runCommand(agent, true, requestWorkspaceId);
       return;
     }
 
@@ -139,7 +154,7 @@ export function useAgentLifecycleSwitch({ workspaceId, delayMs = COMMAND_DELAY_M
       cancelText: "Отмена",
       type: "is-danger",
       hasIcon: true,
-      onConfirm: () => { runCommand(agent, false); },
+      onConfirm: () => { runCommand(agent, false, requestWorkspaceId); },
       onCancel: () => { state.syncKey += 1; },
     });
     // The native checkbox already flipped; re-sync it until the user decides.

@@ -144,4 +144,35 @@ describe("useAgentLifecycleSwitch — команды (Task S2-15)", () => {
     expect(sw.switchState(unknown).reason).toBe(LIFECYCLE_REASONS.unknown);
     expect(setStatusSpy).not.toHaveBeenCalled();
   });
+
+  it("смена workspace во время pending отбрасывает результат и не трогает другой workspace", async () => {
+    const ws = { value: WS };
+    const local = useAgentLifecycleSwitch({ workspaceId: ws, delayMs: 100 });
+    const a = agent(1);
+
+    local.requestToggle(a, false);
+    lastConfirm().onConfirm();
+    expect(local.switchState(a).pending).toBe(true);
+
+    ws.value = "other";
+    await vi.advanceTimersByTimeAsync(100);
+
+    expect(setStatusSpy).not.toHaveBeenCalled();
+    expect(a.status).toBe("Активен");
+    expect(local.switchState(a).pending).toBe(false);
+  });
+
+  it("подтверждение после смены workspace не запускает команду", async () => {
+    const ws = { value: WS };
+    const local = useAgentLifecycleSwitch({ workspaceId: ws, delayMs: 100 });
+    const a = agent(1);
+
+    local.requestToggle(a, false);
+    ws.value = "other";
+    lastConfirm().onConfirm();
+    await vi.advanceTimersByTimeAsync(100);
+
+    expect(setStatusSpy).not.toHaveBeenCalled();
+    expect(local.switchState(a).pending).toBe(false);
+  });
 });
