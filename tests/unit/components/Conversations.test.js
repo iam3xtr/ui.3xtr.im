@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { createMemoryHistory, createRouter, RouterView } from "vue-router";
@@ -41,7 +41,7 @@ if (typeof window.matchMedia !== "function") {
 // (the same class of artifact `agents/AgentDetail.test.js` documents for
 // mounting a shell directly) — so the root here is a bare `<RouterView />`,
 // same as `App.vue`, with the real page reached through it like in the app.
-async function mountConversations({ demoMode, path = "/conversations" } = {}) {
+async function mountConversations({ demoMode, avatars = false, path = "/conversations" } = {}) {
   const pinia = createPinia();
   setActivePinia(pinia);
 
@@ -50,6 +50,10 @@ async function mountConversations({ demoMode, path = "/conversations" } = {}) {
 
   if (demoMode) {
     useDemoStore().setMode(demoMode);
+  }
+
+  if (avatars) {
+    useDemoStore().setConversationAvatars(true);
   }
 
   const router = createRouter({
@@ -254,5 +258,42 @@ describe("Conversations.vue — «К диалогам» всегда перех�
     expect(router.currentRoute.value.name).toBe("conversations");
     expect(router.currentRoute.value.params.conversationId).toBeUndefined();
     expect(wrapper.find(".tr-conversation-split").classes()).toContain("is-list-view");
+  });
+});
+
+describe("Conversations.vue — channel identity and opt-in avatars (Task S2-14)", () => {
+  // The demo store persists the avatar flag; start every case from the default.
+  beforeEach(() => localStorage.clear());
+  afterEach(() => localStorage.clear());
+
+  it("по умолчанию аватаров нет, а канал и агент остаются читаемым текстом", async () => {
+    const { wrapper } = await mountConversations();
+
+    expect(wrapper.find(".tr-conversation-avatar").exists()).toBe(false);
+    const first = wrapper.find(".tr-conversation-item");
+    expect(first.element.firstElementChild.classList.contains("tr-conversation-item__content")).toBe(true);
+    expect(first.find(".tr-conversation-item__channel").text()).toContain("Telegram");
+    expect(first.find(".tr-conversation-item__channel").text()).toContain("Консультант");
+  });
+
+  it("opt-in показывает инициалы декоративно, без сетевых изображений", async () => {
+    const { wrapper } = await mountConversations({ avatars: true });
+
+    const avatar = wrapper.find(".tr-conversation-item .tr-conversation-avatar");
+    expect(avatar.exists()).toBe(true);
+    expect(avatar.text()).toBe("АС");
+    expect(avatar.attributes("aria-hidden")).toBe("true");
+    expect(avatar.find("img").exists()).toBe(false);
+  });
+
+  it("шапка диалога показывает имя экземпляра с полным title и аватар только по opt-in", async () => {
+    const off = await mountConversations({ path: "/conversations/1/1" });
+    expect(off.wrapper.find(".tr-conversation-header .tr-conversation-avatar").exists()).toBe(false);
+    const instance = off.wrapper.find(".tr-conversation-channel-instance");
+    expect(instance.text()).toBe("Telegram-бот «Поддержка клиентов»");
+    expect(instance.attributes("title")).toBe(instance.text());
+
+    const on = await mountConversations({ path: "/conversations/1/1", avatars: true });
+    expect(on.wrapper.find(".tr-conversation-header .tr-conversation-avatar").exists()).toBe(true);
   });
 });

@@ -99,3 +99,19 @@ describe("ConversationHeader.vue — handoff owner/lease (Task A10.5)", () => {
     expect(wrapper.text()).not.toContain("Вернуть агенту");
   });
 });
+
+describe("ConversationHeader.vue — channel identity (Task S2-14)", () => {
+  it("тип канала остаётся читаемым текстом, неизвестный канал не получает экземпляр", () => {
+    const { pinia, store } = setup();
+    const conversation = store.getConversation("demo", 1, 1);
+
+    const known = mountHeader(pinia, conversation);
+    expect(known.text()).toContain("Telegram");
+    expect(known.find(".tr-conversation-channel-instance").exists()).toBe(true);
+
+    const unknown = mountHeader(pinia, { ...conversation, channel: "<b>x</b>" });
+    expect(unknown.find(".tr-conversation-channel-instance").exists()).toBe(false);
+    expect(unknown.find("b").exists()).toBe(false);
+    expect(unknown.text()).toContain("<b>x</b>");
+  });
+});

@@ -33,9 +33,7 @@
         />
 
         <div class="tr-conversation-identity">
-          <span class="tr-conversation-avatar">
-            {{ conversation?.initials }}
-          </span>
+          <ConversationAvatar v-if="demoStore.conversationAvatars && conversation" :conversation="conversation" />
           <span>
             <strong>{{ conversation?.contact }}</strong>
             <ConversationHeader v-if="conversation" :conversation="conversation" />
@@ -95,6 +93,7 @@ import { useConversationsStore } from "../../stores/conversations";
 import { useDemoStore } from "../../stores/demo";
 import { useWorkspaceStore } from "../../stores/workspace";
 import { AsyncState, ListAsyncState } from "@iam3xtr/vue";
+import ConversationAvatar from "./ConversationAvatar.vue";
 import ConversationHeader from "./ConversationHeader.vue";
 import ConversationHistory from "./History.vue";
 import ConversationSettings from "./Settings.vue";

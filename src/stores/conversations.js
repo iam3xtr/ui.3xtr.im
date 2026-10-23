@@ -85,6 +85,29 @@ export const CONVERSATION_STATUSES = ["Активен", "Завершён"];
 export const CONVERSATION_CHANNELS = ["Telegram", "Виджет", "Email"];
 
 /**
+ * Task S2-14 fixture identity: bounded demo mapping from the fixture's
+ * channel label to the canonical visual channel type and a channel-instance
+ * name. The kit has no API lookup or connector; this is not a channel
+ * catalog and the instance names are illustrative. `Виджет` is the `widget`
+ * origin of the Web publication, never a provider.
+ *
+ * @type {Record<string, { type: string, instance: string }>}
+ */
+export const CONVERSATION_CHANNEL_IDENTITIES = Object.freeze({
+  Telegram: { type: "telegram", instance: "Telegram-бот «Поддержка клиентов»" },
+  "Виджет": { type: "widget", instance: "Виджет на сайте example.com" },
+  Email: { type: "email", instance: "Почтовый ящик support@example.com" },
+});
+
+/**
+ * @param {Conversation} conversation
+ * @returns {{ type: string | null, instance: string }}
+ */
+export function conversationChannelIdentity(conversation) {
+  return CONVERSATION_CHANNEL_IDENTITIES[conversation?.channel] ?? { type: null, instance: "" };
+}
+
+/**
  * Локальные domain-фикстуры диалогов по рабочим пространствам (см.
  * `src/stores/workspace.js`). Нет бэкенда — весь стор синхронный in-memory
  * state (Stage A5.2).

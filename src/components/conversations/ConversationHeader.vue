@@ -1,6 +1,16 @@
 <template>
   <div class="tr-conversation-channel-context">
-    <b-tag size="is-small">{{ conversation.channel }}</b-tag>
+    <b-tag size="is-small">
+      <ConversationChannel :type="identity.type" :label="conversation.channel" />
+    </b-tag>
+    <b-tag
+      v-if="identity.instance"
+      size="is-small"
+      class="tr-conversation-channel-instance"
+      :title="identity.instance"
+    >
+      {{ identity.instance }}
+    </b-tag>
     <b-tag
       size="is-small"
       :type="conversation.status === 'Активен' ? 'is-primary' : undefined"
@@ -36,9 +46,15 @@
 import { storeToRefs } from "pinia";
 import { computed } from "vue";
 
-import { isHandoffClaimable, ownsHandoff, useConversationsStore } from "../../stores/conversations";
+import {
+  conversationChannelIdentity,
+  isHandoffClaimable,
+  ownsHandoff,
+  useConversationsStore,
+} from "../../stores/conversations";
 import { useProfileStore } from "../../stores/profile";
 import { useWorkspaceStore } from "../../stores/workspace";
+import ConversationChannel from "./ConversationChannel.vue";
 
 // Channel/status context row (Task A5.7), the kit counterpart of
 // get.3xtr.im's `conversations/components/ConversationHeader.vue` scoped to
@@ -77,6 +93,11 @@ const { profile } = storeToRefs(profileStore);
 // `profile.js`'s own `id` field comment (Task A10.5) for why this store
 // carries it.
 const operator = computed(() => ({ id: profile.value.id, name: profile.value.name }));
+
+// Fixture identity (Task S2-14): channel type symbol and instance name come
+// from the bounded demo mapping, not an API lookup; the full instance name is
+// also the tag's `title` because the tag truncates long names.
+const identity = computed(() => conversationChannelIdentity(props.conversation));
 
 const owner = computed(() => props.conversation.handoff?.owner ?? null);
 const leaseExpired = computed(() => Boolean(props.conversation.handoff?.leaseExpired));

@@ -76,6 +76,9 @@ const DEFAULTS = Object.freeze({
   // A9.2), and that behaviour must not leak into new sessions via persisted
   // storage.
   showCreateAgentAction: false,
+  // Task S2-14: conversation avatars are opt-in; the list, header and
+  // properties render no avatar container, placeholder or inset by default.
+  conversationAvatars: false,
 });
 
 /**
@@ -146,16 +149,21 @@ export const useDemoStore = defineStore("demo", () => {
   const denseData = ref(Boolean(persisted?.denseData));
   const resourceMenuSize = ref(normalizeResourceMenuSize(persisted?.resourceMenuSize));
   const showCreateAgentAction = ref(Boolean(persisted?.showCreateAgentAction));
+  const conversationAvatars = ref(Boolean(persisted?.conversationAvatars));
 
   watch(
-    [mode, longLabels, denseData, resourceMenuSize, showCreateAgentAction],
-    ([nextMode, nextLongLabels, nextDenseData, nextResourceMenuSize, nextShowCreateAgentAction]) => {
+    [mode, longLabels, denseData, resourceMenuSize, showCreateAgentAction, conversationAvatars],
+    ([
+      nextMode, nextLongLabels, nextDenseData, nextResourceMenuSize,
+      nextShowCreateAgentAction, nextConversationAvatars,
+    ]) => {
       writePersisted({
         mode: nextMode,
         longLabels: nextLongLabels,
         denseData: nextDenseData,
         resourceMenuSize: nextResourceMenuSize,
         showCreateAgentAction: nextShowCreateAgentAction,
+        conversationAvatars: nextConversationAvatars,
       });
     },
   );
@@ -185,6 +193,11 @@ export const useDemoStore = defineStore("demo", () => {
     showCreateAgentAction.value = Boolean(value);
   }
 
+  /** @param {boolean} value */
+  function setConversationAvatars(value) {
+    conversationAvatars.value = Boolean(value);
+  }
+
   function toggleLongLabels() {
     longLabels.value = !longLabels.value;
   }
@@ -199,6 +212,7 @@ export const useDemoStore = defineStore("demo", () => {
     denseData.value = DEFAULTS.denseData;
     resourceMenuSize.value = DEFAULTS.resourceMenuSize;
     showCreateAgentAction.value = DEFAULTS.showCreateAgentAction;
+    conversationAvatars.value = DEFAULTS.conversationAvatars;
   }
 
   const isReady = computed(() => mode.value === "ready");
@@ -249,11 +263,13 @@ export const useDemoStore = defineStore("demo", () => {
     denseData,
     resourceMenuSize,
     showCreateAgentAction,
+    conversationAvatars,
     setMode,
     setLongLabels,
     setDenseData,
     setResourceMenuSize,
     setShowCreateAgentAction,
+    setConversationAvatars,
     toggleLongLabels,
     toggleDenseData,
     reset,

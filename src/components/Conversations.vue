@@ -82,9 +82,7 @@
                 type="button"
                 @click="openConversation(conversation)"
               >
-                <span class="tr-conversation-avatar">
-                  {{ conversation.initials }}
-                </span>
+                <ConversationAvatar v-if="demoStore.conversationAvatars" :conversation="conversation" />
                 <span class="tr-conversation-item__content">
                   <span class="tr-conversation-item__heading">
                     <strong>{{ conversation.contact }}</strong>
@@ -94,7 +92,11 @@
                     {{ conversation.preview }}
                   </span>
                   <span class="tr-conversation-item__channel">
-                    {{ conversation.channel }} · {{ conversation.agent }}
+                    <ConversationChannel
+                      :type="channelTypeOf(conversation)"
+                      :label="conversation.channel"
+                    />
+                    <span aria-hidden="true"> · </span>{{ conversation.agent }}
                   </span>
                 </span>
               </button>
@@ -134,12 +136,15 @@ import { useSimulatedLoading } from "../composables/useSimulatedLoading";
 import { useAgentsStore } from "../stores/agents";
 import {
   CONVERSATION_CHANNELS,
+  conversationChannelIdentity,
   CONVERSATION_STATUSES,
   useConversationsStore,
 } from "../stores/conversations";
 import { useDemoStore } from "../stores/demo";
 import { useWorkspaceStore } from "../stores/workspace";
 import { AsyncState, ListAsyncState, Loader, Toolbar, ToolbarDropdown } from "@iam3xtr/vue";
+import ConversationAvatar from "./conversations/ConversationAvatar.vue";
+import ConversationChannel from "./conversations/ConversationChannel.vue";
 
 // List screen (Task A5.7), routed at `/conversations`. Task A8.4 nests the
 // `conversation` route under `conversations-agent` (`/conversations/:agentId`,
@@ -327,6 +332,11 @@ const displayConversations = computed(() => {
 
   return list;
 });
+
+/** @param {Conversation} conversation */
+function channelTypeOf(conversation) {
+  return conversationChannelIdentity(conversation).type;
+}
 
 /**
  * @param {Conversation} conversation

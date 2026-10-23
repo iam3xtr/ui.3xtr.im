@@ -179,6 +179,16 @@ describe("stores/demo — переключатели и проекция", () =>
     expect(store.showCreateAgentAction).toBe(false);
   });
 
+  it("conversationAvatars по умолчанию выключен, коэрсится и сбрасывается", () => {
+    const store = useDemoStore();
+
+    expect(store.conversationAvatars).toBe(false);
+    store.setConversationAvatars(1);
+    expect(store.conversationAvatars).toBe(true);
+    store.reset();
+    expect(store.conversationAvatars).toBe(false);
+  });
+
   it("setShowCreateAgentAction коэрсит значение в boolean", () => {
     const store = useDemoStore();
 
@@ -219,6 +229,7 @@ describe("stores/demo — persistence", () => {
       denseData: true,
       resourceMenuSize: "full",
       showCreateAgentAction: true,
+      conversationAvatars: false,
     });
   });
 

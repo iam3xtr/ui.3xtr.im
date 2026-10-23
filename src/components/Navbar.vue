@@ -307,6 +307,17 @@
           </b-dropdown-item>
 
           <b-dropdown-item custom :focusable="false">
+            <div class="tr-dropdown-setting">
+              <span class="tr-dropdown-action">Аватары диалогов</span>
+              <b-switch
+                v-model="demoConversationAvatars"
+                size="is-small"
+                aria-label="Показывать аватары в списке и шапке диалогов"
+              />
+            </div>
+          </b-dropdown-item>
+
+          <b-dropdown-item custom :focusable="false">
             <div class="tr-demo-panel__field">
               <label class="tr-demo-panel__label" for="tr-demo-panel-resource-menu-size">
                 Resource-меню
@@ -730,6 +741,7 @@ const {
   denseData: demoDenseData,
   resourceMenuSize: demoResourceMenuSize,
   showCreateAgentAction: demoShowCreateAgentAction,
+  conversationAvatars: demoConversationAvatars,
 } = storeToRefs(demoStore);
 
 const demoModeOptions = DEMO_MODES.map((value) => ({
