@@ -149,7 +149,7 @@ const record = computed(() => props.records[props.entityKey]);
 const saveBlocked = computed(
   () => form.isPending.value || form.isUnknown.value || form.isConflict.value || !form.hasChanges.value,
 );
-// Bumped on every entity switch: a deferred save from an earlier entity must
+// Bumped on every entity switch and explicit Cancel: a deferred save from an earlier entity must
 // not write into the record that is current when it finally settles.
 let entityGeneration = 0;
 
@@ -210,11 +210,14 @@ async function submit() {
 // Cancel is an explicit discard: the draft is dropped, never silently kept.
 function cancel() {
   if (form.isPending.value) return;
+  // An `unknown` save may still settle later; the discarded draft must not land.
+  entityGeneration += 1;
   form.reset();
   editing.value = false;
 }
 
 function cancelDrawer(requestClose) {
+  entityGeneration += 1;
   form.reset();
   requestClose("programmatic");
 }

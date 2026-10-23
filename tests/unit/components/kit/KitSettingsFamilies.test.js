@@ -162,6 +162,32 @@ describe.skipIf(!SOURCE_MODE)("kit/KitSettingsFamilies.vue (source mode)", () =>
   const drawerButton = (label) =>
     [...drawerEl().closest(".tr-form-drawer__form").querySelectorAll(".tr-form-drawer__footer button")].find((el) => el.textContent.trim() === label);
 
+  it("does not apply a cancelled draft when an unknown save settles later", async () => {
+    await mountReference();
+    await choose("unknown");
+    await family("knowledge").get('[data-testid="family-edit"]').trigger("click");
+    await type(family("knowledge").get("#knowledge-inline-name"), "Cancelled draft");
+    await family("knowledge").get('[data-testid="family-save"]').trigger("click");
+    await settle(500);
+    expect(family("knowledge").get('[data-testid="family-unknown"]').exists()).toBe(true);
+    await family("knowledge").get('[data-testid="family-cancel"]').trigger("click");
+    await settle(1400);
+    expect(wrapper.get('[data-testid="families-status"]').text()).toContain("Сохранений: 0");
+    expect(family("knowledge").text()).not.toContain("Cancelled draft");
+  });
+
+  it("does not apply a drawer-cancelled draft when an unknown save settles later", async () => {
+    await mountReference();
+    await choose("unknown");
+    await openKnowledgeDrawer();
+    drawerButton("Сохранить").click();
+    await settle(500);
+    drawerButton("Отмена")?.click();
+    await settle(1400);
+    expect(wrapper.get('[data-testid="families-status"]').text()).toContain("Сохранений: 0");
+    expect(family("knowledge").text()).not.toContain("Drawer draft");
+  });
+
   it("saves from the drawer once and closes it", async () => {
     await mountReference();
     await openKnowledgeDrawer();
