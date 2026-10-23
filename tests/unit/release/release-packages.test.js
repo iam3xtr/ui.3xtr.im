@@ -57,6 +57,27 @@ if (args[0] === "view") {
         process.exit(1);
     }
     console.log(JSON.stringify(version));
+} else if (args[0] === "install" && args.includes("--package-lock-only")) {
+    // Emulate npm's peer resolution for the kit root only: the pinned
+    // @iam3xtr/vue must peer-accept the pinned @iam3xtr/ui (caret, node-semver).
+    const manifest = JSON.parse(readFileSync("package.json", "utf8"));
+    if (manifest.name === "kit") {
+        const uiPin = manifest.dependencies["@iam3xtr/ui"];
+        const vuePin = manifest.dependencies["@iam3xtr/vue"];
+        const vueManifest = JSON.parse(readFileSync("packages/vue/package.json", "utf8"));
+        // Only a pin of the older, already published Vue is emulated: its
+        // peer range is fixed at ^0.1.4. A pin of the freshly released Vue
+        // peers the UI it was released against, which always resolves here.
+        if (vuePin !== vueManifest.version) {
+            const parse = (v) => v.split("-")[0].split(".").map(Number);
+            const [ua, ub, uc] = parse(uiPin);
+            const ok = !uiPin.includes("-") && ua === 0 && ub === 1 && uc >= 4;
+            if (!ok) {
+                console.error("npm error code ERESOLVE: @iam3xtr/vue@" + vuePin + " peer @iam3xtr/ui@^0.1.4 conflicts with " + uiPin);
+                process.exit(1);
+            }
+        }
+    }
 } else if (args[0] === "version") {
     const manifest = JSON.parse(readFileSync("package.json", "utf8"));
     manifest.version = args[1];
@@ -431,8 +452,9 @@ describe.skipIf(!hasPowerShell)("release-packages.ps1 independent Vue/UI selecti
                 MOCK_GH_FAIL_WATCH: "iam3xtr/vue",
             });
             expect(failed.status).not.toBe(0);
-            // Only the verified UI package is pinned.
-            expect(rootPins()).toMatchObject({ "@iam3xtr/ui": "0.1.7", "@iam3xtr/vue": "0.1.4" });
+            // The kit manifest stays untouched until Vue publishes.
+            expect(rootPins()).toMatchObject({ "@iam3xtr/ui": "0.1.4", "@iam3xtr/vue": "0.1.4" });
+            expect(git(fx.root, "status", "--porcelain", "--", "package.json", "package-lock.json")).toBe("");
             const uiAfter = snapshot(fx.ui);
             const vueAfter = snapshot(fx.vue);
 
@@ -443,6 +465,33 @@ describe.skipIf(!hasPowerShell)("release-packages.ps1 independent Vue/UI selecti
             expect(snapshot(fx.vue)).toEqual(vueAfter);
             expect(resumed.commands).not.toContain("npm version");
             expect(rootPins()).toMatchObject({ "@iam3xtr/ui": "0.1.7", "@iam3xtr/vue": "0.1.5" });
+        });
+
+        it.each([
+            ["a major bump", ["-Bump", "major"], "1.0.0"],
+            ["a prerelease", ["-Alpha"], "0.1.7-alpha"],
+        ])("pins UI and Vue together for %s outside the pinned Vue peer range", (_label, flags, uiVersion) => {
+            const result = runScript(fx, ["-Package", "all", ...flags, "-Execute"], { MOCK_UI_PUBLISHED: uiVersion });
+
+            expect(result.output).not.toContain("ERESOLVE");
+            expect(result.status).toBe(0);
+            expect(rootPins()["@iam3xtr/ui"]).toBe(uiVersion);
+            expect(rootPins()["@iam3xtr/vue"]).toBe(readVue(fx).version);
+        });
+
+        it("keeps the kit recoverable when Vue fails for a major UI bump and resume reaches Vue", () => {
+            const failed = runScript(fx, ["-Package", "all", "-Bump", "major", "-Execute"], {
+                MOCK_UI_PUBLISHED: "1.0.0",
+                MOCK_GH_FAIL_WATCH: "iam3xtr/vue",
+            });
+            expect(failed.status).not.toBe(0);
+            expect(git(fx.root, "status", "--porcelain", "--", "package.json", "package-lock.json")).toBe("");
+
+            const resumed = runScript(fx, ["-Package", "all", "-Resume", "-Execute"], { MOCK_UI_PUBLISHED: "1.0.0" });
+
+            expect(resumed.output).not.toContain("ERESOLVE");
+            expect(resumed.status).toBe(0);
+            expect(rootPins()).toMatchObject({ "@iam3xtr/ui": "1.0.0", "@iam3xtr/vue": "1.0.0" });
         });
 
         it("starts the missing Vue release when resuming after the UI workflow failed", () => {

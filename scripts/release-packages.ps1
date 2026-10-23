@@ -24,7 +24,9 @@
 # was never started is begun after the already published UI.
 #
 # The script never rolls back an already published UI package. If Vue fails
-# after UI has published, it stops with the UI version intact.
+# after UI has published, it stops with the UI version intact and leaves the
+# kit's package.json and package-lock.json untouched; the exact UI and Vue pins
+# are updated together once Vue has published (also on -Resume).
 
 [CmdletBinding()]
 param(
@@ -773,10 +775,13 @@ try {
         }
         Write-Host "Planned release: @iam3xtr/ui@$nextUiVersion, then @iam3xtr/vue@$nextVueVersion."
         Release-Ui -Version $nextUiVersion
-        if ($Execute) { Sync-UiKitDependencies -UiVersion $nextUiVersion }
+        # No UI-only sync here: the pinned published Vue peers an older UI, so
+        # pinning the new UI alone would fail npm's peer resolution after UI
+        # is already published. One combined sync follows the Vue release; if
+        # Vue fails, the kit manifest stays untouched and -Resume completes it.
         Release-Vue -Version $nextVueVersion -SelectedUiVersion $nextUiVersion -RaiseFloor -ContinueRelease:$continueVueRelease
         if ($Execute) {
-            Sync-UiKitDependencies -VueVersion $nextVueVersion
+            Sync-UiKitDependencies -UiVersion $nextUiVersion -VueVersion $nextVueVersion
             Write-Host "Published @iam3xtr/ui@$nextUiVersion and @iam3xtr/vue@$nextVueVersion. Run the documented exact-version registry gate before declaring them recommended for consumers."
         }
     }
