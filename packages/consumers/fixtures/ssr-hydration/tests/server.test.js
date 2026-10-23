@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 import { createSSRApp } from "vue";
 import { renderToString } from "@vue/server-renderer";
-import { ModelSelect } from "@iam3xtr/vue";
+import { FilterSelect, ModelSelect } from "@iam3xtr/vue";
 import { App } from "../app.mjs";
 
 describe("ssr-hydration fixture: server half", () => {
@@ -26,6 +26,7 @@ describe("ssr-hydration fixture: server half", () => {
     // component export, not an entry that only loads in a browser.
     expect(typeof window).toBe("undefined");
     expect(ModelSelect).toBeTruthy();
+    expect(FilterSelect).toBeTruthy();
     expect(typeof ModelSelect.setup === "function" || typeof ModelSelect.render === "function").toBe(true);
   });
 });

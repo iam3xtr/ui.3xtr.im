@@ -389,3 +389,38 @@ placeholder. Полная цепочка slot → реестр потребит�
 Document overflow по умолчанию `auto`: короткая страница не требует scrollbar, длинная доступна для прокрутки. Overlay lock действует через Buefy/Bulma `is-clipped`/`is-noscroll`; тема не координирует lifecycles нескольких overlays. Sidebar scrollbar gutter сохраняется.
 
 До удаления consumer compat правил подтвердите покрытие установленной новой registry-версией. `tr-table--stack` уже входит в тему; growing composer следует заменить публичным MessageComposer, который управляет высотой сам. `has-border-danger-light` имеет публичный путь через `tr-destructive-zone`. Product-specific provider/Knowledge toolbar/menu selectors, secret toggle и max-w-sm не стали shared contract автоматически; marker `--tr-compat-contract` не является визуальным покрытием. Их решение остаётся у потребителя.
+
+
+### FilterSelect (implemented in sources, unpublished)
+
+`@iam3xtr/vue` экспортирует `FilterSelect` из core; plugin регистрирует
+`tr-filter-select`. Общие `.tr-filter-select*` styles принадлежат `@iam3xtr/ui`.
+Сейчас реализован выбор без поиска; search/custom entry остаются следующей
+задачей. Компонент не получает данные через API и не меняет scalar-контракты
+`model_id`/`provider` у потребителей.
+
+`options`: `{ value: string, label: string, disabled?: boolean }[]`; value должен
+быть непустой строкой, label — непустой подписью. Неподходящие options игнорируются,
+для повторяющегося value используется первая запись. `v-model` в single mode —
+`string | null`, reset даёт `null`; с `multiple` — `string[]`, reset даёт `[]`.
+Порядок multi selection сохраняется, дубликаты выводятся один раз; новый value
+добавляется в конец, снятие убирает все его вхождения. Пакет не меняет исходные
+arrays/options и не выбирает первую запись при открытии или замене каталога.
+Отсутствующие в каталоге selected IDs сохраняются; single trigger показывает ID,
+multi trigger — локализованное количество, tooltip перечисляет selected labels/IDs.
+
+Consumer передаёт `ariaLabel`, `placeholder`, `resetLabel`, `selectedCountLabel`
+с `{count}` для multi, `emptyLabel` для пустого каталога и `loadingLabel` при
+загрузке. Missing copy вызывает development diagnostic, без языкового fallback.
+`disabled`/`loading` блокируют открытие и commits; изменение этих flags закрывает
+меню без изменения selection. Single pick/reset закрывают меню и возвращают focus;
+multi pick оставляет меню открытым. Arrows/Home/End двигают focus без выбора,
+Enter/Space выбирают, Escape закрывает без передачи keyup enclosing host.
+
+Buefy владеет dropdown/mobile presentation и Tab trap; общий `useDropdownOverlay`
+применяет placement policy и opt-in `viewportBounds`. В bounded режиме non-mobile
+inline меню закрепляется с viewport coordinates в прежнем DOM, portal остаётся
+portal; координаты/размеры ограничиваются viewport, styles/listeners очищаются при
+закрытии и unmount. Для остальных callers `viewportBounds` по умолчанию false.
+Новые export/styles требуют публикации обоих пакетов и Stage 4 acceptance;
+текущие exact pins демо не меняются. Browser verification пока не выполнена.

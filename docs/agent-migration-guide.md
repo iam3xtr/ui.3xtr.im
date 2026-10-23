@@ -138,3 +138,8 @@ Native режим по умолчанию сохраняет один HTML form 
 Document overflow по умолчанию `auto`: короткая страница не требует scrollbar, длинная доступна для прокрутки. Overlay lock действует через Buefy/Bulma `is-clipped`/`is-noscroll`; тема не координирует lifecycles нескольких overlays. Sidebar scrollbar gutter сохраняется.
 
 До удаления consumer compat правил подтвердите покрытие установленной новой registry-версией. `tr-table--stack` уже входит в тему; growing composer следует заменить публичным MessageComposer, который управляет высотой сам. `has-border-danger-light` имеет публичный путь через `tr-destructive-zone`. Product-specific provider/Knowledge toolbar/menu selectors, secret toggle и max-w-sm не стали shared contract автоматически; marker `--tr-compat-contract` не является визуальным покрытием. Их решение остаётся у потребителя.
+
+После публикации FilterSelect используйте public core export и styles из
+совместимой опубликованной версии UI. Контракт single/multi, copy и keyboard
+описан в [design-system](design-system.md#filterselect-implemented-in-sources-unpublished).
+Не заменяйте scalar model_id/provider на arrays без отдельного API-согласования.
