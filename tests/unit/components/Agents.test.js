@@ -165,42 +165,108 @@ describe("Agents.vue — demo-состояния (Task A7.3)", () => {
 // (Активен, единственный канал ch-104 ещё не подключён) — см. fixtures в
 // `src/stores/agents.js`/`src/stores/channels.js`.
 describe("Agents.vue — S2 presentation-статус карточки (Task A9.6)", () => {
+  const findCard = (wrapper, text) => wrapper.findAll(".tr-entity-card").find((c) => c.text().includes(text));
+
   it("активный агент с рабочим и сбойным каналом остаётся «Активен» и показывает отдельное предупреждение", async () => {
     const { wrapper } = await mountAgents();
 
-    const card = wrapper.findAll(".tr-entity-card").find((c) => c.text().includes("Консультант"));
-    expect(card.find(".tag").text()).toBe("Активен");
+    const card = findCard(wrapper, "Консультант");
+    expect(card.find(".control-label").text()).toContain("Активен");
     expect(card.text()).toContain("WhatsApp — резервный канал");
   });
 
   it("активный агент без единого рабочего канала показывает «Не отвечает: ошибка подключения», не тихий «Активен»", async () => {
     const { wrapper } = await mountAgents();
 
-    const card = wrapper.findAll(".tr-entity-card")
-      .find((c) => c.text().includes("Служба поддержки корпоративных клиентов"));
-    expect(card.find(".tag").text()).toBe("Не отвечает: ошибка подключения");
+    const card = findCard(wrapper, "Служба поддержки корпоративных клиентов");
+    expect(card.find(".control-label").text()).toContain("Не отвечает: ошибка подключения");
   });
 
-  it("длинный статус карточки — текстовый .tr-status-tag без иконок, иконка карточки сохранена", async () => {
+  it("заголовок карточки — иконка слева и переключатель справа, без статус-тега", async () => {
     const { wrapper } = await mountAgents();
 
-    const card = wrapper.findAll(".tr-entity-card")
-      .find((c) => c.text().includes("Служба поддержки корпоративных клиентов"));
-    const tag = card.find(".tr-entity-card__header .tag");
+    const card = findCard(wrapper, "Служба поддержки корпоративных клиентов");
+    const header = card.find(".tr-entity-card__header");
 
-    // The full status remains available when the pill is visually ellipsized.
-    expect(tag.classes()).toContain("tr-status-tag");
-    expect(tag.text()).toBe("Не отвечает: ошибка подключения");
-    expect(tag.attributes("title")).toBe(tag.text());
-    expect(tag.find(".icon").exists()).toBe(false);
-    expect(card.find(".tr-entity-card__header .tr-entity-card__icon .icon").exists()).toBe(true);
+    expect(header.find(".tr-entity-card__icon .icon").exists()).toBe(true);
+    expect(header.find("input[type=checkbox]").exists()).toBe(true);
+    expect(header.find(".tag").exists()).toBe(false);
+    expect(header.find(".tr-entity-card__lifecycle").attributes("title"))
+      .toBe("Не отвечает: ошибка подключения");
   });
 
   it("черновик с заполненной инструкцией показывается как «Готов к запуску», не просто «Черновик»", async () => {
     const { wrapper } = await mountAgents();
 
-    const card = wrapper.findAll(".tr-entity-card").find((c) => c.text().includes("Sales Assistant"));
-    expect(card.find(".tag").text()).toBe("Готов к запуску");
+    const card = findCard(wrapper, "Sales Assistant");
+    expect(card.find(".control-label").text()).toContain("Готов к запуску");
+  });
+});
+
+// Task S2-15: карточка — article с отдельной валидной ссылкой; переключатель
+// жизненного цикла не открывает деталь и не вкладывает интерактивную разметку.
+describe("Agents.vue — переключатель жизненного цикла (Task S2-15)", () => {
+  const findCard = (wrapper, text) => wrapper.findAll(".tr-entity-card").find((c) => c.text().includes(text));
+
+  it("карточка агента — article со ссылкой на деталь, без вложенных интерактивных элементов в ссылке", async () => {
+    const { wrapper, router } = await mountAgents();
+
+    const card = findCard(wrapper, "Консультант");
+    expect(card.element.tagName).toBe("ARTICLE");
+    expect(wrapper.findAll("button.tr-entity-card").length).toBe(1); // create card only
+
+    const link = card.find("a.tr-entity-card__link");
+    expect(link.attributes("href")).toBe("/agents/1");
+    expect(link.find("button, input, a").exists()).toBe(false);
+
+    await link.trigger("click");
+    await flushPromises();
+    expect(router.currentRoute.value.name).toBe("agent");
+  });
+
+  it("карточка создания не содержит переключателя", async () => {
+    const { wrapper } = await mountAgents();
+
+    expect(wrapper.find(".tr-entity-card--create input[type=checkbox]").exists()).toBe(false);
+  });
+
+  it("клик по переключателю не открывает деталь; включение даёт одно pending-действие", async () => {
+    const { wrapper, router } = await mountAgents();
+    vi.useFakeTimers();
+
+    const card = findCard(wrapper, "Sales Assistant");
+    const input = card.find("input[type=checkbox]");
+    expect(input.element.checked).toBe(false);
+
+    await input.setValue(true);
+    await input.setValue(true);
+    expect(router.currentRoute.value.name).toBe("agents");
+    expect(input.element.checked).toBe(true);
+    expect(input.attributes("disabled")).toBeDefined();
+
+    await vi.advanceTimersByTimeAsync(500);
+    vi.useRealTimers();
+    await flushPromises();
+
+    expect(findCard(wrapper, "Sales Assistant").find(".control-label").text()).toContain("Активен");
+    expect(findCard(wrapper, "Sales Assistant").find("input").element.checked).toBe(true);
+  });
+
+  it("сбой команды сохраняет прежнее состояние и показывает отдельную ошибку с повтором", async () => {
+    const { wrapper } = await mountAgents();
+    vi.useFakeTimers();
+
+    const card = findCard(wrapper, "Support Bot");
+    await card.find("input[type=checkbox]").setValue(true);
+    await vi.advanceTimersByTimeAsync(500);
+    vi.useRealTimers();
+    await flushPromises();
+
+    const after = findCard(wrapper, "Support Bot");
+    expect(after.find("input").element.checked).toBe(false);
+    expect(after.find(".control-label").text()).toContain("Приостановлен");
+    expect(after.find("[role=alert]").text()).toContain("Не удалось изменить статус");
+    expect(after.find("[role=alert] button").exists()).toBe(true);
   });
 });
 

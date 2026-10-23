@@ -59,28 +59,39 @@
 
         <section class="tr-catalog" aria-label="Список агентов">
           <div class="tr-catalog-grid">
-            <button
+            <article
               v-for="agent in displayAgents"
               :key="agent._demoKey ?? agent.id"
-              class="tr-card tr-card--interactive tr-entity-card tr-entity-card--interactive"
-              type="button"
-              @click="openAgent(agent.id)"
+              class="tr-card tr-entity-card"
+              :aria-label="`Агент ${agent.name}`"
             >
-              <span class="tr-entity-card__header">
+              <header class="tr-entity-card__header">
                 <span class="tr-icon-tile tr-icon-tile--plain tr-entity-card__icon">
                   <b-icon icon="robot-outline" size="is-medium" />
                 </span>
-                <b-tag
-                  class="tr-status-tag"
-                  :type="statusProjection(agent).badgeType"
+                <b-switch
+                  :key="switchKey(agent)"
+                  class="tr-entity-card__lifecycle"
+                  :model-value="lifecycle.switchState(agent).checked"
+                  :disabled="lifecycle.switchState(agent).disabled"
+                  :aria-labelledby="switchLabelId(agent)"
+                  :aria-busy="lifecycle.switchState(agent).pending ? 'true' : undefined"
                   :title="statusProjection(agent).badgeLabel"
-                  size="is-small"
+                  @update:model-value="lifecycle.requestToggle(agent, $event)"
                 >
-                  {{ statusProjection(agent).badgeLabel }}
-                </b-tag>
-              </span>
+                  <span class="is-sr-only">{{ agent.name }}: </span>{{ statusProjection(agent).badgeLabel }}
+                </b-switch>
+              </header>
 
-              <strong class="tr-entity-card__title">{{ agent.name }}</strong>
+              <strong class="tr-entity-card__title">
+                <router-link
+                  class="tr-entity-card__link"
+                  :to="{ name: 'agent', params: { id: agent.id } }"
+                  :title="agent.name"
+                >
+                  {{ agent.name }}
+                </router-link>
+              </strong>
               <span class="tr-entity-card__description">
                 {{ agent.description }}
               </span>
@@ -88,7 +99,7 @@
               <!--
                 S2 (Task A9.6, `.plan` "Система статусов"): сбой одного канала
                 не подменяет основной статус — только поясняет его отдельной
-                строкой, не только цветом бейджа.
+                строкой, не только цветом.
               -->
               <span
                 v-if="statusProjection(agent).needsAttention"
@@ -97,11 +108,29 @@
                 {{ statusProjection(agent).attentionMessage }}
               </span>
 
-              <span class="tr-entity-card__footer">
+              <!-- Причина блокировки и ошибка команды — отдельно от состояния канала. -->
+              <span
+                v-if="lifecycle.switchState(agent).reason"
+                class="tr-entity-card__description tr-muted"
+              >
+                {{ lifecycle.switchState(agent).reason }}
+              </span>
+              <span
+                v-if="lifecycle.switchState(agent).error"
+                class="tr-entity-card__description has-text-danger"
+                role="alert"
+              >
+                {{ lifecycle.switchState(agent).error }}
+                <b-button size="is-small" type="is-text" @click="lifecycle.retry(agent)">
+                  Повторить
+                </b-button>
+              </span>
+
+              <footer class="tr-entity-card__footer">
                 <span>{{ agentModelLabel(agent) }}</span>
                 <span>Обновлён {{ agent.updated }}</span>
-              </span>
-            </button>
+              </footer>
+            </article>
 
             <p
               v-if="filteredAgents.length === 0 && hasActiveAgentFilters"
@@ -146,6 +175,7 @@ import { storeToRefs } from "pinia";
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
+import { useAgentLifecycleSwitch } from "../composables/useAgentLifecycleSwitch";
 import { useSimulatedLoading } from "../composables/useSimulatedLoading";
 import { AGENT_STATUSES, getAgentModelId, getAgentStatusProjection, useAgentsStore } from "../stores/agents";
 import { useChannelsStore } from "../stores/channels";
@@ -171,6 +201,16 @@ const workspaceStore = useWorkspaceStore();
 const { activeWorkspaceId, activeWorkspaceTariff } = storeToRefs(workspaceStore);
 const route = useRoute();
 const router = useRouter();
+
+const lifecycle = useAgentLifecycleSwitch({ workspaceId: activeWorkspaceId });
+
+function switchLabelId(agent) {
+  return `agent-lifecycle-${agent._demoKey ?? agent.id}`;
+}
+
+function switchKey(agent) {
+  return `${switchLabelId(agent)}-${lifecycle.switchState(agent).syncKey}`;
+}
 
 const loading = computed(() => isLoading.value || demoStore.isLoading);
 
@@ -298,13 +338,6 @@ const displayAgents = computed(() => {
 
   return list;
 });
-
-/**
- * @param {number} id
- */
-function openAgent(id) {
-  router.push({ name: "agent", params: { id } });
-}
 
 // Единственная точка входа в создание агента (Stage A9, Task A9.2): все
 // триггеры каталога ведут в общий route-driven мастер вместо отдельной

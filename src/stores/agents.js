@@ -53,6 +53,9 @@ import { getChannelsNeedingAttention, hasWorkingChannel } from "./channels.js";
  *   `byok_model` (выбор одного сбрасывает другой — см. публичный `ModelSelect`). В
  *   кабинете пока не сохраняется — блокировано Issue api.3xtr.im#112; в ките
  *   реализовано полностью как спецификация контракта. Не подменяет `model`.
+ * @property {"failure" | "stale" | undefined} [lifecycleFixture] Demo-only
+ *   deterministic outcome of the next lifecycle switch command (see
+ *   `composables/useAgentLifecycleSwitch.js`); not a backend field.
  * @property {number | null} knowledgeCollectionId Durable-ссылка на личную
  *   коллекцию знаний агента (`src/stores/knowledge.js`), Task A10.3.
  *   Заводится либо мастером (`stores/wizard.js`'s `finalizeAgentFields`
@@ -172,6 +175,7 @@ const initialAgentsByWorkspace = {
       temperature: 0.2,
       instructions: "Используй базу знаний и запрашивай детали ошибки.",
       messages: [],
+      lifecycleFixture: "failure",
       ...DEFAULT_BYOK_STATE,
       ...DEFAULT_KNOWLEDGE_STATE,
     },
@@ -188,6 +192,7 @@ const initialAgentsByWorkspace = {
       temperature: 0.3,
       instructions: "Запрашивай номер договора и SLA перед эскалацией.",
       messages: [],
+      lifecycleFixture: "stale",
       ...DEFAULT_BYOK_STATE,
       ...DEFAULT_KNOWLEDGE_STATE,
     },
