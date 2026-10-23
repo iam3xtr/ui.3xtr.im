@@ -32,6 +32,7 @@ files or styles from this repository.
 
 ## Stack
 
+* Node 24 LTS (latest security patch; minimum 24.15.0) and npm 11 for development/build/test/pack; enforced by root and package `devEngines`, separate from library runtime requirements
 * Vue 3
 * Pinia
 * Vue Router
@@ -223,11 +224,14 @@ Without explicit execution, release commands perform a dry run.
 Supported release modes include patch/minor/major bumps, prerelease variants, and
 releasing the version already present in manifests.
 
-`release:all` releases UI before Vue because `@iam3xtr/vue` depends on an exact
-`@iam3xtr/ui` version.
+`release:all` computes independent package targets and releases UI before Vue.
+`release:vue -UiVersion <version>` selects an already published UI inside its caret
+peer interval; the default is the UI checkout version. The peer minimum stays unchanged
+unless `-RaisePeerFloor` is explicitly passed to Vue or coordinated release for a proven
+new UI contract. Both targets and the peer decision are printed in dry run.
 
-The Vue release must not proceed until the required exact UI version is available in
-the package registry.
+The Vue release must not proceed until the selected exact UI version is available in
+the package registry and its immutable tag/manifest provenance is verified.
 
 A successful release updates the root exact package pins and lockfile in the current
 UI Kit checkout; released package commits update its submodule gitlinks. The release

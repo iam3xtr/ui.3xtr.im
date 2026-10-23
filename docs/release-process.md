@@ -9,48 +9,61 @@
 
 Оба пакета — публичные npm-пакеты в GitHub Packages (`npm.pkg.github.com`),
 подключённые в этом репозитории как pinned Git submodules `packages/ui` и
-`packages/vue` (см. корневой [`CLAUDE.md`](../CLAUDE.md), «Downstream sync»).
+`packages/vue` (см. [`REPO.md`](../REPO.md)).
 Сам UI Kit публикацией не занимается — он только их первый потребитель.
 
 ## Версии и порядок публикации
 
-Для согласованного выпуска из корня UI Kit используйте `release:all`:
+У каждого пакета собственные версия, immutable tag и changelog. Номера UI и
+Vue не обязаны совпадать. `package.version`, UI peer interval Vue,
+`.ui-compat-ref` и проверенная consumer-комбинация — разные значения.
+
+Для разработки/build/test/pack нужны Node 24 LTS (последний security patch,
+минимум 24.15.0) и npm 11. Эта политика закреплена в `devEngines` корня и
+пакетов; library runtime minimum отдельно не повышается до Node 24.
 
 ```powershell
-# Проверить планируемую версию без изменений.
+# Read-only preview; обе target-версии и peer decision.
 npm run release:all
 
-# Создать commits/tags, дождаться UI release и выпустить Vue.
+# Независимый совместимый UI patch, Vue остаётся прежним.
+npm run release:ui -- -Execute
+
+# Vue использует уже опубликованный UI; версия — пример, не рекомендация.
+npm run release:vue -- -UiVersion 0.1.6
+npm run release:vue -- -UiVersion 0.1.6 -Execute
+
+# Coordinated release: каждый target вычисляется из своего manifest.
 npm run release:all -- -Execute
 
-# Выпустить текущую версию из package.json без её изменения.
+# Новый обязательный UI-контракт: только после compatibility review.
+npm run release:all -- -Bump minor -RaisePeerFloor
+npm run release:all -- -Bump minor -RaisePeerFloor -Execute
+
+# Текущие manifest-версии без bump.
 npm run release:all -- -ReleaseCurrent -Execute
 
-# Выпустить текущую стабильную версию как prerelease: 0.1.1 → 0.1.1-alpha.
-npm run release:all -- -ReleaseCurrent -Alpha -Execute
-
-# Выпустить следующий patch prerelease: 0.1.1 → 0.1.2-alpha.
-npm run release:all -- -Alpha -Execute
-
-# Выпустить beta от текущей стабильной версии: 0.1.1 → 0.1.1-beta.
-npm run release:all -- -ReleaseCurrent -Beta -Execute
-
-# Выпустить следующий patch beta: 0.1.1 → 0.1.2-beta.
-npm run release:all -- -Beta -Execute
+# Prerelease может потребовать явного нового peer floor после review.
+npm run release:all -- -Alpha -RaisePeerFloor
 ```
 
-Для отдельного UI-релиза используйте `npm run release:ui -- -Execute`.
-Для отдельного Vue-релиза — `npm run release:vue -- -Execute`: до создания
-Vue-тега команда делает точный запрос
-`npm view @iam3xtr/ui@<version> --registry https://npm.pkg.github.com`.
-Если эта версия UI ещё не опубликована, недоступна текущим credentials или
-registry вернул другой номер, Vue-релиз прекращается без изменений.
-Например, после успешной ручной публикации `@iam3xtr/ui@0.1.1-alpha`
-завершите ранее остановившуюся пару так:
+`-UiVersion` применим только к Vue; без него выбирается версия из UI
+checkout. Она должна быть опубликована и попадать в caret peer interval
+Vue. Скрипт проверяет registry version и immutable UI tag/manifest, затем
+записывает SHA этого тега в `.ui-compat-ref`. Произвольный checkout HEAD
+не используется как provenance.
 
-```powershell
-npm run release:vue -- -ReleaseCurrent -Alpha -Execute
-```
+По умолчанию UI peer minimum сохраняется в Vue-only и coordinated release.
+Если новая UI-версия вне диапазона, coordinated release отклоняется до UI
+publication. `-RaisePeerFloor` разрешён для `vue` и `all` только при
+доказанной зависимости от нового CSS/token/export-контракта; он никогда
+не понижает минимум. Prerelease UI не входит в обычный stable caret range.
+
+UI-only не меняет Vue manifest, lockfile, tag, SHA или compatibility ref.
+Vue-only может использовать более старый опубликованный UI внутри peer
+range. Перед выполнением отдельно проверьте, что root UI exact pin
+удовлетворяет peer range нового Vue: Vue-only sync меняет только Vue pin.
+При необходимости сначала выполните проверенный UI rollout.
 
 ### Автоматическое обновление UI Kit после публикации
 
@@ -58,7 +71,7 @@ npm run release:vue -- -ReleaseCurrent -Alpha -Execute
 UI Kit: выставляет опубликованную точную версию соответствующего пакета в
 корневом `package.json` и пересобирает `package-lock.json`. Release-коммиты
 пакетов меняют также локальные gitlink SHA `packages/ui`/`packages/vue`.
-`release:all` обновляет оба exact pin после публикации пары; отдельный
+`release:all` обновляет оба exact pin после успешной публикации обоих пакетов; отдельный
 `release:ui` или `release:vue` обновляет только свой pin.
 
 UI Kit может оставаться на рабочей ветке с прежними опубликованными pins до
@@ -79,9 +92,12 @@ UI Kit сохраняются. Обычный порядок работы:
    зафиксировать pins, lockfile и gitlinks в рабочей ветке UI Kit. Пуш и merge
    UI Kit остаются операторскими действиями.
 
-Если обновление UI Kit после публикации прервалось, опубликованные версии и
-теги не откатываются. Сверьте registry, закончите локальное обновление
-pins/lockfile и создайте отдельный коммит UI Kit; не запускайте новый bump.
+Если UI опубликован, а Vue release упал, coordinated release сохраняет root
+pins без изменений до успешного Vue. После успеха обновляет их вместе,
+чтобы не оставить root со старым Vue и несовместимым новым UI. При
+прерванном sync опубликованные версии и теги не откатываются; используйте
+resume с прежними параметрами. Он разрешает только изменения root pins и
+связанных записей lockfile, а посторонние dependency edits блокирует.
 
 ### Доступ CLI к GitHub Packages
 
@@ -113,7 +129,7 @@ endpoint как способ настройки. GitHub Packages для npm тр
 у выпускаемых submodules, неизменённые root `package.json` и
 `package-lock.json`, GitHub CLI с авторизацией и настроенный environment
 release. `release:all` выпускает UI первым; перед Vue обновляет
-его peer range и закреплённый SHA. После UI publish не выполняется
+его закреплённый UI SHA; peer range меняется только с `-RaisePeerFloor`. После UI publish не выполняется
 автоматический rollback: если Vue release не завершился, UI версия остаётся
 неизменяемым релизом.
 
@@ -122,8 +138,8 @@ Switch -ReleaseCurrent не меняет номер и предназначен 
 превращает текущую стабильную версию в prerelease с суффиксом -alpha.
 
 Switch -Alpha поддерживается только вместе с patch и добавляет к следующей
-patch-версии prerelease suffix -alpha. Для alpha-релиза оба пакета получают
-одинаковую версию и теги вида vX.Y.Z-alpha.
+patch-версии prerelease suffix -alpha. Каждый пакет получает собственную
+версию и тег вида vX.Y.Z-alpha; равенство номеров не требуется.
 
 Switch `-Beta` работает симметрично `-Alpha`: с `-ReleaseCurrent` добавляет
 к текущей стабильной версии суффикс `-beta`, без него — к следующей patch
@@ -159,17 +175,29 @@ npm run release:ui -- -Resume -Execute
 npm run release:vue -- -Resume -Execute
 ```
 
-`-Resume` не вычисляет новую версию и не меняет файлы для уже начатого
-package-релиза. Он требует: clean `main`, локальный annotated tag
+`-Resume` не вычисляет новую версию и не меняет файлы уже начатого
+package-релиза. Нужны clean `main`, локальный annotated tag
 `v<package.json.version>` ровно на `HEAD`, отсутствие новых commits на
-`origin/main` и отсутствие одноимённого remote tag на другом commit. Затем
-он допушивает только недостающий ref и ждёт release workflow. У
-`release:all -Resume -Execute` есть дополнительная логика восстановления:
-если UI уже опубликован, а у Vue ещё нет release-тега той же версии, команда
-начинает недостающий Vue-релиз с этой UI-версией. Поэтому различие текущих
-версий UI и Vue в этом конкретном состоянии допустимо. Для отдельного
-`release:vue` по-прежнему используйте обычный запуск с
-`-ReleaseCurrent -Execute`, если Vue release-транзакция ещё не была начата.
+`origin/main` и отсутствие одноимённого remote tag на другом commit.
+Скрипт допушивает недостающий ref и проверяет workflow. Неизменяемые теги
+не удаляются, не пересоздаются и не force-push'ятся.
+
+Для Vue повторяйте выбранный `-UiVersion`; committed peer range и
+`.ui-compat-ref` должны соответствовать этому UI tag. Для coordinated
+release повторяйте исходные bump/prerelease/`-RaisePeerFloor` flags:
+
+```powershell
+npm run release:all -- -Resume -Execute
+# Для исходного minor release с новым UI-контрактом:
+npm run release:all -- -Bump minor -RaisePeerFloor -Resume -Execute
+```
+
+Если Vue tag на HEAD и compatibility ref относятся к UI этого выпуска,
+resume продолжает именно эту Vue-версию. Если Vue ещё не начинался,
+после UI verification запускается Vue release с собственным target,
+вычисленным по исходным flags. Отсутствие тега при уже созданном локальном
+release-коммите требует ручного восстановления: clean/sync guard остановит
+запуск, не создавая ещё один bump.
 
 Нет атомарной multi-package registry-транзакции — каждый `npm publish`
 независим. Безопасный порядок:
@@ -183,12 +211,11 @@ package-релиза. Он требует: clean `main`, локальный anno
    держит PR `@iam3xtr/vue`, истекли креды в середине релиза): только что
    опубликованная версия `@iam3xtr/ui` не откатывается — это валидный,
    самостоятельный релиз (`@iam3xtr/ui` не зависит от `@iam3xtr/vue`).
-   **Рекомендуемая пара для потребителей** (таблица ниже и любой
-   downstream-пин вроде `ui-kit.lock.json`) **не продвигается**, пока не
-   опубликован соответствующий `@iam3xtr/vue`; потребитель, уже закреплённый
-   на старой паре, продолжает работать без изменений. Не отзывать и не
-   unpublish'ить релиз `@iam3xtr/ui` только из-за того, что пара к нему ещё
-   не вышла.
+   Рекомендация новой комбинации продвигается только после её registry и
+   compatibility gate. Для совместимого style-only UI patch этот gate
+   проверяет новый UI с прежним Vue: новая публикация Vue не нужна.
+   Для coordinated release не объявляйте непроверенный частичный результат
+   готовой комбинацией. Старые exact pins потребителей остаются прежними.
 4. **Если `@iam3xtr/vue` опубликован, но позже оказался несовместим** с той
    версией `@iam3xtr/ui`, для которой он выпущен: публикуется новая
    patch/minor версия `@iam3xtr/vue` с исправлением — никогда не
@@ -205,41 +232,34 @@ package-релиза. Он требует: clean `main`, локальный anno
    другую точную версию — никогда не удалять версию из-под того, кто её уже
    зарезолвил.
 
-## Совместимость и рекомендуемая пара
+## Совместимость и проверенные комбинации
 
-Текущая опубликованная пара — `@iam3xtr/ui@0.1.4` и
-`@iam3xtr/vue@0.1.4`. UI Kit закрепляет именно эти exact версии в
-`package.json` и lockfile. Registry-установка, unit tests, production/Pages
-builds и packed consumer matrix подтверждены; ручной post-release browser
-smoke остаётся отдельным gate перед рекомендацией внешним потребителям.
-Потребители используют точные версии без диапазонов или `latest`.
+Текущие опубликованные exact pins UI Kit: `@iam3xtr/ui@0.1.4` и
+`@iam3xtr/vue@0.1.4`. Обновлённые source peers/toolchain не означают новый
+registry-релиз или рекомендацию новых consumer pins.
 
-Таблица ниже описывает *полосы совместимости*, а не пин: она отвечает на
-вопрос «допустим ли этот диапазон версий `@iam3xtr/ui` для этого диапазона
-версий `@iam3xtr/vue`» — тот же вопрос, на который для npm отвечает
-`@iam3xtr/vue`'s `peerDependencies["@iam3xtr/ui"]`. В `package.json`
-  потребителя эти диапазоны не должны попадать никогда — только точный
-  pin, объявленный после успешной registry-проверки.
-
-| Диапазон `@iam3xtr/ui` | Диапазон `@iam3xtr/vue` | Статус |
+| UI | Vue | Контракт |
 | --- | --- | --- |
-| `0.1.4` | `0.1.4` | Опубликованная exact-пара; UI Kit устанавливает её из registry. |
-| `^0.1.4` | `^0.1.4` | Допустимый peer-диапазон Vue, но не спецификация consumer-зависимости. |
-| `<0.1.4` | `^0.1.4` | Несовместимо: peerDependencies Vue требуют UI из текущей полосы. |
+| `0.1.4` | `0.1.4` | Текущие опубликованные pins демо. |
+| `>=0.1.4 <0.2.0` | конкретный Vue с UI peer `^0.1.4` | Допустимый UI peer interval; каждую рекомендуемую exact комбинацию проверяют отдельно. |
+| `<0.1.4` или `>=0.2.0` | Vue с UI peer `^0.1.4` | Вне peer interval; не устанавливать с force/overrides. |
 
-В любой момент действует ровно одна поддерживаемая полоса: диапазон
-`@iam3xtr/vue`'s `peerDependencies["@iam3xtr/ui"]` *и есть* эта матрица
-совместимости — таблица нужна, чтобы потребитель мог прочитать допустимый
-диапазон, не резолвя peer-диапазоны вручную. При следующем выпуске обновляйте
-exact pin, таблицу и диапазон peerDependency в `packages/vue/package.json`
-одним изменением.
+Peer interval берётся из конкретной версии Vue; он не выводится из номера
+Vue и не является consumer dependency spec. Совместимый UI patch не требует
+поднять Vue minimum. Несовместимое изменение CSS/DOM/tokens/assets или
+смена UI minor line на `0.x` требует отдельного semver/compatibility review.
+
+Source Vue navigation допускает Router `^4.6.0 || ^5.0.0`; опубликованный
+Vue `0.1.4` допускает только Router 4. Поэтому root пока использует Router 4,
+а Router 5 проверяется через candidate tarballs. После публикации обновлённого
+Vue нужен отдельный exact-pin rollout; Get/Chat меняются в своих репозиториях.
 
 ## Перед продвижением «Рекомендуемого пина»: проверка на реальном registry (вручную)
 
 Всё, что доказывает `packages/consumers/scripts/run-matrix.mjs` (см.
-[`packages/consumers/README.md`](../packages/consumers/README.md#fixtures--сценарии)),
-проверяется против локально собранных `npm pack`-тарболов, а не против
-реальной опубликованной registry-пары — это осознанное ограничение: в
+[`packages/consumers/README.md`](../packages/consumers/README.md#фикстуры--сценарии)),
+проверяется против локально собранных или явно переданных `npm pack`-тарболов, а не
+против реальной опубликованной registry-комбинации — это осознанное ограничение: в
 окружении, где выполняется эта матрица, нет write-кредов, поэтому и
 реальной публикации нет. Поведение тарбола и поведение registry-инсталляции
 могут различаться так, как проверка только тарбола не поймает
@@ -274,11 +294,14 @@ exact pin, таблицу и диапазон peerDependency в `packages/vue/pa
    же тривиального приложения через `@vue/server-renderer` (без обращения к
    `window`/`document`), затем гидратировать полученную разметку в `jsdom` и
    убедиться, что предупреждение о hydration mismatch не появляется.
-4. Только после того как обе проверки прошли против реальной
-   registry-установки — обновить строку «Рекомендуемый пин» выше, первую
-   строку таблицы совместимости и диапазон
-   `packages/vue/package.json`'s `peerDependencies["@iam3xtr/ui"]` в одном и
-   том же PR.
+4. Повторить Chat SPA/iframe browser smoke: initial/light/dark/auto themes,
+   смена системной темы, независимая тема host, 320/360 и desktop/tablet,
+   длинная история с видимым composer, Tab/Enter и assets. Generic SSR
+   остаётся отдельным library gate, не проверкой Nuxt Chat.
+5. После успешных проверок зафиксировать проверенную exact комбинацию и
+   обновить только необходимые consumer pins вместе с lockfile. Peer minimum
+   Vue не менять ради рекомендации: он меняется в release только при новом
+   обязательном UI-контракте. Style-only rollout может оставить Vue pin прежним.
 
 Этот шаг сейчас ручной и не выполняется в CI. Если/когда это станет
 повторяемым, автоматизируемым шагом (появятся реальные релизы и
@@ -305,8 +328,8 @@ GitHub Actions workflow, а собственный `deploy-pages.yml` UI Kit'а 
   `packages/vue/.ui-compat-ref` (однострочный закоммиченный файл), а не на
   движущейся default-ветке `iam3xtr/ui`. Благодаря этому повторный прогон
   проверок того же коммита `vue` всегда тестирует ровно ту пару, против
-  которой он был верифицирован. `.ui-compat-ref` обновляется в том же PR,
-  что и `peerDependencies["@iam3xtr/ui"]`. Когда появятся реальные
+  которой он был верифицирован. `.ui-compat-ref` записывает проверенный immutable UI commit
+  независимо от peer minimum; обновление ref не требует повышения minimum. Когда появятся реальные
   registry-релизы, предпочтительно указывать эту devDependency на
   опубликованную версию вместо sibling-checkout вовсе — это отслеживается
   как follow-up, не требуется для текущего контракта.
@@ -385,7 +408,9 @@ required reviewers у окружения `release` и потребительск
 
 Потребители закрепляют **точные версии** обоих пакетов (сейчас
 `"@iam3xtr/ui": "0.1.4"`, не `"^0.1.4"` и не `"latest"`) и коммитят
-получившийся lockfile одним PR, который обновляет обе зависимости вместе.
+получившийся lockfile вместе с изменёнными pins. Совместимый style-only
+patch меняет только UI pin; Vue upgrade меняет Vue pin и лишь необходимые
+совместимые peers. Оба pins остаются exact, их номера могут различаться.
 `latest`, ссылка на ветку или submodule-checkout — не валидные спецификации
 зависимости для потребителя. Сабмодули `packages/*` служат разработке
 библиотек и release-скриптам, но не устанавливаются как runtime-зависимости.

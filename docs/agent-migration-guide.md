@@ -6,7 +6,7 @@ fixtures, demo actions и локальная бизнес-логика UI Kit н
 
 ## Подготовка
 
-1. После публикации проверенной пары установите exact версии @iam3xtr/ui и
+1. После публикации проверенной комбинации установите exact версии @iam3xtr/ui и
    @iam3xtr/vue из GitHub Packages согласно
    [release process](release-process.md).
 2. Подключите только @iam3xtr/ui/styles/theme.scss или theme.css; не
@@ -89,8 +89,13 @@ API. Внедрение в `get.3xtr.im` — отдельная задача con
 установлены одной согласованной версией, route/keyboard/state/mobile поведение
 совпадает с эталоном, а production код не получил fixtures или demo actions.
 
-При изменении потребляемого пакета обновляйте обе exact зависимости и lockfile
-одним PR. Полная процедура выпуска и registry validation — в
+Пакеты имеют независимые версии. При совместимом style-only patch обновляйте
+только UI exact pin и lockfile; Vue pin сохраняйте. При обновлении Vue
+проверяйте выбранный UI по его peer range и registry gate. Номера пакетов
+не обязаны совпадать. В исходниках Vue navigation поддерживает Router
+`^4.6.0 || ^5.0.0`; опубликованный `@iam3xtr/vue@0.1.4` требует Router 4.
+Для Router 5 сначала нужен выпуск обновлённого Vue-пакета; overrides не
+доказывают совместимость и не заменяют этот выпуск. Полная процедура выпуска и registry validation — в
 [release process](release-process.md).
 
 ### FormDrawer: guard, фокус и внешняя форма

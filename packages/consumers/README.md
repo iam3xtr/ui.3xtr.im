@@ -1,100 +1,96 @@
-# Проверка поставки пары пакетов
+# Проверка поставки пакетов
 
-Изолированные consumer-фикстуры и скрипт-матрица, доказывающие, что
-`@iam3xtr/ui` + `@iam3xtr/vue` работают для внешнего проекта, который видит
-только `npm pack`-тарбол или точную registry-версию — никогда не git clone,
-не workspace-symlink и не неопубликованный source-путь. Эта директория —
-инфраструктура интеграционных тестов самого UI Kit; она не публикуется и не
-входит в число двух файлов, которые синхронизирует `get.3xtr.im` (см.
-корневой [`CLAUDE.md`](../../CLAUDE.md), «Downstream sync»).
-
-Порядок публикации, рекомендуемая пара версий, CI/release workflow,
-разграничение кредов и ручная проверка на реальном registry
-задокументированы отдельно, одним нормативным текстом, в
-[`docs/release-process.md`](../../docs/release-process.md) — здесь эти темы
-не дублируются.
+Изолированные consumer fixtures проверяют публичные npm-shaped артефакты
+`@iam3xtr/ui` и `@iam3xtr/vue`. Независимые номера версий допустимы, если
+UI удовлетворяет peer interval выбранного Vue. Нормативные правила
+публикации, exact pins, immutable tags и registry gate находятся в
+[release process](../../docs/release-process.md).
 
 ## Запуск матрицы
 
-```bash
-cd packages/ui && npm ci && cd ../vue && npm ci   # один раз, devDependencies сабмодулей
+Нужны Node 24 LTS (последний security patch, минимум 24.15.0), npm 11 и
+инициализированные submodules. Команды выполняются из корня UI Kit:
+
+```powershell
+npm --prefix packages/ui ci
+npm --prefix packages/vue ci
 node packages/consumers/scripts/run-matrix.mjs
-rm -rf packages/ui/node_modules packages/vue/node_modules   # см. предупреждение ниже
 ```
 
-**Не оставляйте `packages/ui/node_modules`/`packages/vue/node_modules`
-установленными после прогона.** UI Kit потребляет оба пакета через `file:`
--зависимости (директория-symlink, не тарбол) — именно ради локальной
-разработки, см. корневой `CLAUDE.md`. Резолв
-модулей Node идёт вверх от *реальной* (через symlink) директории сабмодуля,
-поэтому как только у сабмодуля появляется собственный
-`node_modules/vue-router`, `npm run test:unit` самого kit'а незаметно
-резолвит второй экземпляр `vue-router` оттуда вместо корневого — ровно тот
-же сбой дублирующегося рантайма, который для packed-установки проверяет
-фикстура `spa`, только воспроизведённый вложенным
-`node_modules` внутри `file:`-связанной директории. Сборка/тестирование
-каждого пакета отдельно (как это делают эта матрица и `npm test` каждого
-пакета) требует этого `node_modules` временно; удаляйте его перед
-возвращением к разработке kit'а.
+После проверки удалите только созданные временно
+`packages/ui/node_modules` и `packages/vue/node_modules`: dev/source aliases
+обращаются к этим checkout, поэтому вложенные peers могут создать второй
+runtime. Обычные root unit/build/Pages используют опубликованные exact pins
+из `node_modules`; runtime-зависимостей `file:packages/*` у демо нет.
 
-Скрипт упаковывает обе библиотеки через `npm pack` во временный «pack
-cache», затем устанавливает каждую фикстуру ниже в свою собственную
-директорию под OS temp root (никогда не внутри этого репозитория) — только
-из тарболов. Печатает по одной строке PASS/FAIL на сценарий и завершается с
-ненулевым кодом при любом неожиданном результате.
+Runner собирает и упаковывает пакеты с их штатными prepack hooks. Для
+проверки уже подготовленных артефактов можно передать абсолютные `.tgz` paths:
+
+```powershell
+$env:MATRIX_UI_TARBALL = 'C:/artifacts/iam3xtr-ui-0.1.5.tgz'
+$env:MATRIX_VUE_TARBALL = 'C:/artifacts/iam3xtr-vue-0.1.4.tgz'
+node packages/consumers/scripts/run-matrix.mjs
+Remove-Item Env:MATRIX_UI_TARBALL, Env:MATRIX_VUE_TARBALL
+```
+
+Версии в примере условны. Переданные artifacts используются без изменения.
+Установки выполняются под OS temp root, вне checkout; каждый сценарий
+получает собственный extracted tarball install. Runner проверяет отсутствие
+symlinks, exact package versions и физические копии runtime в install tree.
+Force/legacy-peer masking отключён. Temp root удаляется при завершении,
+включая SIGINT/SIGTERM; при ошибке сценария exit code ненулевой.
 
 ## Фикстуры / сценарии
 
-| Фикстура | Доказывает |
+| Fixture / scenario | Проверяемый контракт |
 | --- | --- |
-| `fixtures/spa` | Vue 3 SPA (Vite + Vue Router + Buefy): core- и `./navigation`-входные точки монтируются и рендерятся из тарбол-установки; сборка включает ровно один рантайм Vue. `ModelSelect` (inline и body-portal под clipping-предком) открывается, переводит focus на поиск, выбирает модель и закрывается, меню несёт overlay/portal marker. Фикстура ставится отдельно на каждую версию Buefy из `BUEFY_VERSIONS` в `run-matrix.mjs` (3.0.8, 3.0.11, 3.1.0). |
-| `fixtures/ssr-hydration` | Контракт универсального рендеринга, от которого зависит Nuxt-подобная страница: server render не обращается к `window`/`document`, а гидрация той же разметки в jsdom-«клиенте» не даёт предупреждения о hydration mismatch; named export `ModelSelect` доступен из core entry без browser globals. |
-| `fixtures/tokens-only` | Tokens-входная точка `@iam3xtr/ui` остаётся независимой от рантайма — фикстура не устанавливает `vue`/`buefy`/`bulma`, проверочный скрипт подтверждает, что ничего не протекло транзитивно. Тот же plain-Node скрипт (Issue #8.1) резолвит `@iam3xtr/ui/icons` из тарбол-установки без Vite/`vite-svg-loader`/алиаса — самое строгое место проверить bundler-neutral контракт реестра иконок. |
-| `fixtures/peer-mismatch` | Негативный сценарий: закрепление `vue@^2` (вне peer-диапазона `^3.5.0` пакета `@iam3xtr/vue`) приводит к падению `npm install` с `ERESOLVE` вместо молчаливой установки сломанной пары. |
-| `missing version` (только скрипт) | `npm view vue@0.0.0-does-not-exist` — реальный существующий пакет с несуществующей версией чисто отдаёт 404. |
-| `missing/inaccessible private package` (только скрипт) | `npm view @iam3xtr/ui --registry https://npm.pkg.github.com` с заведомо пустыми user/global `.npmrc` (запрос всегда без авторизации, независимо от кредов разработчика) падает с `E401`; `404` тоже принимается. GitHub Packages отвечает 401 на существующий приватный пакет и 404 на несуществующий — в обоих случаях чистый отказ без данных пакета (см. «Ограничения»). |
+| `spa` | Vite SPA с core/navigation, ModelSelect inline/body portal и единым runtime. Buefy 3.0.8/3.0.11/3.1.0; отдельно Router 4.6.0/5.0.0/5.4.0. Router 5 использует совместимый Vite 8. |
+| `chat-spa` | Один Vite app для standalone и iframe, без Router/Nuxt/API. Public SFC/theme/icon imports, Buefy/MDI, client mount, long text, Enter submit и consumer-owned light/dark/auto resolver. Buefy 3.0.8/3.0.11/3.1.0. |
+| `ssr-hydration` | Самостоятельный library SSR/hydration contract: import без browser globals, server render и jsdom hydration без mismatch; Router не установлен. Это не Nuxt Chat smoke. |
+| `tokens-only` | Tokens/icons exports в plain Node; Vue/Bulma/Buefy/Router не устанавливаются транзитивно. |
+| `peer-mismatch` | Несовместимый Vue peer отклоняется с ERESOLVE; auth/network error не считается peer rejection. |
+| Mixed UI/Vue | UI-newer/Vue-older и разрешённая обратная комбинация; metadata-only synthetic repacks подписаны как dependency-resolution tests, а не historical/registry evidence. |
+| `ui-peer-mismatch` | Synthetic UI выше/ниже Vue UI peer interval отклоняется с ERESOLVE. |
+| Peer floor ledger | Объявленные caret floors сверяются с матрицей либо named known gaps. Vue 3.5.0 и Buefy 3.0.0 пока не закреплены как reusable matrix axes; ledger явно сохраняет эти пробелы. |
+| Registry negatives | Публичный npm возвращает 404 для отсутствующей версии; GitHub Packages с пустыми user/global config возвращает E401/404 без package data. Это не positive authenticated install gate. |
 
-`package.json` каждой фикстуры содержит `@iam3xtr/ui`/`@iam3xtr/vue` как
-буквальную строку `__UI_TARBALL__`/`__VUE_TARBALL__`; `run-matrix.mjs`
-подставляет реальный `file:<абсолютный путь к тарболу>` перед установкой.
-Это тарбол-установка (npm распаковывает реальные файлы в `node_modules`, а
-не создаёт symlink) — `run-matrix.mjs` явно проверяет это для `spa` и
-`ssr-hydration`, а для каждой установки `spa` дополнительно сверяет
-фактически установленную версию Buefy.
+`__UI_TARBALL__`/`__VUE_TARBALL__` в fixture manifests — placeholders,
+которые runner заменяет абсолютными tarball specs только во временных копиях.
+Synthetic mixed-version cases используют неизменённый код с тестовой версией
+в копии manifest. Их arithmetic рассчитана на текущий stable `^0.x.y` UI
+peer; иной диапазон требует пересмотра сценариев и выдаёт явный FAIL.
+
+## Browser smoke Chat SPA
+
+Для browser-проверки используйте отдельную копию `chat-spa`, замените
+placeholders конкретными tarballs, выполните `npm install`, затем
+`npx vite --host 127.0.0.1`. Runner удаляет свои временные установки, поэтому
+они не являются постоянным preview environment.
+
+Проверьте `/index.html?theme=light`, `?theme=dark`, `?theme=auto` и
+`/host.html?theme=dark&host=light` (также обратные темы):
+
+- Desktop/tablet и 320/360 px; нет горизонтального overflow.
+- После множества сообщений прокручивается history, composer остаётся виден
+  в пределах standalone/iframe viewport; длинный текст переносится.
+- Initial theme установлена до первого видимого paint; forced modes не
+  меняются от OS preference, auto реагирует на системную тему.
+- Тема host независима от iframe; Tab/Shift+Tab, Enter и textarea работают.
+- Public icon registry и MDI assets загружаются без source aliases.
+
+jsdom tests не доказывают geometry, focus или first paint. Browser evidence
+фиксируется отдельно; CSP/cookies/session/Go hosting и настоящий widget
+loader проверяются в Chat, не этим fixture.
 
 ## Ограничения
 
-- **Реальная публикация в registry здесь и в CI не выполняется.** Публикация в настоящий GitHub Packages registry
-  `@iam3xtr/ui`/`@iam3xtr/vue` требует write-кредов, которых нет в этом
-  окружении, и является операционным действием с реальными побочными
-  эффектами (продвигает опубликованную версию), а не тем, что должен делать
-  изолированный тест. Сценарии `missing version` и
-  `missing/inaccessible private package` вместо этого работают с настоящими
-  registry (публичный npm registry для 404 на несуществующую версию,
-  настоящий `npm.pkg.github.com` без авторизации для 401/404 на
-  недоступный/отсутствующий пакет) — доказывая то же свойство «безопасный,
-  неинформативный отказ», которым обладал бы pull плохой версии/SHA из
-  приватного registry или отказанный доступом checkout, без необходимости в
-  write-доступе или токене.
-- **Полная установка Nuxt не выполняется.** Настоящий `nuxi build`/
-  `nuxi generate` тянет большое, медленно закрепляемое дерево зависимостей.
-  `fixtures/ssr-hydration` вместо этого проверяет именно тот контракт,
-  который важен для любого фреймворка с универсальным рендерингом — ни один
-  браузерный global не тронут до монтирования, а server- и client-разметка
-  согласуются при гидрации — используя напрямую `@vue/server-renderer` +
-  `jsdom`. Если понадобится Nuxt-специфичное поведение
-  (route middleware, обработка ассетов Nitro) — расширяйте эту фикстуру, а
-  не заменяйте её.
-- **Partial publish и rollback** — процедурные, не автоматизируемые из этого
-  репозитория (требуют write-доступа к registry): описаны как runbook в
-  [`docs/release-process.md`](../../docs/release-process.md).
-- Рекомендуемая пара версий, порядок публикации, CI/release workflow,
-  разграничение кредов и ручная проверка на реальном registry — см.
-  [`docs/release-process.md`](../../docs/release-process.md).
+Матрица не публикует пакеты и не подтверждает доступность положительной
+registry-установки. Перед рекомендацией новых exact pins нужен отдельный
+[authenticated registry gate](../../docs/release-process.md#перед-продвижением-рекомендуемого-пина-проверка-на-реальном-registry-вручную)
+для фактически выбранных независимых версий. Реальные partial publish и
+workflow/environment reviews остаются операционными действиями; release
+regressions используют изолированные Git repos и mock npm/gh.
 
-## Только точные версии
-
-Потребители закрепляют точные версии обоих пакетов и не используют
-`^`/`latest`/git-ссылки как consumer-зависимости — полное правило и
-обоснование в
-[`docs/release-process.md`](../../docs/release-process.md#только-точные-версии).
+Целевой Chat consumer — Vue 3/Vite SPA для standalone/iframe, раздаваемая
+Go. Nuxt и Node production server не требуются этой matrix. Generic library
+SSR сохраняется независимо от архитектуры Chat.
