@@ -84,7 +84,7 @@ describe.skipIf(!SOURCE_MODE)("kit/KitSettingsFamilies.vue (source mode)", () =>
     expect(family("tariff").get('[data-testid="family-denied"]').exists()).toBe(true);
   });
 
-  it("covers error, conflict and unknown outcomes and the entity switch", async () => {
+  it("covers error, conflict outcomes and the entity switch", async () => {
     await mountReference();
     await choose("error");
     await family("provider").get('[data-testid="family-edit"]').trigger("click");
@@ -113,5 +113,65 @@ describe.skipIf(!SOURCE_MODE)("kit/KitSettingsFamilies.vue (source mode)", () =>
     const drawer = document.body.querySelector('[data-testid="family-knowledge-drawer"]');
     expect(drawer.querySelectorAll(".tr-property")).toHaveLength(2);
     expect(family("knowledge").find("input").exists()).toBe(false);
+  });
+
+  it("keeps an unknown outcome verify-only and resolves it through the in-flight submit", async () => {
+    await mountReference();
+    await choose("unknown");
+    await family("knowledge").get('[data-testid="family-edit"]').trigger("click");
+    await type(family("knowledge").get("#knowledge-inline-name"), "Verified");
+    await family("knowledge").get('[data-testid="family-save"]').trigger("click");
+    await settle(500);
+    expect(family("knowledge").get('[data-testid="family-unknown"]').exists()).toBe(true);
+    expect(family("knowledge").find('[data-testid="family-retry"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="families-status"]').text()).toContain("Сохранений: 0");
+    await family("knowledge").get('[data-testid="family-verify"]').trigger("click");
+    await settle(1400);
+    expect(family("knowledge").find('[data-testid="family-unknown"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="families-status"]').text()).toContain("Сохранений: 1");
+    expect(family("knowledge").text()).toContain("Verified");
+  });
+
+  const drawerEl = () => document.body.querySelector('[data-testid="family-knowledge-drawer"]');
+  const openKnowledgeDrawer = async () => {
+    await family("knowledge").get('[data-testid="family-open-drawer"]').trigger("click");
+    await settle();
+    const input = drawerEl().querySelector("#knowledge-drawer-name");
+    input.value = "Drawer draft";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    await settle();
+  };
+  const drawerButton = (label) =>
+    [...drawerEl().closest(".tr-form-drawer__form").querySelectorAll(".tr-form-drawer__footer button")].find((el) => el.textContent.trim() === label);
+
+  it("saves from the drawer once and closes it", async () => {
+    await mountReference();
+    await openKnowledgeDrawer();
+    drawerButton("Сохранить").click();
+    await settle();
+    expect(wrapper.get('[data-testid="families-status"]').text()).toContain("Сохранений: 1");
+    expect(family("knowledge").text()).toContain("Drawer draft");
+    expect(family("knowledge").find("input").exists()).toBe(false);
+  });
+
+  it("discards the draft on drawer Cancel", async () => {
+    await mountReference();
+    await openKnowledgeDrawer();
+    drawerButton("Отмена").click();
+    await settle();
+    expect(wrapper.get('[data-testid="families-status"]').text()).toContain("Сохранений: 0");
+    expect(family("knowledge").find("input").exists()).toBe(false);
+    expect(family("knowledge").text()).toContain("Product docs");
+    expect(family("knowledge").text()).not.toContain("Drawer draft");
+  });
+
+  it("keeps a dirty draft in the inline host when the drawer is closed with Escape", async () => {
+    await mountReference();
+    await openKnowledgeDrawer();
+    document.dispatchEvent(new KeyboardEvent("keyup", { key: "Escape", bubbles: true }));
+    await settle();
+    expect(wrapper.get('[data-testid="families-status"]').text()).toContain("Сохранений: 0");
+    expect(family("knowledge").get("#knowledge-inline-name").element.value).toBe("Drawer draft");
+    expect(family("knowledge").get('[data-testid="family-dirty"]').exists()).toBe(true);
   });
 });
