@@ -4,7 +4,22 @@ import { createPinia, setActivePinia } from "pinia";
 import Buefy from "buefy";
 import { FormDrawer } from "@iam3xtr/vue";
 
-import KitTelegramDrawer from "../../../../src/components/kit/KitTelegramDrawer.vue";
+import { readFileSync } from "node:fs";
+
+// Reachable only in explicit source mode (`npm run test:unit:sources`): the
+// drawer depends on styles absent from published UI 0.1.4.
+const SOURCE_MODE = import.meta.env.MODE === "development";
+const KitTelegramDrawer = SOURCE_MODE
+  ? (await import("../../../../src/components/kit/KitTelegramDrawer.vue")).default
+  : null;
+
+describe("Telegram drawer reference gating", () => {
+  it("is reachable only through a development-mode dynamic import", () => {
+    const overlays = readFileSync("src/components/kit/DialogsOverlays.vue", "utf8");
+    expect(overlays).not.toMatch(/^import\s.*KitTelegramDrawer/m);
+    expect(overlays).toMatch(/import\("\.\/KitTelegramDrawer\.vue"\)/);
+  });
+});
 
 // Relies on `beforeClose` and `shell`, available from package sources
 // (`npm run test:unit:sources`) and from the adopted release that declares them.
@@ -56,7 +71,7 @@ async function clickModalButton(text) {
   await flushPromises();
 }
 
-describe.skipIf(!hasHostContract)("kit/KitTelegramDrawer.vue", () => {
+describe.skipIf(!SOURCE_MODE || !hasHostContract)("kit/KitTelegramDrawer.vue", () => {
   it("renders View read-only with a write-only token and no submit", async () => {
     mountRef();
     await openDrawer();

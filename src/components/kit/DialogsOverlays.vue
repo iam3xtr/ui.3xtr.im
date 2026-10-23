@@ -159,7 +159,7 @@
 
   <FormDrawerHost />
 
-  <KitTelegramDrawer />
+  <component :is="KitTelegramDrawer" v-if="KitTelegramDrawer" />
 
   <section class="tr-card mb-5">
     <h2 class="tr-card__title">Модальное окно</h2>
@@ -214,14 +214,22 @@
 <script setup>
 import { usePackageCopy } from "../../composables/usePackageCopy.js";
 
-import { onUnmounted, ref } from "vue";
+import { defineAsyncComponent, onUnmounted, ref } from "vue";
 
 import { useModalStore } from "../../stores/modal";
 import { useToasterStore } from "../../stores/toaster";
 import { PageHeader } from "@iam3xtr/vue/navigation";
 import { FormDrawer } from "@iam3xtr/vue";
 import FormDrawerHost from "./FormDrawerHost.vue";
-import KitTelegramDrawer from "./KitTelegramDrawer.vue";
+
+// The Telegram drawer reference depends on unreleased `tr-settings__section*`/
+// `tr-property*` styles absent from published UI 0.1.4. It is loaded only in the
+// explicit source mode (`npm run dev`, `test:unit:sources`); normal tests, build
+// and Pages fold this condition away. Stage 4 publication replaces this gate
+// with a static import.
+const KitTelegramDrawer = import.meta.env.MODE === "development"
+  ? defineAsyncComponent(() => import("./KitTelegramDrawer.vue"))
+  : null;
 
 const modalStore = useModalStore();
 const toaster = useToasterStore();
