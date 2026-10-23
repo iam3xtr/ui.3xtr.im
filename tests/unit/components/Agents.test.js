@@ -6,6 +6,7 @@ import Buefy from "buefy";
 
 import Agents from "../../../src/components/Agents.vue";
 import { useDemoStore } from "../../../src/stores/demo.js";
+import { useModalStore } from "../../../src/stores/modal.js";
 import { useWorkspaceStore } from "../../../src/stores/workspace.js";
 
 // Регрессия из ревью Stage A6 (Finding 2): Task A6.1 поменяло `agent.model` с
@@ -250,6 +251,55 @@ describe("Agents.vue — переключатель жизненного цик�
 
     expect(findCard(wrapper, "Sales Assistant").find(".control-label").text()).toContain("Активен");
     expect(findCard(wrapper, "Sales Assistant").find("input").element.checked).toBe(true);
+  });
+
+  it("label переключателя ссылается на существующий id", async () => {
+    const { wrapper } = await mountAgents();
+
+    const input = findCard(wrapper, "Консультант").find("input[type=checkbox]");
+    const id = input.attributes("aria-labelledby");
+    expect(id).toBeTruthy();
+    expect(wrapper.element.querySelector(`[id="${id}"]`)).not.toBeNull();
+  });
+
+  it("клик по переключателю даёт ровно одно действие и не открывает деталь", async () => {
+    const { wrapper, router } = await mountAgents();
+    const confirmSpy = vi.spyOn(useModalStore(), "confirm").mockImplementation(() => {});
+
+    await findCard(wrapper, "Консультант").find("input[type=checkbox]").setValue(false);
+    await flushPromises();
+
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(router.currentRoute.value.name).toBe("agents");
+  });
+
+  it("Enter на переключателе не открывает деталь и не создаёт второго действия", async () => {
+    const { wrapper, router } = await mountAgents();
+    const confirmSpy = vi.spyOn(useModalStore(), "confirm").mockImplementation(() => {});
+
+    await findCard(wrapper, "Консультант").find("label.switch")
+      .trigger("keydown", { key: "Enter", code: "Enter" });
+    await flushPromises();
+
+    // jsdom does not run label activation for a detached tree, so assert only the contract
+    // that matters here: at most one action and no navigation to the detail.
+    expect(confirmSpy.mock.calls.length).toBeLessThanOrEqual(1);
+    expect(router.currentRoute.value.name).toBe("agents");
+  });
+
+  it("Space на переключателе: нативная активация чекбокса даёт одно действие, деталь не открывается", async () => {
+    const { wrapper, router } = await mountAgents();
+    const confirmSpy = vi.spyOn(useModalStore(), "confirm").mockImplementation(() => {});
+    const input = findCard(wrapper, "Консультант").find("input[type=checkbox]");
+
+    // jsdom does not turn Space into a toggle; a browser does, via the native change event.
+    await input.trigger("keydown", { key: " ", code: "Space" });
+    expect(confirmSpy).not.toHaveBeenCalled();
+    await input.setValue(false);
+    await flushPromises();
+
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(router.currentRoute.value.name).toBe("agents");
   });
 
   it("сбой команды сохраняет прежнее состояние и показывает отдельную ошибку с повтором", async () => {
