@@ -142,4 +142,11 @@ Document overflow по умолчанию `auto`: короткая страни�
 После публикации FilterSelect используйте public core export и styles из
 совместимой опубликованной версии UI. Контракт single/multi, copy и keyboard
 описан в [design-system](design-system.md#filterselect-implemented-in-sources-unpublished).
+Поиск и custom entry включаются отдельно через `searchable` и `allowCustom`.
+Передайте search/custom copy, включая accessible name input; query не меняет
+selection до явного commit. Unknown selected IDs сохраняются при смене каталога.
+До registry acceptance используйте только development reference, не deep imports
+и не копирование исходников/CSS. При обновлении также заполните copy props,
+перечисленные в Consumer copy contract README Vue: снятие defaults несовместимо
+и требует отдельного release/semver решения.
 Не заменяйте scalar model_id/provider на arrays без отдельного API-согласования.

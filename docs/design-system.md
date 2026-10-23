@@ -395,8 +395,7 @@ Document overflow по умолчанию `auto`: короткая страни�
 
 `@iam3xtr/vue` экспортирует `FilterSelect` из core; plugin регистрирует
 `tr-filter-select`. Общие `.tr-filter-select*` styles принадлежат `@iam3xtr/ui`.
-Сейчас реализован выбор без поиска; search/custom entry остаются следующей
-задачей. Компонент не получает данные через API и не меняет scalar-контракты
+Реализованы single/multi selection, optional search и explicit custom entry. Компонент не получает данные через API и не меняет scalar-контракты
 `model_id`/`provider` у потребителей.
 
 `options`: `{ value: string, label: string, disabled?: boolean }[]`; value должен
@@ -422,5 +421,28 @@ Buefy владеет dropdown/mobile presentation и Tab trap; общий `useDr
 inline меню закрепляется с viewport coordinates в прежнем DOM, portal остаётся
 portal; координаты/размеры ограничиваются viewport, styles/listeners очищаются при
 закрытии и unmount. Для остальных callers `viewportBounds` по умолчанию false.
-Новые export/styles требуют публикации обоих пакетов и Stage 4 acceptance;
-текущие exact pins демо не меняются. Browser verification пока не выполнена.
+`searchable` включает локальный case-insensitive substring search по label/value
+с trim query. Очистка query не меняет selection; закрытие popup очищает query.
+Consumer передаёт `searchLabel`, optional `searchPlaceholder`, `noResultsLabel`.
+`allowCustom` показывает input даже без поиска, сохраняя полный список options.
+Явный Enter в input или add action применяет `normalizeCustom` (default trim)
+и `validateCustom` (default nonempty, callback должен вернуть true). Для action
+и ошибок нужны `customLabel` с `{value}`, `customInvalidLabel`,
+`customDuplicateLabel`. Selected duplicates и disabled catalog values отклоняются;
+existing enabled value выбирает catalog option. Unknown selected IDs видны как
+historical options при search/custom и снимаются в multi mode; reset очищает оба
+режима. Input Enter не выбирает первую подсказку и не отправляет внешнюю форму.
+IME keys не делают commit; composing Escape удерживается до keyup без закрытия
+popup/host. Полный API описан в README Vue package.
+
+Интерактивный reference доступен через `npm run dev` на `/kit/chat`: Toolbar с
+общим controlled state для inline/mobile, clipping host, Modal и FormDrawer;
+RU/EN/ES copy, long labels, loading/disabled и empty catalog. Reference загружается
+только в development mode. Normal tests/build/Pages используют опубликованные
+exact pins и не импортируют новый export. Для активации после публикации нужно
+обновить exact pins и заменить development gate на обычный import reference.
+
+Новые export/styles требуют публикации совместимых версий обоих пакетов и Stage 4
+acceptance, включая positive authenticated registry gate и финальный copy audit
+новых exports. Номера версий могут различаться; текущие pins демо остаются 0.1.4.
+Get сохраняет scalar model_id/provider до отдельного API-согласования.

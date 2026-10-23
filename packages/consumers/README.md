@@ -44,7 +44,7 @@ Force/legacy-peer masking отключён. Temp root удаляется при 
 
 | Fixture / scenario | Проверяемый контракт |
 | --- | --- |
-| `spa` | Vite SPA с core/navigation, ModelSelect inline/body portal и единым runtime. Buefy 3.0.8/3.0.11/3.1.0; отдельно Router 4.6.0/5.0.0/5.4.0. Router 5 использует совместимый Vite 8. |
+| `spa` | Vite SPA с core/navigation, ModelSelect inline/body portal и единым runtime. FilterSelect проверяется в single/multi/search/custom/unknown/reset режимах с EN/ES copy, общим state двух Toolbar instances, clipping/modal/FormDrawer hosts и Escape/focus return. Buefy 3.0.8/3.0.11/3.1.0; отдельно Router 4.6.0/5.0.0/5.4.0. Router 5 использует совместимый Vite 8. |
 | `chat-spa` | Один Vite app для standalone и iframe, без Router/Nuxt/API. Public SFC/theme/icon imports, Buefy/MDI, client mount, long text, Enter submit и consumer-owned light/dark/auto resolver. Buefy 3.0.8/3.0.11/3.1.0. |
 | `ssr-hydration` | Самостоятельный library SSR/hydration contract: import без browser globals, server render и jsdom hydration без mismatch; Router не установлен. Это не Nuxt Chat smoke. |
 | `tokens-only` | Tokens/icons exports в plain Node; Vue/Bulma/Buefy/Router не устанавливаются транзитивно. |
