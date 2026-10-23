@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="./src/fixture.css" />
   </head>
   <body class="host">
+    <script>
+      document.body.dataset.hostTheme = new URLSearchParams(location.search).get("host") === "dark" ? "dark" : "light";
+    </script>
     <!-- Host page with its own theme (data-host-theme), independent from the
          framed app. Query: ?theme=light|dark|auto&host=light|dark. -->
     <h1 class="host__title">Host page</h1>

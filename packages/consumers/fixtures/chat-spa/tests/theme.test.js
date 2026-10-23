@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import vm from "node:vm";
 import { describe, expect, it } from "vitest";
 import { applyTheme, modeFromSearch, resolveTheme, watchSystemTheme } from "../src/theme.js";
 
@@ -46,5 +48,32 @@ describe("consumer-owned theme resolver", () => {
     expect(root.dataset.theme).toBe("light");
     stop();
     expect(mm.listeners.size).toBe(0);
+  });
+});
+
+describe("synchronous pre-paint theme script in index.html", () => {
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const head = html.slice(0, html.indexOf("</head>"));
+  const code = /<script>([\s\S]*?)<\/script>/.exec(head)?.[1];
+
+  function run(search, prefersDark) {
+    const documentElement = { dataset: {} };
+    const matchMedia = () => ({ matches: prefersDark });
+    vm.runInNewContext(code, { document: { documentElement }, location: { search }, matchMedia, URLSearchParams });
+    return documentElement.dataset.theme;
+  }
+
+  it("is an inline classic script in <head> before the deferred module", () => {
+    expect(code).toBeTruthy();
+    expect(head).not.toContain('type="module"');
+    expect(html.indexOf(code)).toBeLessThan(html.indexOf("./src/main.js"));
+  });
+
+  it("agrees with resolveTheme/modeFromSearch for every mode and preference", () => {
+    for (const search of ["", "?theme=light", "?theme=dark", "?theme=auto", "?theme=bogus"]) {
+      for (const dark of [true, false]) {
+        expect(run(search, dark)).toBe(resolveTheme(modeFromSearch(search), () => ({ matches: dark })));
+      }
+    }
   });
 });
