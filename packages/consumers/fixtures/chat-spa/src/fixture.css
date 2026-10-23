@@ -1,9 +1,12 @@
 /* Fixture-only shell geometry. Not a shared layout/launcher contract. */
 html, body { margin: 0; }
-.chat-shell { display: flex; flex-direction: column; height: 100vh; min-width: 0; }
-.chat-shell--embedded { height: 100%; }
+.chat-shell { display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-width: 0; min-height: 0; overflow: hidden; }
+/* Embedded: the iframe viewport is the bound (a % height has no definite parent here). */
+.chat-shell--embedded { height: 100vh; height: 100dvh; }
+.chat-shell__toolbar { flex: 0 0 auto; }
+.chat-shell > :last-child { flex: 0 0 auto; min-width: 0; }
 .chat-shell__toolbar { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; }
-.chat-shell__history { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.chat-shell__history { flex: 1 1 auto; min-height: 0; overflow: auto; min-width: 0; overflow-wrap: anywhere; }
 .host { padding: 1rem; font-family: sans-serif; }
 .host[data-host-theme="dark"] { background: #111; color: #eee; }
 .host[data-host-theme="light"] { background: #fff; color: #111; }

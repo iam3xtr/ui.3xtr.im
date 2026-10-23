@@ -59,4 +59,14 @@ describe("chat spa fixture", () => {
     expect(Object.keys(icons).length).toBeGreaterThan(0);
     expect(existsSync(path.join(process.cwd(), "node_modules", "@iam3xtr", "ui", "dist", "tokens.css"))).toBe(true);
   });
+
+  it("bounds the shell height so only the history scrolls (no % height)", () => {
+    const css = readFileSync(path.join(process.cwd(), "src", "fixture.css"), "utf8");
+    const rule = (sel) => css.split("
+").find((l) => l.startsWith(sel + " {")) ?? "";
+    expect(rule(".chat-shell")).toMatch(/height: 100dvh/);
+    expect(rule(".chat-shell")).toContain("overflow: hidden");
+    expect(rule(".chat-shell--embedded")).not.toMatch(/height: \d+%/);
+    expect(rule(".chat-shell__history")).toMatch(/min-height: 0.*overflow: auto/);
+  });
 });
