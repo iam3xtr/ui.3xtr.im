@@ -455,6 +455,39 @@ function Test-PinOnlyChange {
     return ($head | ConvertTo-Json -Depth 100 -Compress) -eq ($work | ConvertTo-Json -Depth 100 -Compress)
 }
 
+function Test-LockPinOnlyChange {
+    # True when package-lock.json differs from HEAD only where the pin sync
+    # rewrites it: the root record's two @iam3xtr dependency specs and the
+    # node_modules/@iam3xtr/{ui,vue} entries. Any other edit is unrelated work.
+    # Windows PowerShell 5.1 ConvertFrom-Json rejects the lockfile's "" root key,
+    # so parse with JavaScriptSerializer instead.
+    Add-Type -AssemblyName System.Web.Extensions
+    $serializer = New-Object System.Web.Script.Serialization.JavaScriptSerializer
+    $serializer.MaxJsonLength = [int]::MaxValue
+    $serializer.RecursionLimit = 1000
+    $headJson = (& git -C $root show "HEAD:package-lock.json") -join "`n"
+    if ($LASTEXITCODE -ne 0) { return $false }
+    $strip = {
+        param($json)
+        $lock = $serializer.DeserializeObject($json)
+        $packages = $lock["packages"]
+        if ($packages) {
+            foreach ($key in @($packages.Keys)) {
+                if ($key -match "(^|/)node_modules/@iam3xtr/(ui|vue)$") {
+                    $packages.Remove($key) | Out-Null
+                } elseif ($key -eq "" -and $packages[$key]["dependencies"]) {
+                    foreach ($dep in @("@iam3xtr/ui", "@iam3xtr/vue")) {
+                        $packages[$key]["dependencies"].Remove($dep) | Out-Null
+                    }
+                }
+            }
+        }
+        return $serializer.Serialize($lock)
+    }
+    $workJson = Get-Content (Join-Path $root "package-lock.json") -Raw
+    return (& $strip $headJson) -ceq (& $strip $workJson)
+}
+
 function Assert-UiKitSyncTarget {
     param([switch]$AllowPinOnly)
 
@@ -466,7 +499,7 @@ function Assert-UiKitSyncTarget {
     if ($LASTEXITCODE -ne 0) {
         throw "Cannot inspect UI Kit dependency files before release."
     }
-    if ($AllowPinOnly -and @($pinChanges | Where-Object { $_ -match "package\.json$" -and $_ -notmatch "package-lock\.json$" }).Count -gt 0 -and (Test-PinOnlyChange)) {
+    if ($AllowPinOnly -and @($pinChanges | Where-Object { $_ -match "package\.json$" -and $_ -notmatch "package-lock\.json$" }).Count -gt 0 -and (Test-PinOnlyChange) -and (Test-LockPinOnlyChange)) {
         return
     }
     if ($pinChanges.Count -gt 0) {

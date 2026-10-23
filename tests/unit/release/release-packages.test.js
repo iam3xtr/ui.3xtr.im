@@ -659,6 +659,58 @@ describe.skipIf(!hasPowerShell)("release-packages.ps1 independent Vue/UI selecti
             expect(readFileSync(join(fx.root, "package.json"), "utf8")).toBe(pins);
         });
 
+        // Commit a realistic lockfile so lock edits can be told apart.
+        const commitLock = () => {
+            const lock = {
+                lockfileVersion: 3,
+                packages: {
+                    "": { name: "kit", dependencies: { "@iam3xtr/ui": "0.1.4", "@iam3xtr/vue": "0.1.4", vue: "^3.4.0" } },
+                    "node_modules/@iam3xtr/ui": { version: "0.1.4", resolved: "ui-0.1.4.tgz", integrity: "sha512-ui4" },
+                    "node_modules/@iam3xtr/vue": { version: "0.1.4", resolved: "vue-0.1.4.tgz", integrity: "sha512-vue4" },
+                    "node_modules/vue": { version: "3.4.0", resolved: "vue-3.4.0.tgz", integrity: "sha512-vue" },
+                },
+            };
+            writeJson(join(fx.root, "package-lock.json"), lock);
+            git(fx.root, "commit", "-am", "lock");
+            return lock;
+        };
+        const pinWorktree = (lock, { tamper } = {}) => {
+            const pkg = JSON.parse(readFileSync(join(fx.root, "package.json"), "utf8"));
+            pkg.dependencies["@iam3xtr/ui"] = "0.1.7";
+            writeJson(join(fx.root, "package.json"), pkg);
+            const edited = JSON.parse(JSON.stringify(lock));
+            edited.packages[""].dependencies["@iam3xtr/ui"] = "0.1.7";
+            edited.packages["node_modules/@iam3xtr/ui"] = { version: "0.1.7", resolved: "ui-0.1.7.tgz", integrity: "sha512-ui7" };
+            if (tamper) tamper(edited);
+            writeJson(join(fx.root, "package-lock.json"), edited);
+        };
+
+        it("refuses to resume over unrelated package-lock edits next to pin changes and keeps them", () => {
+            const lock = commitLock();
+            stageLocalUiRelease("0.1.7");
+            pinWorktree(lock, { tamper: (l) => { l.packages["node_modules/vue"].version = "3.5.0"; } });
+            const lockBefore = readFileSync(join(fx.root, "package-lock.json"), "utf8");
+            const before = snapshot(fx.ui);
+
+            const result = runScript(fx, ["-Package", "all", "-Resume", "-Execute"], { MOCK_UI_PUBLISHED: "0.1.7" });
+
+            expect(result.status).not.toBe(0);
+            expect(result.output).toContain("has local changes");
+            expect(snapshot(fx.ui)).toEqual(before);
+            expect(readFileSync(join(fx.root, "package-lock.json"), "utf8")).toBe(lockBefore);
+        });
+
+        it("still resumes when package-lock.json holds only the pin sync state", () => {
+            const lock = commitLock();
+            stageLocalUiRelease("0.1.7");
+            pinWorktree(lock);
+
+            const result = runScript(fx, ["-Package", "all", "-Resume", "-Execute"], { MOCK_UI_PUBLISHED: "0.1.7" });
+
+            expect(result.status).toBe(0);
+            expect(rootPins()).toMatchObject({ "@iam3xtr/ui": "0.1.7", "@iam3xtr/vue": "0.1.5" });
+        });
+
         it("refuses to resume over unrelated root dependency edits", () => {
             stageLocalUiRelease("0.1.7");
             const edited = JSON.parse(readFileSync(join(fx.root, "package.json"), "utf8"));
