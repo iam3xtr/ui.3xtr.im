@@ -272,7 +272,14 @@ describe("Conversations.vue — channel identity and opt-in avatars (Task S2-14)
     expect(wrapper.find(".tr-conversation-avatar").exists()).toBe(false);
     const first = wrapper.find(".tr-conversation-item");
     expect(first.element.firstElementChild.classList.contains("tr-conversation-item__content")).toBe(true);
-    expect(first.find(".tr-conversation-item__channel").text()).toContain("Telegram");
+    const channel = first.find(".tr-conversation-channel");
+    if (import.meta.env.MODE === "development") {
+      expect(channel.text()).toBe("");
+      expect(channel.find('[role="img"]').attributes("aria-label")).toBe("Telegram");
+      expect(channel.find('[role="img"]').attributes("title")).toBe("Telegram");
+    } else {
+      expect(channel.text()).toBe("Telegram");
+    }
     expect(first.find(".tr-conversation-item__channel").text()).toContain("Консультант");
   });
 

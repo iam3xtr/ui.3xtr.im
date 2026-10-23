@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { mount } from "@vue/test-utils";
+import { describe, expect, it, vi } from "vitest";
+import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import Buefy from "buefy";
 
@@ -101,15 +101,24 @@ describe("ConversationHeader.vue — handoff owner/lease (Task A10.5)", () => {
 });
 
 describe("ConversationHeader.vue — channel identity (Task S2-14)", () => {
-  it("тип канала остаётся читаемым текстом, неизвестный канал не получает экземпляр", () => {
+  it("тип канала доступно назван, неизвестный канал не получает экземпляр", async () => {
     const { pinia, store } = setup();
     const conversation = store.getConversation("demo", 1, 1);
 
     const known = mountHeader(pinia, conversation);
-    expect(known.text()).toContain("Telegram");
+    await flushPromises();
+    const channel = known.find(".tr-conversation-channel");
+    if (import.meta.env.MODE === "development") {
+      expect(channel.text()).toBe("");
+      await vi.waitFor(() => expect(channel.find('[role="img"]').attributes("aria-label")).toBe("Telegram"));
+    } else {
+      expect(channel.text()).toBe("Telegram");
+    }
     expect(known.find(".tr-conversation-channel-instance").exists()).toBe(true);
 
     const unknown = mountHeader(pinia, { ...conversation, channel: "<b>x</b>" });
+    await flushPromises();
+    expect(unknown.find(".tr-conversation-channel").text()).toBe("<b>x</b>");
     expect(unknown.find(".tr-conversation-channel-instance").exists()).toBe(false);
     expect(unknown.find("b").exists()).toBe(false);
     expect(unknown.text()).toContain("<b>x</b>");
