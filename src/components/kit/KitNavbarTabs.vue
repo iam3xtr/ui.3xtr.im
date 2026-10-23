@@ -84,10 +84,77 @@
       </li>
     </ul>
   </section>
+
+  <section class="tr-card mb-5" data-testid="navbar-resources-reference">
+    <h2 class="tr-card__title">Navbar: ресурсы рядом с действиями</h2>
+    <p class="tr-muted mb-4">
+      Ссылки ресурсов занимают собственную ширину и стоят сразу перед
+      правой группой действий; свободное место остаётся слева, а вкладки
+      забирают его целиком и не усечены. Окно с шириной от 1280px
+      показывает ресурсы, ниже они уходят в мобильное меню.
+    </p>
+
+    <b-field label="Ресурсы">
+      <b-radio-button
+        v-for="option in RESOURCE_OPTIONS"
+        :key="option.value"
+        v-model="resourceCount"
+        :native-value="option.value"
+        size="is-small"
+      >
+        {{ option.label }}
+      </b-radio-button>
+    </b-field>
+    <b-field label="Вкладки">
+      <b-radio-button
+        v-for="option in TAB_OPTIONS"
+        :key="option.value"
+        v-model="tabCount"
+        :native-value="option.value"
+        size="is-small"
+      >
+        {{ option.label }}
+      </b-radio-button>
+    </b-field>
+    <b-field>
+      <b-switch v-model="showCreate" size="is-small">Create</b-switch>
+    </b-field>
+
+    <div class="tr-topbar tr-navbar-resources-kit__bar" data-testid="navbar-resources-bar">
+      <strong>Logo</strong>
+      <NavbarTabs
+        v-if="tabCount > 0"
+        :items="resourceTabs"
+        aria-label="Вкладки (пример)"
+        prev-label="Предыдущие разделы"
+        next-label="Следующие разделы"
+      />
+      <nav
+        v-if="resourceCount > 0"
+        class="tr-topbar__links"
+        aria-label="Ресурсы (пример)"
+      >
+        <a
+          v-for="n in resourceCount"
+          :key="n"
+          :href="`#resource-${n}`"
+          @click.prevent
+        >
+          Ресурс {{ n }}
+        </a>
+      </nav>
+      <div class="tr-topbar__actions">
+        <b-button v-if="showCreate" size="is-small" type="is-primary">
+          Создать
+        </b-button>
+        <b-button size="is-small">Профиль</b-button>
+      </div>
+    </div>
+  </section>
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 
 import { NavbarTabs } from "@iam3xtr/vue/navigation";
 
@@ -97,6 +164,28 @@ const WIDTHS = [
 ];
 
 const width = ref("narrow");
+
+const RESOURCE_OPTIONS = [
+  { value: 0, label: "0" },
+  { value: 1, label: "1" },
+  { value: 3, label: "N" },
+];
+const TAB_OPTIONS = [
+  { value: 0, label: "Без вкладок" },
+  { value: 5, label: "5 вкладок" },
+  { value: 12, label: "Длинный список" },
+];
+
+const resourceCount = ref(3);
+const tabCount = ref(5);
+const showCreate = ref(true);
+
+const resourceTabs = computed(() =>
+  Array.from({ length: tabCount.value }, (_, i) => ({
+    label: i === 0 ? "Обзор" : `Раздел ${i + 1}`,
+    to: { name: "kit" },
+  })),
+);
 
 // Real kit sections, so every tab is a working link and the current page
 // (`kit-chat`) is the active one.
@@ -124,6 +213,13 @@ const items = [
   border: 1px solid var(--tr-border);
   border-radius: var(--tr-radius-large);
   background: var(--tr-surface-1);
+}
+
+.tr-navbar-resources-kit__bar {
+  position: static;
+  margin-top: 1rem;
+  border: 1px solid var(--tr-border);
+  border-radius: var(--tr-radius-large);
 }
 
 .tr-navbar-tabs-kit__frame--narrow {
