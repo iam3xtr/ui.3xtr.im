@@ -84,6 +84,13 @@ process.on("exit", () => {
     // Best-effort: the directory lives under the OS temp root, outside the repository.
   }
 });
+// Signals skip "exit" handlers by default; exiting explicitly runs the cleanup above.
+for (const [signal, code] of [
+  ["SIGINT", 130],
+  ["SIGTERM", 143],
+]) {
+  process.on(signal, () => process.exit(code));
+}
 
 function packOne(pkgDir, label) {
   const buildRes = run("npm", ["run", "build", "--if-present"], pkgDir);
