@@ -561,6 +561,67 @@ describe.skipIf(!hasPowerShell)("release-packages.ps1 independent Vue/UI selecti
             expect(snapshot(fx.vue)).toEqual(vueBefore);
         });
 
+        // UI 0.1.7 is published and pushed; Vue holds a local-only release
+        // commit (and optionally a tag) left by an interrupted run.
+        const stageLocalVueRelease = ({ tag, compatTag }) => {
+            const failed = runScript(fx, ["-Package", "all", "-Execute"], {
+                MOCK_UI_PUBLISHED: "0.1.7",
+                MOCK_GH_FAIL_WATCH: "iam3xtr/ui",
+            });
+            expect(failed.status).not.toBe(0);
+            writeJson(join(fx.vue, "package.json"), {
+                name: "@iam3xtr/vue",
+                version: "0.1.5",
+                peerDependencies: { "@iam3xtr/ui": "^0.1.7" },
+            });
+            writeFileSync(join(fx.vue, ".ui-compat-ref"), git(fx.ui, "rev-parse", `${compatTag}^{commit}`) + "\n");
+            git(fx.vue, "commit", "-am", "chore(release): v0.1.5");
+            if (tag) git(fx.vue, "tag", "-a", "v0.1.5", "-m", "release: v0.1.5");
+        };
+
+        it("stops safely when the Vue release commit has no tag and was not pushed", () => {
+            stageLocalVueRelease({ tag: false, compatTag: "v0.1.7" });
+            const before = { ui: snapshot(fx.ui), vue: snapshot(fx.vue), root: rootPins() };
+
+            const result = runScript(fx, ["-Package", "all", "-Resume", "-Execute"], { MOCK_UI_PUBLISHED: "0.1.7" });
+
+            expect(result.status).not.toBe(0);
+            expect(result.output).toContain("main must exactly match origin/main");
+            expect(result.commands).not.toContain("npm version");
+            expect(snapshot(fx.ui)).toEqual(before.ui);
+            expect(snapshot(fx.vue)).toEqual(before.vue);
+            expect(rootPins()).toEqual(before.root);
+        });
+
+        it("pushes only main when the Vue tag reached origin but main did not", () => {
+            stageLocalVueRelease({ tag: true, compatTag: "v0.1.7" });
+            git(fx.vue, "push", "origin", "refs/tags/v0.1.5");
+            const head = git(fx.vue, "rev-parse", "HEAD");
+            const remoteTagBefore = git(fx.vue, "ls-remote", "origin", "refs/tags/v0.1.5^{}");
+
+            const result = runScript(fx, ["-Package", "all", "-Resume", "-Execute"], { MOCK_UI_PUBLISHED: "0.1.7" });
+
+            expect(result.status).toBe(0);
+            expect(git(fx.vue, "ls-remote", "origin", "refs/heads/main")).toContain(head);
+            expect(git(fx.vue, "ls-remote", "origin", "refs/tags/v0.1.5^{}")).toBe(remoteTagBefore);
+            expect(git(fx.vue, "rev-parse", "HEAD")).toBe(head);
+            expect(result.commands).not.toContain("npm version");
+            expect(rootPins()).toMatchObject({ "@iam3xtr/ui": "0.1.7", "@iam3xtr/vue": "0.1.5" });
+        });
+
+        it("refuses a Vue tag on HEAD whose .ui-compat-ref differs from the UI tag", () => {
+            stageLocalVueRelease({ tag: true, compatTag: "v0.1.4" });
+            const before = { ui: snapshot(fx.ui), vue: snapshot(fx.vue), root: rootPins() };
+
+            const result = runScript(fx, ["-Package", "all", "-Resume", "-Execute"], { MOCK_UI_PUBLISHED: "0.1.7" });
+
+            expect(result.status).not.toBe(0);
+            expect(result.commands).not.toContain("npm version");
+            expect(snapshot(fx.ui)).toEqual(before.ui);
+            expect(snapshot(fx.vue)).toEqual(before.vue);
+            expect(rootPins()).toEqual(before.root);
+        });
+
         it("is idempotent when rerun after everything was released and synced", () => {
             const first = runScript(fx, ["-Package", "all", "-Execute"], { MOCK_UI_PUBLISHED: "0.1.7" });
             expect(first.status).toBe(0);
