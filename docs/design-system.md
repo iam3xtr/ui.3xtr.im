@@ -328,6 +328,14 @@ package.json (Vite, webpack, plain Node, SSR), и не дублирует MDI.
 просто не получает иконку; текст остаётся доступен на desktop и в
 `mobile-cards`.
 
+### ChannelTypeIcon (implemented in sources, unpublished)
+
+`ChannelTypeIcon` (`@iam3xtr/vue`, core, без Router, SSR-safe) — единое отображение типа канала: `type` (`web`, `widget`, `telegram`, `email`, `whatsapp`, `max`; регистр и пробелы нормализуются), `size` (`compact` 16px / `header` 20px), `variant` (`mono` / `brand`), `label`, `decorative`. `web` и `widget` — origins одной Web-публикации, не `Channel.provider`; `email`, `whatsapp`, `max` — только визуальные типы без коннектора. Псевдоним `mail` не поддерживается. Символы — MDI, кроме `channel-max` из реестра `@iam3xtr/ui`.
+
+Текст `label` задаёт consumer (пакет не содержит языковых значений). Иконка с `label` — `role="img"` с `aria-label`/`title`, без фокуса; рядом с читаемым текстом используйте `decorative`. Неизвестный или пустой `type` — нейтральный символ и экранированный текст (`label` либо исходное значение), логотип другого провайдера не показывается.
+
+MAX: условия использования официального логотипа (go.max.ru/brandbook ссылается на правила в Figma) не подтверждены, поэтому бренд-знак не импортирован; `channel-max` — нейтральный символ с подписью, пока не принято явное решение. Сетевых запросов нет. Ссылка на Stage 4: экспорт и ассеты не опубликованы.
+
 ## Экранный контракт
 
 Kit охватывает dashboard, agents, knowledge, conversations, workspace,

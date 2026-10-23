@@ -133,6 +133,7 @@
   <component :is="KitMetricCards" v-if="KitMetricCards" />
   <component :is="KitRecentCards" v-if="KitRecentCards" />
   <component :is="KitStatisticsReference" v-if="KitStatisticsReference" />
+  <component :is="KitChannelIdentity" v-if="KitChannelIdentity" />
 </template>
 
 <script setup>
@@ -158,6 +159,11 @@ const KitRecentCards = import.meta.env.MODE === "development"
 // Same gate for the statistics reference (`tr-stats*` styles, S2-11).
 const KitStatisticsReference = import.meta.env.MODE === "development"
   ? defineAsyncComponent(() => import("./KitStatisticsReference.vue"))
+  : null;
+
+// Same gate for the channel identity reference (`ChannelTypeIcon`, S2-13).
+const KitChannelIdentity = import.meta.env.MODE === "development"
+  ? defineAsyncComponent(() => import("./KitChannelIdentity.vue"))
   : null;
 
 const selectedTariffId = ref("superior");
