@@ -141,7 +141,14 @@
         </p>
       </section>
 
-      <section class="tr-grid tr-grid--3 tr-dashboard-grid mb-5">
+      <!--
+        S2-09: `.tr-metric-grid` is the size container, `__items` the grid —
+        3/2/1 columns follow the content width, not the viewport. The legacy
+        `tr-grid tr-grid--3 tr-dashboard-grid` classes stay as the fallback
+        until the published @iam3xtr/ui carries the metric styles.
+      -->
+      <section class="tr-metric-grid mb-5">
+      <div class="tr-grid tr-grid--3 tr-dashboard-grid tr-metric-grid__items">
         <RouterLink
           v-for="item in dashboardNavigationItems"
           :key="item.routeName"
@@ -163,6 +170,7 @@
             <span v-if="item.caption">{{ item.caption }}</span>
           </div>
         </RouterLink>
+      </div>
       </section>
 
       <section class="tr-grid tr-grid--2 mb-5">
@@ -243,20 +251,22 @@
           <span class="tr-muted">Обновлено: {{ updatedAt }}</span>
         </div>
 
-        <div class="tr-grid tr-grid--3 mb-5">
-          <div>
-            <div class="tr-dashboard-link__metric">
-              <strong>{{ conversationsToday }}</strong>
-              <span>диалогов за сегодня</span>
+        <div class="tr-metric-grid mb-5">
+          <div class="tr-grid tr-grid--3 tr-metric-grid__items">
+            <div>
+              <div class="tr-dashboard-link__metric">
+                <strong>{{ conversationsToday }}</strong>
+                <span>диалогов за сегодня</span>
+              </div>
             </div>
-          </div>
 
-          <div>
-            <div class="tr-dashboard-link__metric">
-              <strong>{{ deliveryRate === null ? "—" : `${deliveryRate}%` }}</strong>
-              <span>доставлено успешно</span>
+            <div>
+              <div class="tr-dashboard-link__metric">
+                <strong>{{ deliveryRate === null ? "—" : `${deliveryRate}%` }}</strong>
+                <span>доставлено успешно</span>
+              </div>
+              <span class="tr-muted">{{ deliveryRateCaption }}</span>
             </div>
-            <span class="tr-muted">{{ deliveryRateCaption }}</span>
           </div>
         </div>
 

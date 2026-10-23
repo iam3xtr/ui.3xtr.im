@@ -130,16 +130,24 @@
     </p>
     <CopyPre :button-label="packageCopy.copy" :copied-label="packageCopy.copied" :text="apiKeyExample" title="Скопировать ключ API" />
   </section>
+  <component :is="KitMetricCards" v-if="KitMetricCards" />
 </template>
 
 <script setup>
 import { usePackageCopy } from "../../composables/usePackageCopy.js";
 
-import { ref } from "vue";
+import { defineAsyncComponent, ref } from "vue";
 
 import { CopyPre, Loader } from "@iam3xtr/vue";
 import { PageHeader } from "@iam3xtr/vue/navigation";
 import TariffSelector from "../TariffSelector.vue";
+
+// The metric anatomy reference depends on unreleased `tr-metric*` styles. It is
+// loaded only in the explicit source mode; Stage 4 publication replaces this
+// gate with a static import.
+const KitMetricCards = import.meta.env.MODE === "development"
+  ? defineAsyncComponent(() => import("./KitMetricCards.vue"))
+  : null;
 
 const selectedTariffId = ref("superior");
 /** @type {import("vue").Ref<"monthly" | "yearly">} */
