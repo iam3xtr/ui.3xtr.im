@@ -486,6 +486,29 @@ Buefy используют общую тему. Pending блокирует по�
 проверяется через уже запущенную операцию. Отмена unknown в demo явно инвалидирует
 отложенный результат; это не обещание отмены запроса в production API.
 
+| Действие | Semantic type | Размер и размещение | Подтверждение |
+| --- | --- | --- | --- |
+| Save/Create/Apply | `is-primary` | `is-small` в inline header; обычный размер в footer | Обычный submit без отдельного confirm |
+| Edit/Cancel/Close/Back | default | По размеру соседних действий host | Dirty discard при потере draft |
+| Delete/Revoke | `is-danger` | Footer опасной секции либо confirmation | По действующему consumer policy |
+| Вторичное опасное действие | `is-danger is-outlined` | Отдельная dangerous section | По последствиям действия |
+| Reset/default | default, `type="button"` | Рядом с полем | Только если теряются пользовательские данные |
+
+```vue
+<b-button type="is-primary" native-type="submit" :loading="pending" :disabled="pending">
+  {{ copy.save }}
+</b-button>
+<b-button native-type="button" :disabled="pending" @click="cancel">
+  {{ copy.cancel }}
+</b-button>
+```
+
+Native эквивалент primary: `<button type="submit" class="button is-primary">`.
+Buefy предпочтителен, когда нужны его loading/icon/API; native `type` и Buefy
+`native-type` задают HTML-поведение, `type="is-primary"` у Buefy — оформление.
+Не используйте `is-success` только из-за слова Save, submit для reset, вложенные
+buttons/links и параллельные Save одной формы.
+
 **Длинная форма.** `/kit/dialogs-overlays` демонстрирует Telegram View/Edit/Create,
 readonly, busy/error/retry, write-only token и наследуемые defaults. Используется
 существующий FormDrawer: native form либо shell с внешним vee-validate form,
