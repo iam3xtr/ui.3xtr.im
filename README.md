@@ -145,3 +145,14 @@ production-функциональность. Ручная проверка: от
 ## Лицензия
 
 [MIT](LICENSE)
+
+## Новые source references
+
+`npm run dev` показывает общую Settings/property anatomy и независимые семейства
+форм в `/kit/forms`, длинную Telegram-форму в `/kit/dialogs-overlays`, metric/recent
+и statistical cards в `/kit/overview`, channel identity и обновлённые lifecycle
+карточки Agents/Channels. Аватары диалогов включаются отдельно в Demo panel.
+Новые exports/styles ещё не опубликованы: production/Pages используют прежние
+exact pins и сохранённые fallback/gates. Контракты и безопасная последовательность
+переноса описаны в [design-system](docs/design-system.md) и
+[migration guide](docs/agent-migration-guide.md).

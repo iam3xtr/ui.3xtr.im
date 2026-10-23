@@ -456,3 +456,65 @@ exact pins и не импортируют новый export. Для актива
 acceptance, включая positive authenticated registry gate и финальный copy audit
 новых exports. Номера версий могут различаться; текущие pins демо остаются 0.1.4.
 Get сохраняет scalar model_id/provider до отдельного API-согласования.
+
+### Foundations: формы, карточки и каталоги (implemented in sources, unpublished)
+
+Новые классы находятся в исходниках `@iam3xtr/ui`; опубликованные exact pins
+демо остаются `0.1.4`. Development references доступны через `npm run dev`.
+Settings anatomy/families и длинная Telegram-форма включаются только в source
+mode. Статистика workspace дополняет существующий overview только в development.
+В обычной сборке Dashboard сохраняет прежние grid-классы как fallback.
+
+**Settings/property.** `.tr-settings__section` содержит header, title, subtitle,
+actions и body; соседние sections разделяются divider. `.tr-property-list`
+содержит строки `.tr-property` с label, value либо control и hint. Модификаторы
+`--readonly` и `--error` меняют представление, а не permissions/validation.
+При внутренней ширине property list от `30rem` label и value занимают две
+колонки; ниже располагаются последовательно. Дополнительную рамку слой не рисует.
+Inline panel, Buefy modal и FormDrawer сохраняют собственные frame и lifecycle.
+В `/kit/forms` показаны три host и независимые fixtures Workspace, Profile,
+Security, Agent, Channel, Knowledge, Model, Provider, Tariff, User и AdminWorkspace.
+Это reference anatomy; массовая миграция действующих Settings routes ещё не выполнена.
+
+**Действия.** Save/Create/Apply — primary; Edit/Cancel/Close/Back — neutral.
+Необратимое действие — danger с подтверждением; outlined danger сохраняет
+выделение самого control. `.tr-destructive-zone` использует обычные border,
+surface и shadow, danger остаётся у title и button. Компактные действия находятся
+в header, submit/cancel — в footer соответствующего host. У одного логического
+HTML form один submit; reset/default имеет `type="button"`. Native controls и
+Buefy используют общую тему. Pending блокирует повторную команду; unknown
+проверяется через уже запущенную операцию. Отмена unknown в demo явно инвалидирует
+отложенный результат; это не обещание отмены запроса в production API.
+
+**Длинная форма.** `/kit/dialogs-overlays` демонстрирует Telegram View/Edit/Create,
+readonly, busy/error/retry, write-only token и наследуемые defaults. Используется
+существующий FormDrawer: native form либо shell с внешним vee-validate form,
+фиксированные header/footer и прокручиваемый body. Draft/dirty-close принадлежит
+fixture. Вложенные секции не имеют собственного Save; отдельные операции
+показываются отдельно и не объявляются атомарными.
+
+**Карточки.** `.tr-metric` представляет навигационную метрику: label, value,
+caption, delta, progress и details. Основная ссылка и secondary controls отдельны.
+`.tr-metric-grid > .tr-metric-grid__items` имеет 1/2/3 колонки при внутренней
+ширине ниже `28rem`, от `28rem`, от `43rem`. `.tr-recent` содержит header/action
+и borderless table либо state; `.tr-recent-grid > .tr-recent-grid__items` имеет
+1/2 колонки ниже/от `41rem`. Общие viewport grids не меняются.
+Read-only `.tr-stat` и `.tr-stats` отделены от clickable metrics; значения не
+получают фокус. `.tr-stat-grid > .tr-stat-grid__items` имеет 1/2/3/4 колонки
+по порогам `26rem`, `39rem`, `52rem`. References показывают LLM/RAG и Agent
+summary, breakdowns и zero/loading/unavailable/partial fixtures. Форматирование,
+единицы, подписи и данные принадлежат consumer; demo не выполняет агрегацию API.
+
+**Navbar и каталоги.** Desktop resources занимают естественную ширину перед
+правыми actions; свободное место отделяет их от левого содержимого. Mobile links
+и маршруты сохраняются. `.tr-entity-card` — article с отдельной основной ссылкой,
+icon слева и Buefy switch справа в header, body и footer с diagnostics/actions.
+Create-card без switch. В demo agent active, Telegram `isEnabled` и Web `enabled`
+независимы от runtime diagnostics. Readiness, confirm, pending, failure и stale —
+локальные fixtures, а не производственный RBAC/revision protocol. Web — одна
+публикация агента, widget — её origin, а не отдельный Channel.
+
+Аватары диалогов выключены по умолчанию и включаются в Demo panel; без аватара
+пустой контейнер не создаётся. Тип, экземпляр канала, агент и runtime diagnostics
+сохраняют отдельный смысл. Известный тип показывается именованной иконкой,
+неизвестный — нейтральным символом с одним экранированным текстом.

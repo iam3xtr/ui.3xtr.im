@@ -2,6 +2,10 @@
 
 ## 2026-10-23
 
+- В исходниках добавлены общая анатомия Settings/property и длинная Telegram-форма с единым Save; новые references доступны в development до публикации стилей.
+- Добавлены container-aware metric/recent cards, read-only LLM/RAG statistics и выравнивание Navbar resources рядом с actions.
+- Каталоги агентов, Telegram и Web показывают lifecycle switches отдельно от runtime diagnostics; аватары диалогов включаются по желанию.
+
 - В development-списке и шапке диалогов известные типы каналов показаны иконками без повторяющего текста, с доступными подписями и tooltip; размер MDI-глифа соответствует контейнеру.
 
 - В исходниках добавлен FilterSelect: одиночный/множественный выбор, поиск и явный ввод исторических значений с локализованными подписями, поддержкой клавиатуры/IME и ограничением меню viewport. Development reference показывает Toolbar, мобильную панель, Modal и FormDrawer; публикация ожидается отдельно.

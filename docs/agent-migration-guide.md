@@ -150,3 +150,51 @@ selection до явного commit. Unknown selected IDs сохраняются 
 перечисленные в Consumer copy contract README Vue: снятие defaults несовместимо
 и требует отдельного release/semver решения.
 Не заменяйте scalar model_id/provider на arrays без отдельного API-согласования.
+
+## Новые foundations: миграция после публикации
+
+Следующие стили и `ChannelTypeIcon` реализованы в исходниках, но не входят
+в опубликованные pins `0.1.4`. Перед переносом дождитесь совместимого релиза,
+проверьте registry exact install и production/Pages без source aliases.
+Не переносите kit fixtures, lifecycle adapters и in-memory save orchestration.
+Публичная anatomy описана в [design-system](design-system.md).
+
+- Settings: используйте `tr-settings__section*` и `tr-property*` внутри текущего
+  host без дополнительного frame. Workspace/Profile/Security/Agent/Channel/
+  Knowledge/Model/Provider/Tariff сохраняют собственные save boundaries;
+  User/AdminWorkspace в kit являются ограниченными references. Реальные
+  Settings screens мигрируются отдельно после активации опубликованных стилей.
+- Telegram modal: замените whole-panel `overflow:auto` на существующий FormDrawer
+  с отдельным scroll body и нескроллируемыми header/footer. Перенесите общие
+  Save/Cancel в footer slot. Уберите внутренний Save вложенных Telegram settings
+  только если они входят в один draft; независимые PATCH оформляйте отдельными
+  ресурсами. Не обещайте их атомарность. Для vee-validate используйте shell без
+  вложенного form. Сохраните dirty discard, token write-only, nested-overlay lock,
+  errors/retry и focus return. Проверьте 320/360/768/desktop и экранную клавиатуру.
+- Actions: primary для Save/Create/Apply, neutral для Edit/Cancel/Close/Back,
+  danger для необратимых действий. Примените обычную рамку destructive panel;
+  danger title/control и существующие confirmation/permissions сохраняются.
+- Dashboard: используйте пары container/`__items` для metric 3/2/1 и recent 2/1.
+  Удаляйте consumer `tr-dashboard-recent` и viewport overrides только после
+  проверки computed columns по внутренней ширине с sidebar и zoom. Сохраните
+  attention queue, отдельные row links и header actions, zero/unknown semantics.
+- Summary: переносите `tr-stat*`/`tr-stats*` для read-only LLM/RAG и breakdowns;
+  API fetching, aggregation, форматирование, microcredits и RBAC остаются у Get.
+- Navbar: замените локальные flex overrides общими стилями, затем проверьте
+  Dashboard без tabs, Workspace/Agent tabs, 0/1/N ресурсов и mobile/minimal shell.
+- Channel identity: используйте public `ChannelTypeIcon`, consumer label/title и
+  opt-in avatars без пустого placeholder. `web`/`widget` — origins одной Web
+  публикации; не добавляйте widget provider или неподтверждённый `mail` alias.
+  Email/WhatsApp/MAX в kit не означают наличие connector/API enum. MAX использует
+  согласованный нейтральный символ, не официальный logo. Проверьте unknown text,
+  экземпляр канала, agent/runtime и длинные имена в list/header/context.
+- Catalog lifecycle: article + отдельная ссылка и Buefy switch; toggle не должен
+  открывать detail. Agent active, Telegram authoritative enabled и Web enabled
+  отделены от runtime. Сохраняйте production grants/revisions/readiness,
+  confirmation, takeover, public/copy/config actions и stale/retry recovery.
+  Разрешённое выключение не блокируется только из-за failed activation readiness.
+
+Уберите development gates кита только после публикации новых exports/styles и
+проверки root tests/build/Pages на новых exact pins. Перед удалением consumer
+compat CSS подтвердите покрытие установленным package artifact; source build не
+является положительной registry-проверкой.
