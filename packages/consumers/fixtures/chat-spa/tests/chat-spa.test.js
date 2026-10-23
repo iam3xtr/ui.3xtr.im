@@ -62,8 +62,7 @@ describe("chat spa fixture", () => {
 
   it("bounds the shell height so only the history scrolls (no % height)", () => {
     const css = readFileSync(path.join(process.cwd(), "src", "fixture.css"), "utf8");
-    const rule = (sel) => css.split("
-").find((l) => l.startsWith(sel + " {")) ?? "";
+    const rule = (sel) => css.split("\n").find((l) => l.startsWith(sel + " {")) ?? "";
     expect(rule(".chat-shell")).toMatch(/height: 100dvh/);
     expect(rule(".chat-shell")).toContain("overflow: hidden");
     expect(rule(".chat-shell--embedded")).not.toMatch(/height: \d+%/);

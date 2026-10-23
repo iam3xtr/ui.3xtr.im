@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import path from "node:path";
 import vm from "node:vm";
 import { describe, expect, it } from "vitest";
 import { applyTheme, modeFromSearch, resolveTheme, watchSystemTheme } from "../src/theme.js";
@@ -52,7 +53,7 @@ describe("consumer-owned theme resolver", () => {
 });
 
 describe("synchronous pre-paint theme script in index.html", () => {
-  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const html = readFileSync(path.join(process.cwd(), "index.html"), "utf8");
   const head = html.slice(0, html.indexOf("</head>"));
   const code = /<script>([\s\S]*?)<\/script>/.exec(head)?.[1];
 
