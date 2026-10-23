@@ -18,7 +18,10 @@
 #
 # release:all gives each package its own target version, computed from its own
 # manifest with the same bump/prerelease flags; the versions need not match.
-# UI is published first and Vue then carries the new UI as its peer minimum.
+# UI is published first. The Vue peer range stays unchanged (the new UI must be
+# inside it, else the run is rejected before UI publication) unless
+# -RaisePeerFloor is passed, which raises the minimum to the new UI version.
+# Pass the same flags again with -Resume.
 # After an interruption, re-run the same command with -Resume -Execute: each
 # package continues from its own release commit and tag, and a Vue release that
 # was never started is begun after the already published UI.
@@ -728,8 +731,11 @@ try {
     if ($Resume -and -not $Execute) {
         throw "-Resume only performs the pending push/workflow verification; pass -Execute to confirm it."
     }
-    if (($UiVersion -or $RaisePeerFloor) -and $Package -ne "vue") {
-        throw "-UiVersion and -RaisePeerFloor apply only to -Package vue."
+    if ($UiVersion -and $Package -ne "vue") {
+        throw "-UiVersion applies only to -Package vue."
+    }
+    if ($RaisePeerFloor -and $Package -notin @("vue", "all")) {
+        throw "-RaisePeerFloor applies only to -Package vue or all."
     }
     if ($UiVersion) {
         ConvertTo-SemVer -Version $UiVersion | Out-Null
@@ -770,7 +776,7 @@ try {
             if (-not $Resume) {
                 # Reject predictable Vue failures before the irreversible UI publication.
                 Assert-TagAvailable -Path $vuePath -Tag "v$nextVueVersion"
-                Resolve-VuePeerRange -SelectedUiVersion $nextUiVersion -RaiseFloor | Out-Null
+                Resolve-VuePeerRange -SelectedUiVersion $nextUiVersion -RaiseFloor:$RaisePeerFloor | Out-Null
             }
         }
         Write-Host "Planned release: @iam3xtr/ui@$nextUiVersion, then @iam3xtr/vue@$nextVueVersion."
@@ -779,7 +785,7 @@ try {
         # pinning the new UI alone would fail npm's peer resolution after UI
         # is already published. One combined sync follows the Vue release; if
         # Vue fails, the kit manifest stays untouched and -Resume completes it.
-        Release-Vue -Version $nextVueVersion -SelectedUiVersion $nextUiVersion -RaiseFloor -ContinueRelease:$continueVueRelease
+        Release-Vue -Version $nextVueVersion -SelectedUiVersion $nextUiVersion -RaiseFloor:$RaisePeerFloor -ContinueRelease:$continueVueRelease
         if ($Execute) {
             Sync-UiKitDependencies -UiVersion $nextUiVersion -VueVersion $nextVueVersion
             Write-Host "Published @iam3xtr/ui@$nextUiVersion and @iam3xtr/vue@$nextVueVersion. Run the documented exact-version registry gate before declaring them recommended for consumers."

@@ -357,7 +357,7 @@ describe.skipIf(!hasPowerShell)("release-packages.ps1 independent Vue/UI selecti
     it("rejects -UiVersion outside the Vue-only entry point", () => {
         const result = runScript(fx, ["-Package", "ui", "-UiVersion", "0.1.6"]);
         expect(result.status).not.toBe(0);
-        expect(result.output).toContain("apply only to -Package vue");
+        expect(result.output).toContain("-UiVersion applies only to -Package vue");
     });
 
     it("keeps the paired release working when both versions are equal", () => {
@@ -369,7 +369,7 @@ describe.skipIf(!hasPowerShell)("release-packages.ps1 independent Vue/UI selecti
 
         expect(result.status).toBe(0);
         expect(readVue(fx).version).toBe("0.1.5");
-        expect(readVue(fx).peerDependencies["@iam3xtr/ui"]).toBe("^0.1.5");
+        expect(readVue(fx).peerDependencies["@iam3xtr/ui"]).toBe("^0.1.4");
         expect(readFileSync(join(fx.vue, ".ui-compat-ref"), "utf8").trim()).toBe(git(fx.ui, "rev-parse", "v0.1.5^{commit}"));
     });
 
@@ -390,7 +390,7 @@ describe.skipIf(!hasPowerShell)("release-packages.ps1 independent Vue/UI selecti
 
             expect(result.status).toBe(0);
             expect(result.output).toContain("@iam3xtr/ui@0.1.7, then @iam3xtr/vue@0.1.5");
-            expect(result.output).toContain("Vue peer @iam3xtr/ui: ^0.1.4 -> ^0.1.7");
+            expect(result.output).toContain("Vue peer @iam3xtr/ui: ^0.1.4 -> ^0.1.4 (unchanged)");
             expect(result.output).toContain("Dry run only");
             expect(snapshot(fx.ui)).toEqual(before.ui);
             expect(snapshot(fx.vue)).toEqual(before.vue);
@@ -406,9 +406,31 @@ describe.skipIf(!hasPowerShell)("release-packages.ps1 independent Vue/UI selecti
             expect(git(fx.vue, "ls-remote", "origin", "refs/tags/v0.1.5")).not.toBe("");
             expect(git(fx.vue, "ls-remote", "origin", "refs/tags/v0.1.7")).toBe("");
             expect(readVue(fx).version).toBe("0.1.5");
-            expect(readVue(fx).peerDependencies["@iam3xtr/ui"]).toBe("^0.1.7");
+            expect(readVue(fx).peerDependencies["@iam3xtr/ui"]).toBe("^0.1.4");
             expect(readFileSync(join(fx.vue, ".ui-compat-ref"), "utf8").trim()).toBe(git(fx.ui, "rev-parse", "v0.1.7^{commit}"));
             expect(rootPins()).toMatchObject({ "@iam3xtr/ui": "0.1.7", "@iam3xtr/vue": "0.1.5" });
+        });
+
+        it("raises the Vue peer minimum for a compatible UI patch only with -RaisePeerFloor", () => {
+            const dry = runScript(fx, ["-Package", "all", "-RaisePeerFloor"]);
+            expect(dry.status).toBe(0);
+            expect(dry.output).toContain("Vue peer @iam3xtr/ui: ^0.1.4 -> ^0.1.7");
+
+            const result = runScript(fx, ["-Package", "all", "-RaisePeerFloor", "-Execute"], { MOCK_UI_PUBLISHED: "0.1.7" });
+
+            expect(result.status).toBe(0);
+            expect(readVue(fx).peerDependencies["@iam3xtr/ui"]).toBe("^0.1.7");
+        });
+
+        it("rejects a UI outside the Vue peer interval before UI publication without -RaisePeerFloor", () => {
+            const before = snapshot(fx.ui);
+
+            const result = runScript(fx, ["-Package", "all", "-Bump", "major", "-Execute"], { MOCK_UI_PUBLISHED: "1.0.0" });
+
+            expect(result.status).not.toBe(0);
+            expect(result.output).toContain("outside the Vue peer interval ^0.1.4");
+            expect(result.output).toContain("-RaisePeerFloor");
+            expect(snapshot(fx.ui)).toEqual(before);
         });
 
         it("rejects a published Vue tag before publishing UI", () => {
@@ -471,7 +493,7 @@ describe.skipIf(!hasPowerShell)("release-packages.ps1 independent Vue/UI selecti
             ["a major bump", ["-Bump", "major"], "1.0.0"],
             ["a prerelease", ["-Alpha"], "0.1.7-alpha"],
         ])("pins UI and Vue together for %s outside the pinned Vue peer range", (_label, flags, uiVersion) => {
-            const result = runScript(fx, ["-Package", "all", ...flags, "-Execute"], { MOCK_UI_PUBLISHED: uiVersion });
+            const result = runScript(fx, ["-Package", "all", ...flags, "-RaisePeerFloor", "-Execute"], { MOCK_UI_PUBLISHED: uiVersion });
 
             expect(result.output).not.toContain("ERESOLVE");
             expect(result.status).toBe(0);
@@ -480,14 +502,14 @@ describe.skipIf(!hasPowerShell)("release-packages.ps1 independent Vue/UI selecti
         });
 
         it("keeps the kit recoverable when Vue fails for a major UI bump and resume reaches Vue", () => {
-            const failed = runScript(fx, ["-Package", "all", "-Bump", "major", "-Execute"], {
+            const failed = runScript(fx, ["-Package", "all", "-Bump", "major", "-RaisePeerFloor", "-Execute"], {
                 MOCK_UI_PUBLISHED: "1.0.0",
                 MOCK_GH_FAIL_WATCH: "iam3xtr/vue",
             });
             expect(failed.status).not.toBe(0);
             expect(git(fx.root, "status", "--porcelain", "--", "package.json", "package-lock.json")).toBe("");
 
-            const resumed = runScript(fx, ["-Package", "all", "-Resume", "-Execute"], { MOCK_UI_PUBLISHED: "1.0.0" });
+            const resumed = runScript(fx, ["-Package", "all", "-RaisePeerFloor", "-Resume", "-Execute"], { MOCK_UI_PUBLISHED: "1.0.0" });
 
             expect(resumed.output).not.toContain("ERESOLVE");
             expect(resumed.status).toBe(0);
@@ -510,7 +532,7 @@ describe.skipIf(!hasPowerShell)("release-packages.ps1 independent Vue/UI selecti
             expect(resumed.status).toBe(0);
             expect(snapshot(fx.ui)).toEqual(uiAfter);
             expect(readVue(fx).version).toBe("0.1.5");
-            expect(readVue(fx).peerDependencies["@iam3xtr/ui"]).toBe("^0.1.7");
+            expect(readVue(fx).peerDependencies["@iam3xtr/ui"]).toBe("^0.1.4");
             expect(git(fx.vue, "ls-remote", "origin", "refs/tags/v0.1.5")).not.toBe("");
             expect(rootPins()).toMatchObject({ "@iam3xtr/ui": "0.1.7", "@iam3xtr/vue": "0.1.5" });
         });
