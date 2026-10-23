@@ -107,12 +107,23 @@
       </div>
     </div>
   </section>
+
+  <component :is="KitSettingsAnatomy" v-if="KitSettingsAnatomy" />
 </template>
 
 <script setup>
-import { onUnmounted, reactive, ref, watch } from "vue";
+import { defineAsyncComponent, onUnmounted, reactive, ref, watch } from "vue";
 
 import { PageHeader } from "@iam3xtr/vue/navigation";
+
+// The Settings/property anatomy reference depends on unreleased
+// `tr-settings__section*`/`tr-property*` styles. It is loaded only in the
+// explicit source mode (`npm run dev`, `test:unit:sources`); normal tests,
+// build and Pages fold this condition away. Stage 4 publication replaces
+// this gate with a static import.
+const KitSettingsAnatomy = import.meta.env.MODE === "development"
+  ? defineAsyncComponent(() => import("./KitSettingsAnatomy.vue"))
+  : null;
 
 const form = reactive({
   name: "Консультант",
