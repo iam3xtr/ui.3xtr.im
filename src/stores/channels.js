@@ -34,6 +34,23 @@ import { ref } from "vue";
  * @property {string | null} providerPublicUrl
  * @property {string | null} runtimeReason — причина `error`/`displaced`.
  * @property {ChannelLimit[]} limits
+ * @property {"failure" | "stale" | undefined} [lifecycleFixture] — demo-only
+ *   deterministic outcome of the next enable/disable command.
+ */
+
+/**
+ * Agent Web publication (Task S2-16): one public Web entry per agent — not a
+ * widget Channel row. `enabled` is the saved intent; `readiness` and `runtime`
+ * are independent diagnostics that never flip it.
+ *
+ * @typedef {Object} WebPublication
+ * @property {boolean} enabled
+ * @property {"ready" | "not_ready"} readiness
+ * @property {string | null} readinessReason
+ * @property {"ok" | "error"} runtime
+ * @property {string | null} runtimeReason
+ * @property {string | null} publicUrl
+ * @property {"failure" | "stale" | undefined} [lifecycleFixture]
  */
 
 /**
@@ -88,7 +105,7 @@ const initialChannelsByWorkspaceAndAgent = {
         name: "WhatsApp — резервный канал",
         provider: "telegram",
         status: "error",
-        isEnabled: false,
+        isEnabled: true,
         providerIdentity: "@consultant_backup_bot",
         providerPublicUrl: null,
         runtimeReason: "Токен бота отозван провайдером.",
@@ -140,6 +157,54 @@ const initialChannelsByWorkspaceAndAgent = {
     ],
   },
   empty: {},
+};
+
+/** @type {Record<string, Record<string, WebPublication>>} */
+const initialWebPublications = {
+  demo: {
+    1: {
+      enabled: true,
+      readiness: "ready",
+      readinessReason: null,
+      runtime: "ok",
+      runtimeReason: null,
+      publicUrl: "https://chat.3xtr.im/demo-consultant",
+    },
+    2: {
+      enabled: false,
+      readiness: "ready",
+      readinessReason: null,
+      runtime: "ok",
+      runtimeReason: null,
+      publicUrl: "https://chat.3xtr.im/demo-sales",
+    },
+    3: {
+      enabled: true,
+      readiness: "ready",
+      readinessReason: null,
+      runtime: "error",
+      runtimeReason: "Публичная страница временно недоступна.",
+      publicUrl: "https://chat.3xtr.im/demo-support",
+    },
+    4: {
+      enabled: false,
+      readiness: "not_ready",
+      readinessReason: "Чтобы опубликовать веб-чат, заполните инструкции агента.",
+      runtime: "ok",
+      runtimeReason: null,
+      publicUrl: null,
+    },
+  },
+};
+
+/** @type {WebPublication} */
+const DEFAULT_WEB_PUBLICATION = {
+  enabled: false,
+  readiness: "not_ready",
+  readinessReason: "Веб-чат пока не готов к публикации.",
+  runtime: "ok",
+  runtimeReason: null,
+  publicUrl: null,
 };
 
 /**
@@ -225,6 +290,31 @@ export const useChannelsStore = defineStore("channels", () => {
   const channelsByWorkspaceAndAgent = ref(
     structuredClone(initialChannelsByWorkspaceAndAgent),
   );
+
+  /** @type {import("vue").Ref<Record<string, Record<string, WebPublication>>>} */
+  const webPublications = ref(structuredClone(initialWebPublications));
+
+  /**
+   * @param {string} workspaceId
+   * @param {string | number} agentId
+   * @returns {WebPublication}
+   */
+  function getWebPublication(workspaceId, agentId) {
+    return webPublications.value[workspaceId]?.[agentId] ?? DEFAULT_WEB_PUBLICATION;
+  }
+
+  /**
+   * Saves the Web publication intent only; readiness/runtime are untouched.
+   *
+   * @param {string} workspaceId
+   * @param {string | number} agentId
+   * @param {boolean} enabled
+   */
+  function setWebEnabled(workspaceId, agentId, enabled) {
+    const workspace = webPublications.value[workspaceId]
+      ?? (webPublications.value[workspaceId] = {});
+    workspace[agentId] = { ...getWebPublication(workspaceId, agentId), enabled };
+  }
 
   /**
    * @param {string} workspaceId
@@ -390,7 +480,11 @@ export const useChannelsStore = defineStore("channels", () => {
       return;
     }
 
-    channel.status = "paused";
+    // Only a delivering channel becomes "paused"; an errored/displaced one
+    // keeps its runtime diagnostic while the saved intent is switched off.
+    if (channel.status === "active") {
+      channel.status = "paused";
+    }
     channel.isEnabled = false;
   }
 
@@ -507,6 +601,9 @@ export const useChannelsStore = defineStore("channels", () => {
 
   return {
     channelsByWorkspaceAndAgent,
+    webPublications,
+    getWebPublication,
+    setWebEnabled,
     listByAgent,
     createChannel,
     updateChannel,

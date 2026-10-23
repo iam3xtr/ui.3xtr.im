@@ -33,6 +33,17 @@
         одноимённое поле объекта осталось бы мёртвым и вводящим в заблуждение
         (структурно недостижимым в этой позиции).
       -->
+      <div v-if="!demoStore.isError && !demoStore.isEmpty" class="tr-catalog">
+        <div class="tr-catalog-grid">
+          <WebPublicationCard
+            :publication="webPublication"
+            :lifecycle="webSwitch"
+            @toggle="handleWebToggle"
+            @retry="retryWeb"
+          />
+        </div>
+      </div>
+
       <ListAsyncState :loading-label="packageCopy.loading"
         v-bind="demoStore.listAsyncState"
         :loading="false"
@@ -54,8 +65,10 @@
               :key="channel._demoKey ?? channel.id"
               :channel="channel"
               :agent-id="agentId"
+              :lifecycle="channelSwitch(channel)"
               @activate="handleActivate"
-              @deactivate="handleDeactivate"
+              @toggle="handleChannelToggle"
+              @retry="retryChannel"
               @edit="openEditModal"
               @delete="handleDelete"
             />
@@ -89,6 +102,12 @@ import { AsyncState, Loader, ListAsyncState, Toolbar } from "@iam3xtr/vue";
 import ChannelCard from "./ChannelCard.vue";
 import ChannelFormModal from "./ChannelFormModal.vue";
 import TakeoverModal from "./TakeoverModal.vue";
+import WebPublicationCard from "./WebPublicationCard.vue";
+import {
+  decideChannelToggle,
+  decideWebToggle,
+  useChannelLifecycleSwitch,
+} from "../../composables/useChannelLifecycleSwitch";
 
 // Каталог каналов агента (Task A5.5), маршрут `/agents/:id/channels` —
 // вложен в `AgentDetail.vue` детальным shell'ом наравне с `agent`/
@@ -185,8 +204,95 @@ function handleActivate(channel) {
   }
 }
 
-function handleDeactivate(channel) {
-  channelsStore.deactivateChannel(activeWorkspaceId.value, agentId.value, channel.id);
+// Task S2-16: переключатель в шапке — сохранённое намерение `isEnabled`
+// (для Web — `enabled`), runtime-статус остаётся диагностикой. Пауза/включение
+// идут через fixture-команду с pending/подтверждением; перехват бота
+// (`displaced`) по-прежнему открывает `TakeoverModal`.
+const lifecycle = useChannelLifecycleSwitch();
+
+const webPublication = computed(
+  () => channelsStore.getWebPublication(activeWorkspaceId.value, agentId.value),
+);
+
+function channelKey(channel) {
+  return `telegram:${activeWorkspaceId.value}:${agentId.value}:${channel.id}`;
+}
+
+function channelRequest(channel) {
+  const workspaceId = activeWorkspaceId.value;
+  const currentAgentId = agentId.value;
+
+  return {
+    enabled: channel.isEnabled,
+    decision: decideChannelToggle(channel),
+    fixture: channel.lifecycleFixture,
+    apply: (active) => {
+      if (active) {
+        // `displaced` is intercepted before the command, so no conflict here.
+        channelsStore.activateChannel(workspaceId, currentAgentId, channel.id);
+      } else {
+        channelsStore.deactivateChannel(workspaceId, currentAgentId, channel.id);
+      }
+    },
+    intercept: (active) => {
+      if (active && channel.status === "displaced") {
+        handleActivate(channel);
+        return true;
+      }
+      return false;
+    },
+    confirmOff: {
+      title: "Выключить канал?",
+      message: "Бот перестанет отвечать в Telegram, пока канал не включат снова.",
+      confirmText: "Выключить",
+    },
+  };
+}
+
+function channelSwitch(channel) {
+  const request = channelRequest(channel);
+
+  return lifecycle.switchState(channelKey(channel), request);
+}
+
+function handleChannelToggle(channel, value) {
+  lifecycle.requestToggle(channelKey(channel), value, channelRequest(channel));
+}
+
+function retryChannel(channel) {
+  lifecycle.retry(channelKey(channel), channelRequest(channel));
+}
+
+function webKey() {
+  return `web:${activeWorkspaceId.value}:${agentId.value}`;
+}
+
+function webRequest() {
+  const workspaceId = activeWorkspaceId.value;
+  const currentAgentId = agentId.value;
+  const publication = webPublication.value;
+
+  return {
+    enabled: publication.enabled,
+    decision: decideWebToggle(publication),
+    fixture: publication.lifecycleFixture,
+    apply: (active) => channelsStore.setWebEnabled(workspaceId, currentAgentId, active),
+    confirmOff: {
+      title: "Выключить веб-чат?",
+      message: "Публичная страница чата перестанет отвечать посетителям, пока её не включат снова.",
+      confirmText: "Выключить",
+    },
+  };
+}
+
+const webSwitch = computed(() => lifecycle.switchState(webKey(), webRequest()));
+
+function handleWebToggle(value) {
+  lifecycle.requestToggle(webKey(), value, webRequest());
+}
+
+function retryWeb() {
+  lifecycle.retry(webKey(), webRequest());
 }
 
 // Task A10.2: удаление канала подтверждается — «уточнить последствия

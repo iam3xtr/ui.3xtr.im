@@ -8,9 +8,17 @@
       <span class="tr-icon-tile tr-icon-tile--plain tr-entity-card__icon">
         <b-icon icon="send-outline" size="is-medium" />
       </span>
-      <b-tag class="tr-status-tag" :type="statusTagType" :title="statusLabel" size="is-small">
-        {{ statusLabel }}
-      </b-tag>
+      <b-switch
+        :key="`${switchId}-${lifecycle.syncKey}`"
+        class="tr-entity-card__lifecycle"
+        :model-value="lifecycle.checked"
+        :disabled="lifecycle.disabled"
+        :aria-busy="lifecycle.pending ? 'true' : undefined"
+        :title="enabledLabel"
+        @update:model-value="emit('toggle', channel, $event)"
+      >
+        <span class="is-sr-only">{{ channel.name }}: </span>{{ enabledLabel }}
+      </b-switch>
     </header>
 
     <strong class="tr-entity-card__title">
@@ -19,6 +27,23 @@
         {{ channel.providerIdentity }}
       </span>
     </strong>
+
+    <p class="tr-entity-card__description">
+      Состояние подключения:
+      <b-tag class="tr-status-tag" :type="statusTagType" :title="statusLabel" size="is-small">
+        {{ statusLabel }}
+      </b-tag>
+    </p>
+
+    <p v-if="lifecycle.reason" class="tr-entity-card__description tr-muted">
+      {{ lifecycle.reason }}
+    </p>
+    <p v-if="lifecycle.error" class="tr-entity-card__description has-text-danger" role="alert">
+      {{ lifecycle.error }}
+      <b-button size="is-small" type="is-text" @click="emit('retry', channel)">
+        Повторить
+      </b-button>
+    </p>
 
     <p v-if="channel.status === 'error' && channel.runtimeReason" class="tr-entity-card__description has-text-danger">
       {{ channel.runtimeReason }}
@@ -60,23 +85,6 @@
       </b-button>
 
       <b-button
-        v-if="showActivate"
-        size="is-small"
-        type="is-primary"
-        @click="emit('activate', channel)"
-      >
-        Активировать
-      </b-button>
-
-      <b-button
-        v-if="channel.status === 'active'"
-        size="is-small"
-        @click="emit('deactivate', channel)"
-      >
-        Деактивировать
-      </b-button>
-
-      <b-button
         v-if="channel.status !== 'error'"
         size="is-small"
         type="is-light"
@@ -110,12 +118,20 @@ import ChannelLimits from "./ChannelLimits.vue";
 // Активация канала в состоянии `displaced` не выполняется здесь напрямую:
 // родитель (`ChannelsView.vue`) ловит `activate` и открывает `TakeoverModal`,
 // когда `channelsStore.activateChannel` вернёт конфликт.
+// Task S2-16: переключатель в шапке — сохранённое намерение `isEnabled`, а не
+// runtime-статус; `lifecycle` приходит от `useChannelLifecycleSwitch`.
 const props = defineProps({
   channel: { type: Object, required: true },
   agentId: { type: [String, Number], required: true },
+  lifecycle: {
+    type: Object,
+    default: () => ({
+      checked: false, disabled: true, pending: false, reason: null, error: null, syncKey: 0,
+    }),
+  },
 });
 
-const emit = defineEmits(["activate", "deactivate", "edit", "delete"]);
+const emit = defineEmits(["activate", "edit", "delete", "toggle", "retry"]);
 
 const STATUS_LABELS = {
   active: "Активен",
@@ -142,7 +158,6 @@ const STATUS_TAG_TYPES = {
 
 const statusLabel = computed(() => STATUS_LABELS[props.channel.status] ?? props.channel.status);
 const statusTagType = computed(() => STATUS_TAG_TYPES[props.channel.status]);
-const showActivate = computed(
-  () => props.channel.status === "inactive" || props.channel.status === "paused",
-);
+const switchId = computed(() => `channel-lifecycle-${props.channel.id}`);
+const enabledLabel = computed(() => (props.lifecycle.checked ? "Включён" : "Выключен"));
 </script>
