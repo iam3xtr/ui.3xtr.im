@@ -210,10 +210,11 @@
   <KitModelSelect />
   <KitNavbarTabs />
   <KitDropdownOverlay />
+  <component :is="KitFilterSelect" v-if="KitFilterSelect" />
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { defineAsyncComponent, ref } from "vue";
 
 import { ChatHistory, MessageComposer } from "@iam3xtr/vue";
 import { PageHeader } from "@iam3xtr/vue/navigation";
@@ -221,6 +222,14 @@ import { PageHeader } from "@iam3xtr/vue/navigation";
 import KitDropdownOverlay from "./KitDropdownOverlay.vue";
 import KitModelSelect from "./KitModelSelect.vue";
 import KitNavbarTabs from "./KitNavbarTabs.vue";
+
+// `FilterSelect` is not in the published 0.1.4 pins. The reference is loaded
+// only in the explicit source mode (`npm run dev`, `test:unit:sources`);
+// normal tests, build and Pages fold this condition away and never import it.
+// Stage 4 publication replaces this gate with a static import.
+const KitFilterSelect = import.meta.env.MODE === "development"
+  ? defineAsyncComponent(() => import("./KitFilterSelect.vue"))
+  : null;
 
 // Initial demo transcript: a small inbound/outbound conversation with
 // mixed statuses so the metadata/status slots have something to render.
