@@ -173,11 +173,17 @@
       </div>
       </section>
 
-      <section class="tr-grid tr-grid--2 mb-5">
-        <article class="tr-card">
-          <div class="tr-row tr-row--between mb-4">
-            <h2 class="tr-card__title mb-0">Последние агенты</h2>
-            <b-button tag="router-link" :to="{ name: 'agents' }" size="is-small">
+      <!--
+        S2-10: `.tr-recent-grid` is the size container, `__items` the grid — two
+        columns while the content fits two cards, one otherwise. The legacy
+        `tr-grid tr-grid--2` classes stay as the published-pin fallback.
+      -->
+      <section class="tr-recent-grid mb-5">
+      <div class="tr-grid tr-grid--2 tr-recent-grid__items">
+        <article class="tr-card tr-recent">
+          <div class="tr-row tr-row--between mb-4 tr-recent__header">
+            <h2 class="tr-card__title mb-0 tr-recent__title">Последние агенты</h2>
+            <b-button class="tr-recent__action" tag="router-link" :to="{ name: 'agents' }" size="is-small">
               Все агенты
             </b-button>
           </div>
@@ -199,10 +205,10 @@
           </b-table>
         </article>
 
-        <article class="tr-card">
-          <div class="tr-row tr-row--between mb-4">
-            <h2 class="tr-card__title mb-0">Последние диалоги</h2>
-            <b-button tag="router-link" :to="{ name: 'conversations' }" size="is-small">
+        <article class="tr-card tr-recent">
+          <div class="tr-row tr-row--between mb-4 tr-recent__header">
+            <h2 class="tr-card__title mb-0 tr-recent__title">Последние диалоги</h2>
+            <b-button class="tr-recent__action" tag="router-link" :to="{ name: 'conversations' }" size="is-small">
               Все диалоги
             </b-button>
           </div>
@@ -234,6 +240,7 @@
             </b-table-column>
           </b-table>
         </article>
+      </div>
       </section>
 
       <!--

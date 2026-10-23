@@ -131,6 +131,7 @@
     <CopyPre :button-label="packageCopy.copy" :copied-label="packageCopy.copied" :text="apiKeyExample" title="Скопировать ключ API" />
   </section>
   <component :is="KitMetricCards" v-if="KitMetricCards" />
+  <component :is="KitRecentCards" v-if="KitRecentCards" />
 </template>
 
 <script setup>
@@ -147,6 +148,10 @@ import TariffSelector from "../TariffSelector.vue";
 // gate with a static import.
 const KitMetricCards = import.meta.env.MODE === "development"
   ? defineAsyncComponent(() => import("./KitMetricCards.vue"))
+  : null;
+// Same gate for the recent/list card reference (`tr-recent*` styles, S2-10).
+const KitRecentCards = import.meta.env.MODE === "development"
+  ? defineAsyncComponent(() => import("./KitRecentCards.vue"))
   : null;
 
 const selectedTariffId = ref("superior");
