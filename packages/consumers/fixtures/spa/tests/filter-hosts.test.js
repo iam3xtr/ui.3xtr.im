@@ -93,4 +93,39 @@ describe("packed FilterSelect host integration", () => {
     expect(wrapper.vm.provider).toBe("openai");
     expect(wrapper.vm[flag]).toBe(true);
   });
+
+  // Nested overlay behaviour: Escape closes the dropdown first and the host second,
+  // focus returns to the trigger, and the host's scroll lock is untouched by the dropdown.
+  const press = (el, type, key = "Escape") => el.dispatchEvent(new KeyboardEvent(type, { key, bubbles: true, cancelable: true }));
+  const escape = (el) => { press(el, "keydown"); press(el, "keyup"); };
+  const locked = () => document.documentElement.classList.contains("is-clipped") || document.body.classList.contains("is-clipped");
+
+  it.each([["modalOpen", "tr-filter-hosts__in-modal", true], ["drawerOpen", "tr-filter-hosts__in-drawer", false]])(
+    "closes the dropdown before the %s host on Escape and returns focus", async (flag, cls, scrollLocks) => {
+      mountHosts("en");
+      wrapper.vm[flag] = true;
+      await settle();
+      const trigger = triggers(cls)[0];
+      const lockedBefore = locked();
+      if (scrollLocks) expect(lockedBefore).toBe(true);
+      arrowDown(trigger);
+      await settle();
+      expect(trigger.getAttribute("aria-expanded")).toBe("true");
+      const menu = document.getElementById(trigger.getAttribute("aria-controls"));
+      expect(menu).toBeTruthy();
+      expect(document.body.contains(menu)).toBe(true);
+      expect(locked()).toBe(lockedBefore);
+
+      escape(document.activeElement);
+      await settle();
+      expect(trigger.getAttribute("aria-expanded")).toBe("false");
+      expect(wrapper.vm[flag]).toBe(true);
+      expect(document.activeElement).toBe(trigger);
+      expect(locked()).toBe(lockedBefore);
+
+      escape(document.activeElement);
+      await settle();
+      expect(wrapper.vm[flag]).toBe(false);
+      expect(locked()).toBe(false);
+    });
 });
