@@ -109,6 +109,7 @@
   </section>
 
   <component :is="KitSettingsAnatomy" v-if="KitSettingsAnatomy" />
+  <component :is="KitSettingsFamilies" v-if="KitSettingsFamilies" />
 </template>
 
 <script setup>
@@ -123,6 +124,10 @@ import { PageHeader } from "@iam3xtr/vue/navigation";
 // this gate with a static import.
 const KitSettingsAnatomy = import.meta.env.MODE === "development"
   ? defineAsyncComponent(() => import("./KitSettingsAnatomy.vue"))
+  : null;
+// Same gate: the Settings families reference (Task S2-07) uses those styles.
+const KitSettingsFamilies = import.meta.env.MODE === "development"
+  ? defineAsyncComponent(() => import("./KitSettingsFamilies.vue"))
   : null;
 
 const form = reactive({
