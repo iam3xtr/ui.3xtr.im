@@ -39,3 +39,30 @@ describe("packed non-searchable FilterSelect", () => {
     expect(many.find('[role="status"]').text()).toBe(placeholder);
   });
 });
+
+describe("packed searchable FilterSelect with historical and custom values", () => {
+  it.each([
+    ["Search", "No matches", "Use {value}", "Already selected", "Invalid"],
+    ["Buscar", "Sin resultados", "Usar {value}", "Ya elegido", "No valido"],
+  ])("searches, keeps history and commits custom explicitly (%s)", async (searchLabel, noResultsLabel, customLabel, customDuplicateLabel, customInvalidLabel) => {
+    const model = ref(["legacy"]);
+    const options = Object.freeze([{ value: "a", label: "Alpha" }]);
+    const props = { ariaLabel: "Filter", placeholder: "All", resetLabel: "Reset", selectedCountLabel: "{count}", emptyLabel: "Empty", loadingLabel: "Loading",
+      searchable: true, allowCustom: true, searchLabel, noResultsLabel, customLabel, customDuplicateLabel, customInvalidLabel };
+    wrapper = mount({ setup: () => () => h(FilterSelect, { ...props, options, multiple: true, modelValue: model.value,
+      "onUpdate:modelValue": (value) => { model.value = value; } }) }, { attachTo: document.body, global: { plugins: [Buefy] } });
+    await wrapper.find(".tr-filter-select__trigger").trigger("keydown", { key: "ArrowDown" }); await settle();
+    const field = wrapper.find(".tr-filter-select__search");
+    expect(field.attributes("aria-label")).toBe(searchLabel);
+    expect(wrapper.findAll('[role="option"]')[0].text()).toContain("legacy");
+    await field.setValue("zz"); await nextTick();
+    expect(wrapper.find(".tr-filter-select__state").text()).toBe(noResultsLabel);
+    expect(model.value).toEqual(["legacy"]);
+    await field.trigger("keydown", { key: "Enter" }); await settle();
+    expect(model.value).toEqual(["legacy", "zz"]);
+    await field.setValue("zz"); await nextTick();
+    await wrapper.find(".tr-filter-select__custom").trigger("click");
+    expect(wrapper.find('[role="alert"]').text()).toBe(customDuplicateLabel);
+    expect(model.value).toEqual(["legacy", "zz"]);
+  });
+});
