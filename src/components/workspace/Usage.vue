@@ -76,6 +76,8 @@
           </div>
         </article>
       </section>
+
+      <component :is="KitStatistics" v-if="KitStatistics" context="workspace" :state="demoStore.isPartial ? 'partial' : 'ready'" class="mt-5" />
     </template>
   </section>
 </template>
@@ -84,7 +86,7 @@
 import { usePackageCopy } from "../../composables/usePackageCopy.js";
 
 import { storeToRefs } from "pinia";
-import { computed } from "vue";
+import { computed, defineAsyncComponent } from "vue";
 import { RouterLink } from "vue-router";
 
 import { useSimulatedLoading } from "../../composables/useSimulatedLoading";
@@ -104,6 +106,11 @@ import { AsyncState, Loader } from "@iam3xtr/vue";
 // `Loader`/прямой `AsyncState` (тот же приём, что `Agents.vue`/`Dashboard.vue`),
 // partial — `b-message`-баннером поверх карточек; нет отдельного empty —
 // у обзора пространства нет «списка», который может быть пуст.
+// Statistics section uses unreleased `tr-stats*` styles: development-source only
+// until UI publication (Stage 4 activation: replace with a static import).
+const KitStatistics = import.meta.env.MODE === "development"
+  ? defineAsyncComponent(() => import("../kit/KitStatistics.vue"))
+  : null;
 const { isLoading } = useSimulatedLoading();
 const demoStore = useDemoStore();
 const loading = computed(() => isLoading.value || demoStore.isLoading);

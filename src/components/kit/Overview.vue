@@ -132,6 +132,7 @@
   </section>
   <component :is="KitMetricCards" v-if="KitMetricCards" />
   <component :is="KitRecentCards" v-if="KitRecentCards" />
+  <component :is="KitStatisticsReference" v-if="KitStatisticsReference" />
 </template>
 
 <script setup>
@@ -152,6 +153,11 @@ const KitMetricCards = import.meta.env.MODE === "development"
 // Same gate for the recent/list card reference (`tr-recent*` styles, S2-10).
 const KitRecentCards = import.meta.env.MODE === "development"
   ? defineAsyncComponent(() => import("./KitRecentCards.vue"))
+  : null;
+
+// Same gate for the statistics reference (`tr-stats*` styles, S2-11).
+const KitStatisticsReference = import.meta.env.MODE === "development"
+  ? defineAsyncComponent(() => import("./KitStatisticsReference.vue"))
   : null;
 
 const selectedTariffId = ref("superior");
