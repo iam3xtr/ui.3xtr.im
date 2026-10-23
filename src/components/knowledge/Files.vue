@@ -25,7 +25,7 @@
       </template>
     </Toolbar>
 
-    <Loader v-if="isLoading" size="section" />
+    <Loader :label="packageCopy.loading" v-if="isLoading" size="section" />
 
     <template v-else>
       <b-message
@@ -37,8 +37,8 @@
         временной ошибки. Остальные файлы ниже — актуальны.
       </b-message>
 
-      <FileDropTarget @files="enqueueFiles">
-        <ListAsyncState
+      <FileDropTarget :overlay-label="packageCopy.dropFiles" @files="enqueueFiles">
+        <ListAsyncState :loading-label="packageCopy.loading"
           :empty="objects.length === 0 || demoStore.isEmpty"
           empty-icon="file-plus-outline"
           empty-title="В коллекции пока нет файлов"
@@ -104,6 +104,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../composables/usePackageCopy.js";
+
 import { storeToRefs } from "pinia";
 import {
   computed, ref, watch,
@@ -284,4 +286,5 @@ function openObjectForm(tab) {
 function removeObject(object) {
   knowledgeStore.removeObject(activeWorkspaceId.value, route.params.id, object.id);
 }
+const packageCopy = usePackageCopy();
 </script>

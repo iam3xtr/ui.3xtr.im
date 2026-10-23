@@ -1,6 +1,6 @@
 <template>
   <div>
-    <Loader v-if="loading" size="section" class="tr-loader--standalone" />
+    <Loader :label="packageCopy.loading" v-if="loading" size="section" class="tr-loader--standalone" />
 
     <AsyncState
       v-else-if="demoStore.isPermissionDenied"
@@ -280,6 +280,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../composables/usePackageCopy.js";
+
 import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
 import { RouterLink } from "vue-router";
@@ -609,4 +611,5 @@ const deliveryRateCaption = computed(() => {
 });
 
 const tariffLimits = computed(() => activeWorkspaceTariff.value.limits);
+const packageCopy = usePackageCopy();
 </script>

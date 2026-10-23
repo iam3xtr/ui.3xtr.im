@@ -3,7 +3,7 @@
     <h1 class="tr-card__title">Приглашение</h1>
 
     <template v-if="status === 'inspecting' || (status === 'ready' && demoStore.isLoading)">
-      <Loader size="section" />
+      <Loader :label="packageCopy.loading" size="section" />
     </template>
 
     <AsyncState
@@ -72,6 +72,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../composables/usePackageCopy.js";
+
 // `/auth/invite/:token?` (Task A5.10), эквивалент
 // `get.3xtr.im/src/modules/auth/views/InviteView.vue`. Кабинетная версия
 // различает workspace/registration-инвайты и состояние аутентификации через
@@ -138,4 +140,5 @@ function report() {
   authStore.clearPendingInvite();
   status.value = "reported";
 }
+const packageCopy = usePackageCopy();
 </script>

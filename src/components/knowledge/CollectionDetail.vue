@@ -6,7 +6,7 @@
       v-bind="demoStore.permissionDeniedState"
     />
 
-    <ListAsyncState
+    <ListAsyncState :loading-label="packageCopy.loading"
       v-else
       :loading="isLoading || (Boolean(collection) && demoStore.isLoading)"
       :error="!collection || demoStore.isError"
@@ -29,7 +29,7 @@
       />
 
       <NavbarMenu>
-        <NavbarTabs :items="tabs" aria-label="Навигация по коллекции" />
+        <NavbarTabs :prev-label="packageCopy.previousTabs" :next-label="packageCopy.nextTabs" :items="tabs" aria-label="Навигация по коллекции" />
       </NavbarMenu>
 
       <RouterView :key="`${activeWorkspaceId}-${route.params.id}`" />
@@ -38,6 +38,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../composables/usePackageCopy.js";
+
 import { storeToRefs } from "pinia";
 import { computed } from "vue";
 import { RouterView, useRoute } from "vue-router";
@@ -87,4 +89,5 @@ const tabs = computed(() => [
   { label: "Настройки", to: { name: "knowledge-collection-settings", params: { id: route.params.id } } },
   { label: "Статистика", to: { name: "knowledge-collection-statistics", params: { id: route.params.id } } },
 ]);
+const packageCopy = usePackageCopy();
 </script>

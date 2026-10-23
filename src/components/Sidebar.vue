@@ -49,7 +49,7 @@
     </section>
 
 
-    <TariffSummaryCard
+    <TariffSummaryCard :label="packageCopy.plan"
       :tariff="compactTariff"
       :to="{ name: 'workspace-plans' }"
     />
@@ -58,6 +58,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../composables/usePackageCopy.js";
+
 import { computed } from "vue";
 import { storeToRefs } from "pinia";
 import { useRoute } from "vue-router";
@@ -125,4 +127,5 @@ function isAdministrationItemActive(routeName) {
     (typeof route.name === "string" && route.name.startsWith(`${routeName}-`))
   );
 }
+const packageCopy = usePackageCopy();
 </script>

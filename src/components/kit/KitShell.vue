@@ -1,7 +1,7 @@
 <template>
   <section class="tr-kit">
     <NavbarMenu>
-      <NavbarTabs :items="kitTabs" aria-label="Навигация по справочнику UI Kit" />
+      <NavbarTabs :prev-label="packageCopy.previousTabs" :next-label="packageCopy.nextTabs" :items="kitTabs" aria-label="Навигация по справочнику UI Kit" />
     </NavbarMenu>
 
     <RouterView />
@@ -9,6 +9,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../composables/usePackageCopy.js";
+
 import { RouterView } from "vue-router";
 
 import { NavbarMenu } from "@iam3xtr/vue";
@@ -30,4 +32,5 @@ const kitTabs = [
   { label: "Vue-компоненты", to: { name: "kit-chat" } },
   { label: "Application shell", to: { name: "kit-application-shell" } },
 ];
+const packageCopy = usePackageCopy();
 </script>

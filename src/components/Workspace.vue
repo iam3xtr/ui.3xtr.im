@@ -1,7 +1,7 @@
 <template>
   <section class="tr-workspace">
     <NavbarMenu>
-      <NavbarTabs
+      <NavbarTabs :prev-label="packageCopy.previousTabs" :next-label="packageCopy.nextTabs"
         :items="workspaceTabs"
         aria-label="Навигация по пространству"
       />
@@ -12,6 +12,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../composables/usePackageCopy.js";
+
 import { RouterView } from "vue-router";
 
 import { NavbarMenu } from "@iam3xtr/vue";
@@ -32,4 +34,5 @@ const workspaceTabs = [
   // explained blocker instead of a missing/broken link).
   { label: "Аудит", to: { name: "workspace-audit" } },
 ];
+const packageCopy = usePackageCopy();
 </script>

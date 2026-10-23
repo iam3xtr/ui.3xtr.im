@@ -9,7 +9,7 @@
       </div>
     </div>
 
-    <Toolbar
+    <Toolbar :filters-aria-label="packageCopy.openFilters" :filters-title="packageCopy.filters"
       v-model:search="query"
       class="tr-workbench-page__header"
       search-placeholder="Поиск провайдеров"
@@ -26,7 +26,7 @@
       </template>
     </Toolbar>
 
-    <Loader v-if="loading" size="section" />
+    <Loader :label="packageCopy.loading" v-if="loading" size="section" />
 
     <template v-else>
       <b-message
@@ -38,7 +38,7 @@
         ошибки. Остальной каталог ниже — актуален.
       </b-message>
 
-      <ListAsyncState
+      <ListAsyncState :loading-label="packageCopy.loading"
         v-bind="demoStore.listAsyncState"
         :empty="providers.length === 0 || demoStore.isEmpty"
         empty-icon="connection"
@@ -78,6 +78,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../composables/usePackageCopy.js";
+
 import { computed, ref } from "vue";
 
 import { useSimulatedLoading } from "../../composables/useSimulatedLoading";
@@ -115,4 +117,5 @@ const filteredProviders = computed(() => {
     return matchesSearch && matchesStatus;
   });
 });
+const packageCopy = usePackageCopy();
 </script>

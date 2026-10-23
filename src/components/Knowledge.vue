@@ -1,6 +1,6 @@
 <template>
   <section class="tr-workbench-page">
-    <Loader v-if="loading" size="section" />
+    <Loader :label="packageCopy.loading" v-if="loading" size="section" />
 
     <AsyncState
       v-else-if="demoStore.isPermissionDenied"
@@ -9,7 +9,7 @@
     />
 
     <template v-else>
-      <Toolbar
+      <Toolbar :filters-aria-label="packageCopy.openFilters" :filters-title="packageCopy.filters"
         v-model:search="query"
         class="tr-workbench-page__header"
         search-placeholder="Поиск коллекций"
@@ -35,7 +35,7 @@
         ошибки. Остальной каталог ниже — актуален.
       </b-message>
 
-      <ListAsyncState
+      <ListAsyncState :loading-label="packageCopy.loading"
         v-bind="demoStore.listAsyncState"
         :empty="collections.length === 0 || demoStore.isEmpty"
         empty-icon="book-outline"
@@ -109,6 +109,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../composables/usePackageCopy.js";
+
 import { storeToRefs } from "pinia";
 import { computed, ref, watch } from "vue";
 import { RouterLink } from "vue-router";
@@ -235,4 +237,5 @@ watch(
   },
   { flush: "sync" },
 );
+const packageCopy = usePackageCopy();
 </script>

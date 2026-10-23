@@ -1,7 +1,7 @@
 <template>
   <section class="tr-profile">
     <NavbarMenu>
-      <NavbarTabs :items="profileTabs" aria-label="Навигация по профилю" />
+      <NavbarTabs :prev-label="packageCopy.previousTabs" :next-label="packageCopy.nextTabs" :items="profileTabs" aria-label="Навигация по профилю" />
     </NavbarMenu>
 
     <RouterView />
@@ -9,6 +9,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../composables/usePackageCopy.js";
+
 import { RouterView } from "vue-router";
 
 import { NavbarMenu } from "@iam3xtr/vue";
@@ -30,4 +32,5 @@ const profileTabs = [
   { label: "История уведомлений", to: { name: "notification-history" } },
   { label: "Помощь", to: { name: "help" } },
 ];
+const packageCopy = usePackageCopy();
 </script>

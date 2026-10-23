@@ -4,6 +4,11 @@
 анатомия разметки, классы, токены, компоненты и content patterns; API,
 fixtures, demo actions и локальная бизнес-логика UI Kit не переносятся.
 
+Кандидат нового copy API и migration/semver gate описаны в
+[design-system](design-system.md#consumer-owned-copy-source-candidate-unpublished).
+При обновлении проверьте omitted copy props, Toolbar mobile trigger и
+ListAsyncState loading name; опубликованные `0.1.4` ещё не изменены.
+
 ## Подготовка
 
 1. После публикации проверенной комбинации установите exact версии @iam3xtr/ui и
@@ -108,7 +113,7 @@ API. Внедрение в `get.3xtr.im` — отдельная задача con
 
 Native режим по умолчанию сохраняет один HTML form и событие `submit`, подавляемое при busy/disabled. `shell` включает оболочку для consumer-owned формы (например, vee-validate): package form отсутствует, событие submit пакета не эмитится. Slot `shell` получает `content` — компонент body/footer — и `busy`, `disabled`, `requestClose`. Default/footer slots сохраняются и получают тот же scope. Внешняя форма должна быть прямым ребёнком shell slot; дополнительная обёртка нарушит flex/scroll layout. Validation, блокировка submit в shell, dirty state и API принадлежат consumer. Пакет не зависит от vee-validate.
 
-`width` — CSS length, например `42rem`, передаваемый через `--tr-form-drawer-width`. По умолчанию 420px; тема ограничивает ширину viewport и сохраняет mobile fullscreen. Body прокручивается отдельно от header/footer. Передавайте локализованный `closeAriaLabel`; старый default сохранён для совместимости.
+`width` — CSS length, например `42rem`, передаваемый через `--tr-form-drawer-width`. По умолчанию 420px; тема ограничивает ширину viewport и сохраняет mobile fullscreen. Body прокручивается отдельно от header/footer. Передавайте локализованный `closeAriaLabel`; в source candidate default удалён; опубликованная `0.1.4` сохраняет прежнее поведение.
 
 Пример шаблона (`Form` импортируется consumer из vee-validate, `FormDrawer` — из `@iam3xtr/vue`):
 

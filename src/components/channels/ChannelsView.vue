@@ -8,7 +8,7 @@
       </template>
     </Toolbar>
 
-    <Loader v-if="loading" size="section" />
+    <Loader :label="packageCopy.loading" v-if="loading" size="section" />
 
     <AsyncState
       v-else-if="demoStore.isPermissionDenied"
@@ -33,7 +33,7 @@
         одноимённое поле объекта осталось бы мёртвым и вводящим в заблуждение
         (структурно недостижимым в этой позиции).
       -->
-      <ListAsyncState
+      <ListAsyncState :loading-label="packageCopy.loading"
         v-bind="demoStore.listAsyncState"
         :loading="false"
         :empty="channels.length === 0 || demoStore.isEmpty"
@@ -74,6 +74,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../composables/usePackageCopy.js";
+
 import { storeToRefs } from "pinia";
 import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
@@ -217,4 +219,5 @@ watch(agentId, () => {
   modalStore.close("channel-form");
   modalStore.close("channel-takeover");
 });
+const packageCopy = usePackageCopy();
 </script>

@@ -6,7 +6,7 @@
       v-bind="demoStore.permissionDeniedState"
     />
 
-    <ListAsyncState
+    <ListAsyncState :loading-label="packageCopy.loading"
       v-else
       :loading="isLoading || (Boolean(conversation) && demoStore.isLoading)"
       :error="!conversation || demoStore.isError"
@@ -83,6 +83,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../composables/usePackageCopy.js";
+
 import { storeToRefs } from "pinia";
 import { computed, inject } from "vue";
 import { useRoute } from "vue-router";
@@ -172,4 +174,5 @@ const isReady = computed(() => Boolean(conversation.value)
   && !demoStore.isError
   && !isLoading.value
   && !demoStore.isLoading);
+const packageCopy = usePackageCopy();
 </script>

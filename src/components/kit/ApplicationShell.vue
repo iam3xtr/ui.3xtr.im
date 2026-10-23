@@ -15,7 +15,7 @@
       (см. его код и комментарий там). Порядок обязателен: Router → Buefy →
       trVue — плагин не регистрирует ни то, ни другое сам.
     </p>
-    <CopyPre :text="mainJsFragment" title="Скопировать main.js" />
+    <CopyPre :button-label="packageCopy.copy" :copied-label="packageCopy.copied" :text="mainJsFragment" title="Скопировать main.js" />
   </section>
 
   <section class="tr-grid tr-grid--2 mb-5">
@@ -42,7 +42,7 @@
           </b-menu-list>
         </b-menu>
 
-        <TariffSummaryCard
+        <TariffSummaryCard :label="packageCopy.plan"
           class="mt-4"
           :tariff="activeWorkspaceTariff"
           :to="{ name: 'workspace-plans' }"
@@ -94,12 +94,14 @@
         placeholder. Ниже — копируемый пример всех вариантов; часть из них
         показана живьём выше.
       </p>
-      <CopyPre :text="iconPrecedenceFragment" title="Скопировать пример" />
+      <CopyPre :button-label="packageCopy.copy" :copied-label="packageCopy.copied" :text="iconPrecedenceFragment" title="Скопировать пример" />
     </article>
   </section>
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../composables/usePackageCopy.js";
+
 import { storeToRefs } from "pinia";
 
 import { Icon, CopyPre } from "@iam3xtr/vue";
@@ -161,4 +163,5 @@ const iconPrecedenceFragment = `<!-- 1. Непустой default slot — full e
 <!-- 5. aria-hidden placeholder — имя и содержимое отсутствуют -->
 <Icon />
 `;
+const packageCopy = usePackageCopy();
 </script>

@@ -110,7 +110,7 @@
 
         <template v-else-if="stage === 'checking'">
           <p class="tr-row">
-            <Loader size="inline" />
+            <Loader :label="packageCopy.loading" size="inline" />
             Проверяем токен…
           </p>
         </template>
@@ -165,6 +165,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../../../composables/usePackageCopy.js";
+
 import { computed, onBeforeUnmount, ref } from "vue";
 import { classifyTelegramToken, useWizardStore } from "../../../../stores/wizard";
 import { buildTelegramIdentity, useChannelsStore } from "../../../../stores/channels";
@@ -376,4 +378,5 @@ onBeforeUnmount(() => {
     channelsStore.resetChannelStatus(workspaceId.value, agentId, channelId);
   }
 });
+const packageCopy = usePackageCopy();
 </script>

@@ -155,7 +155,7 @@ defineExpose({
       all-label="All statuses"
       aria-label="Status filter"
     />
-    <MobileFilters active>
+    <MobileFilters active trigger-aria-label="Open filters" trigger-title="Filters">
       <p>Filters slot content</p>
     </MobileFilters>
     <ModelSelect

@@ -117,7 +117,7 @@
     реальные экраны (`profile/Settings.vue`, `WorkspaceSettings.vue`) — без
     сетевого API, только fixture-мутация локального массива `agents`.
   -->
-  <FormDrawer
+  <FormDrawer :close-aria-label="packageCopy.close"
     :model-value="isEditDrawerOpen"
     title="Редактирование агента"
     :busy="isSaving"
@@ -184,6 +184,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../composables/usePackageCopy.js";
+
 import { computed, onUnmounted, reactive, ref } from "vue";
 
 import { PageHeader } from "@iam3xtr/vue/navigation";
@@ -341,4 +343,5 @@ const costBreakdown = [
   { label: "Дополнительные кредиты", value: "$8,40" },
   { label: "Итого", value: "$41,40" },
 ];
+const packageCopy = usePackageCopy();
 </script>

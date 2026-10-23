@@ -5,7 +5,7 @@
       subtitle="Личная лента событий пространства и статус их прочтения."
     />
 
-    <Loader v-if="loading" size="section" class="tr-loader--standalone" />
+    <Loader :label="packageCopy.loading" v-if="loading" size="section" class="tr-loader--standalone" />
 
     <AsyncState
       v-else-if="demoStore.isPermissionDenied"
@@ -39,7 +39,7 @@
           </b-button>
         </div>
 
-        <ListAsyncState
+        <ListAsyncState :loading-label="packageCopy.loading"
           v-bind="demoStore.listAsyncState"
           :loading="false"
           :empty="pagedItems.length === 0 || demoStore.isEmpty"
@@ -118,6 +118,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../composables/usePackageCopy.js";
+
 import { storeToRefs } from "pinia";
 import { computed, ref, watch } from "vue";
 import { RouterLink } from "vue-router";
@@ -197,4 +199,5 @@ function handleMarkAllRead() {
   }
   notificationsStore.markAllRead(activeWorkspaceId.value);
 }
+const packageCopy = usePackageCopy();
 </script>

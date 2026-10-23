@@ -5,7 +5,7 @@
       subtitle="Активные сеансы и выход с других устройств."
     />
 
-    <Loader v-if="loading" size="section" class="tr-loader--standalone" />
+    <Loader :label="packageCopy.loading" v-if="loading" size="section" class="tr-loader--standalone" />
 
     <AsyncState
       v-else-if="demoStore.isPermissionDenied"
@@ -26,7 +26,7 @@
       <div class="tr-card">
         <h2 class="tr-card__title">Активные сеансы</h2>
 
-        <ListAsyncState
+        <ListAsyncState :loading-label="packageCopy.loading"
           v-bind="demoStore.listAsyncState"
           :empty="sessions.length === 0 || demoStore.isEmpty"
           empty-icon="devices"
@@ -79,6 +79,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../composables/usePackageCopy.js";
+
 import { storeToRefs } from "pinia";
 import { computed } from "vue";
 
@@ -145,4 +147,5 @@ function confirmRevokeOthers() {
     },
   });
 }
+const packageCopy = usePackageCopy();
 </script>

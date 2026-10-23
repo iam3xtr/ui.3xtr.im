@@ -1,6 +1,6 @@
 <template>
   <section class="tr-workbench-page">
-    <Toolbar
+    <Toolbar :filters-aria-label="packageCopy.openFilters" :filters-title="packageCopy.filters"
       class="tr-workbench-page__header"
       v-model:search="query"
       search-placeholder="Поиск по агентам"
@@ -25,7 +25,7 @@
       </template>
     </Toolbar>
 
-    <Loader v-if="loading" size="section" />
+    <Loader :label="packageCopy.loading" v-if="loading" size="section" />
 
     <AsyncState
       v-else-if="demoStore.isPermissionDenied"
@@ -50,7 +50,7 @@
         одноимённое поле объекта осталось бы мёртвым и вводящим в заблуждение
         (структурно недостижимым в этой позиции).
       -->
-      <ListAsyncState v-bind="demoStore.listAsyncState" :loading="false">
+      <ListAsyncState :loading-label="packageCopy.loading" v-bind="demoStore.listAsyncState" :loading="false">
         <template #empty-action>
           <b-button type="is-primary" @click="openAgentWizard">
             Создать нового агента
@@ -140,6 +140,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../composables/usePackageCopy.js";
+
 import { storeToRefs } from "pinia";
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -338,4 +340,5 @@ watch(
   },
   { immediate: true },
 );
+const packageCopy = usePackageCopy();
 </script>

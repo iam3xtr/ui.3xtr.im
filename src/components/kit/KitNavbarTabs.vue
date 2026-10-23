@@ -49,8 +49,8 @@
         Props: <code>items</code> (обязателен, <code>{ label, to }</code>;
         <code>to</code> — любой <code>RouteLocationRaw</code>),
         <code>ariaLabel</code>, <code>prevLabel</code>,
-        <code>nextLabel</code> (accessible names полосы и стрелок; defaults
-        на русском — переопределяйте для другой локали).
+        <code>nextLabel</code> (accessible names полосы и стрелок; передавайте
+        локализованные строки приложения).
       </li>
       <li>
         Events и slots: нет. Активная вкладка —

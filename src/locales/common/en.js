@@ -3,6 +3,19 @@
 // completeness test in `tests/unit/locales/common.test.js` and the scope
 // note in `ru.js`.
 export default {
+  packageCopy: {
+    loading: "Loading",
+    close: "Close",
+    openFilters: "Open filters",
+    filters: "Filters",
+    previousTabs: "Previous tabs",
+    nextTabs: "Next tabs",
+    copy: "Copy",
+    copied: "Copied!",
+    dropFiles: "Drop files to upload",
+    plan: "Plan",
+  },
+
   dirtyExit: {
     title: "You have unsaved changes",
     body: "Changes on this form have not been saved. You can save them now, "

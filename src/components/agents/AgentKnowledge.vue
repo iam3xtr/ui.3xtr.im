@@ -1,6 +1,6 @@
 <template>
   <section class="tr-workbench-page tr-agent-knowledge">
-    <Loader v-if="loading" size="section" />
+    <Loader :label="packageCopy.loading" v-if="loading" size="section" />
 
     <AsyncState
       v-else-if="demoStore.isPermissionDenied"
@@ -86,7 +86,7 @@
         </div>
       </div>
 
-      <ListAsyncState
+      <ListAsyncState :loading-label="packageCopy.loading"
         :empty="displayItems.length === 0"
         empty-icon="folder-search-outline"
         empty-title="Знаний пока нет"
@@ -154,6 +154,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../composables/usePackageCopy.js";
+
 import { storeToRefs } from "pinia";
 import {
   computed, reactive, ref, watch,
@@ -577,4 +579,5 @@ watch(agentId, () => {
   activeForm.value = null;
   pendingItems.splice(0, pendingItems.length);
 });
+const packageCopy = usePackageCopy();
 </script>

@@ -112,7 +112,7 @@
       Открыть форму в панели
     </b-button>
 
-    <FormDrawer
+    <FormDrawer :close-aria-label="packageCopy.close"
       v-model="isFormDrawerOpen"
       title="Правило уведомления"
       :busy="isFormDrawerBusy"
@@ -210,6 +210,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../composables/usePackageCopy.js";
+
 import { onUnmounted, ref } from "vue";
 
 import { useModalStore } from "../../stores/modal";
@@ -269,4 +271,5 @@ function handleFormDrawerSubmit() {
 onUnmounted(() => {
   if (formDrawerTimerId) clearTimeout(formDrawerTimerId);
 });
+const packageCopy = usePackageCopy();
 </script>

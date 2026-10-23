@@ -20,7 +20,7 @@
       вместо второй строки тулбара.
     </p>
 
-    <Toolbar
+    <Toolbar :filters-aria-label="packageCopy.openFilters" :filters-title="packageCopy.filters"
       v-model:search="toolbarDemoQuery"
       search-placeholder="Поиск по демо-записям"
       :filters-active="Boolean(toolbarDemoStatus)"
@@ -108,7 +108,7 @@
         class="tr-card"
       >
         <p class="tr-muted mb-2">{{ demoModeLabel(card.mode) }}</p>
-        <ListAsyncState v-bind="card.props">
+        <ListAsyncState :loading-label="packageCopy.loading" v-bind="card.props">
           <p class="tr-muted">
             Контент готов — ни один флаг выше не включён.
           </p>
@@ -140,7 +140,7 @@
           v-else
           :variant="card.variant"
           :icon="card.icon"
-          :title="card.title"
+          :title="card.variant === 'loading' ? packageCopy.loading : card.title"
           :message="card.message"
         />
       </div>
@@ -185,7 +185,7 @@
         </b-switch>
       </div>
 
-      <ListAsyncState
+      <ListAsyncState :loading-label="packageCopy.loading"
         :loading="listAsyncDemo.loading"
         :error="listAsyncDemo.error"
         error-icon="alert-circle-outline"
@@ -209,6 +209,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../composables/usePackageCopy.js";
+
 import { computed, reactive, ref } from "vue";
 
 import { DEMO_MODE_LABELS, useDemoStore } from "../../stores/demo";
@@ -281,4 +283,5 @@ const directContractCards = computed(() => [
     ...demoStore.permissionDeniedState,
   },
 ]);
+const packageCopy = usePackageCopy();
 </script>

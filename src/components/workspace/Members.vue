@@ -10,7 +10,7 @@
       </b-button>
     </div>
 
-    <Loader v-if="loading" size="section" class="tr-loader--standalone" />
+    <Loader :label="packageCopy.loading" v-if="loading" size="section" class="tr-loader--standalone" />
 
     <AsyncState
       v-else-if="demoStore.isPermissionDenied"
@@ -31,7 +31,7 @@
       <div class="tr-card mb-5">
         <h2 class="tr-card__title">Участники</h2>
 
-        <ListAsyncState
+        <ListAsyncState :loading-label="packageCopy.loading"
           v-bind="demoStore.listAsyncState"
           :empty="members.length === 0 || demoStore.isEmpty"
           empty-icon="account-group-outline"
@@ -98,7 +98,7 @@
       <div class="tr-card">
         <h2 class="tr-card__title">Приглашения</h2>
 
-        <ListAsyncState
+        <ListAsyncState :loading-label="packageCopy.loading"
           v-bind="demoStore.listAsyncState"
           :empty="invites.length === 0 || demoStore.isEmpty"
           empty-icon="email-outline"
@@ -135,6 +135,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../composables/usePackageCopy.js";
+
 import { storeToRefs } from "pinia";
 import { computed, ref, watch } from "vue";
 
@@ -219,4 +221,5 @@ function openInvite() {
 }
 
 watch(activeWorkspaceId, cancelEdit);
+const packageCopy = usePackageCopy();
 </script>

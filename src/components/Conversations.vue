@@ -1,6 +1,6 @@
 <template>
   <section class="tr-workbench-page">
-    <Loader v-if="loading" size="section" />
+    <Loader :label="packageCopy.loading" v-if="loading" size="section" />
 
     <AsyncState
       v-else-if="demoStore.isPermissionDenied"
@@ -18,7 +18,7 @@
         ошибки. Остальные диалоги ниже — актуальны.
       </b-message>
 
-      <Toolbar
+      <Toolbar :filters-aria-label="packageCopy.openFilters" :filters-title="packageCopy.filters"
         v-if="conversations.length > 0 && !demoStore.isEmpty && !demoStore.isError"
         class="tr-workbench-page__header"
         v-model:search="query"
@@ -60,7 +60,7 @@
         одноимённое поле объекта осталось бы мёртвым и вводящим в заблуждение
         (структурно недостижимым в этой позиции).
       -->
-      <ListAsyncState
+      <ListAsyncState :loading-label="packageCopy.loading"
         v-bind="demoStore.listAsyncState"
         :loading="false"
         :empty="conversations.length === 0 || demoStore.isEmpty"
@@ -121,6 +121,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../composables/usePackageCopy.js";
+
 import { storeToRefs } from "pinia";
 import {
   computed, provide, ref, watch,
@@ -335,4 +337,5 @@ function openConversation(conversation) {
     params: { agentId: conversation.agentId, conversationId: conversation.id },
   });
 }
+const packageCopy = usePackageCopy();
 </script>

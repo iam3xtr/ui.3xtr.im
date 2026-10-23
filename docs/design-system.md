@@ -10,6 +10,37 @@
 переносимыми Vue-компонентами и composables. UI Kit содержит screen composition
 и fixture state, но не дублирует эти библиотеки.
 
+
+### Consumer-owned copy (source candidate, unpublished)
+
+Исходники `@iam3xtr/vue` больше не подставляют языковой текст. Приложение
+передаёт готовые локализованные строки; package dictionaries, locale keys и
+глобальная настройка Buefy не используются. Обязательные accessible names
+проверяются development diagnostics, без runtime fallback. Необязательные
+heading/tooltip можно опускать; сообщение загрузки, имена кнопок и полей — нельзя.
+
+Передавайте `Loader.label`, `CopyPre.buttonLabel/copiedLabel`,
+`FileDropTarget.overlayLabel`, `FormDrawer.closeAriaLabel`,
+`MobileFilters.triggerAriaLabel`, `NavbarTabs.ariaLabel/prevLabel/nextLabel`.
+`Toolbar.filtersAriaLabel/filtersTitle` передают имя и необязательный tooltip
+мобильного trigger; `ListAsyncState.loadingLabel` передаёт loading announcement.
+У `AsyncState variant="loading"` имя берётся из `title`, затем `message`.
+`ToolbarSearch` требует `ariaLabel` или содержательный `placeholder`;
+`ToolbarDropdown` — `allLabel` и при необходимости отдельный `ariaLabel`.
+`PageHeader.back.title` именует icon-only ссылку. У `MessageComposer` обязательны
+`textareaAriaLabel/submitAriaLabel`; у `ModelSelect` — `triggerAriaLabel` и
+`searchAriaLabel`, а switch/freeform именуются соответствующим aria prop или
+видимым текстом. `Icon` без имени декоративный; meaningful icon получает
+`role="img"` и локализованный `aria-label`/`aria-labelledby`.
+
+Удаление прежних defaults для omitted props — **incompatible change**, а не
+patch-compatible исправление. Stage 4 release/semver gate должен выбрать
+подходящий тип релиза, проверить caller migration и published-pin acceptance.
+Версия здесь не выбрана; текущие опубликованные pins `0.1.4` сохраняют прежнее
+поведение. Get/Chat должны проверить все перечисленные calls после выбора
+выпуска; их код в этом репозитории не изменяется. Новые Toolbar/ListAsyncState
+props действуют в development/source-mode candidate до публикации.
+
 ### Локальная разработка библиотек
 
 `npm run dev` — единственный режим kit, который берёт `@iam3xtr/ui` и

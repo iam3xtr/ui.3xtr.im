@@ -9,7 +9,7 @@
       </div>
     </div>
 
-    <Loader v-if="loading" size="section" class="tr-loader--standalone" />
+    <Loader :label="packageCopy.loading" v-if="loading" size="section" class="tr-loader--standalone" />
 
     <AsyncState
       v-else-if="!canView"
@@ -38,7 +38,7 @@
       <div class="tr-card">
         <h2 class="tr-card__title">Действия</h2>
 
-        <ListAsyncState
+        <ListAsyncState :loading-label="packageCopy.loading"
           v-bind="demoStore.listAsyncState"
           :empty="entries.length === 0 || demoStore.isEmpty"
           empty-icon="clipboard-text-clock-outline"
@@ -73,6 +73,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../composables/usePackageCopy.js";
+
 import { storeToRefs } from "pinia";
 import { computed } from "vue";
 
@@ -102,4 +104,5 @@ const canView = computed(() => workspaceStore.canViewAudit(activeWorkspaceId.val
 const auditLog = computed(() => getAuditLogFor(activeWorkspaceId.value));
 const entries = computed(() => auditLog.value.filter((item) => !item.gap));
 const gaps = computed(() => auditLog.value.filter((item) => item.gap));
+const packageCopy = usePackageCopy();
 </script>

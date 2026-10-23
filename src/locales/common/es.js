@@ -3,6 +3,19 @@
 // ver la prueba de completitud en `tests/unit/locales/common.test.js` y la
 // nota de alcance en `ru.js`.
 export default {
+  packageCopy: {
+    loading: "Cargando",
+    close: "Cerrar",
+    openFilters: "Abrir filtros",
+    filters: "Filtros",
+    previousTabs: "Pestañas anteriores",
+    nextTabs: "Pestañas siguientes",
+    copy: "Copiar",
+    copied: "¡Copiado!",
+    dropFiles: "Suelta archivos para subirlos",
+    plan: "Plan",
+  },
+
   dirtyExit: {
     title: "Tienes cambios sin guardar",
     body: "Los cambios de este formulario no se han guardado. Puedes "

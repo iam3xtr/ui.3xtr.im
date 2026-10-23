@@ -128,11 +128,13 @@
       <code>&lt;pre&gt;</code> с кнопкой копирования, доступной с
       клавиатуры.
     </p>
-    <CopyPre :text="apiKeyExample" title="Скопировать ключ API" />
+    <CopyPre :button-label="packageCopy.copy" :copied-label="packageCopy.copied" :text="apiKeyExample" title="Скопировать ключ API" />
   </section>
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../composables/usePackageCopy.js";
+
 import { ref } from "vue";
 
 import { CopyPre, Loader } from "@iam3xtr/vue";
@@ -227,4 +229,5 @@ const tariffOptions = [
     ],
   },
 ];
+const packageCopy = usePackageCopy();
 </script>

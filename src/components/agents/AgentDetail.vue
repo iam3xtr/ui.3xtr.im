@@ -6,7 +6,7 @@
       v-bind="demoStore.permissionDeniedState"
     />
 
-    <ListAsyncState
+    <ListAsyncState :loading-label="packageCopy.loading"
       v-else
       :loading="isLoading || (Boolean(agent) && demoStore.isLoading)"
       :error="!agent || demoStore.isError"
@@ -23,7 +23,7 @@
       </template>
 
       <NavbarMenu>
-        <NavbarTabs :items="tabs" aria-label="Навигация по агенту" />
+        <NavbarTabs :prev-label="packageCopy.previousTabs" :next-label="packageCopy.nextTabs" :items="tabs" aria-label="Навигация по агенту" />
       </NavbarMenu>
 
       <RouterView :key="`${activeWorkspaceId}-${route.params.id}`" />
@@ -32,6 +32,8 @@
 </template>
 
 <script setup>
+import { usePackageCopy } from "../../composables/usePackageCopy.js";
+
 import { storeToRefs } from "pinia";
 import { computed } from "vue";
 import { RouterView, useRoute } from "vue-router";
@@ -77,4 +79,5 @@ const tabs = computed(() => [
   { label: "Каналы", to: { name: "agent-channels", params: { id: route.params.id } } },
   { label: "Знания", to: { name: "agent-knowledge", params: { id: route.params.id } } },
 ]);
+const packageCopy = usePackageCopy();
 </script>
