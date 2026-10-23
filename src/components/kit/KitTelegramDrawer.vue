@@ -279,7 +279,7 @@
               <b-button
                 size="is-small"
                 native-type="button"
-                :disabled="isBusy || current === 'create'"
+                :disabled="isBusy || current === 'create' || !canEdit"
                 data-testid="telegram-webhook"
                 @click="runIndependent"
               >

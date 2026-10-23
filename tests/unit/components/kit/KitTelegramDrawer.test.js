@@ -67,6 +67,14 @@ describe.skipIf(!hasHostContract)("kit/KitTelegramDrawer.vue", () => {
     expect(drawer().find('[data-testid="telegram-token-state"]').text()).toContain("не отображается");
   });
 
+  it("disables the independent webhook action in Readonly", async () => {
+    mountRef();
+    await choose("edit");
+    await choose("readonly");
+    await openDrawer();
+    expect(drawer().find('[data-testid="telegram-webhook"]').element.disabled).toBe(true);
+  });
+
   it.each(["native", "shell + vee-validate"])(
     "submits Edit once with a single form in %s mode",
     async (modeLabel) => {
